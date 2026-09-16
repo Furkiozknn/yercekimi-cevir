@@ -26,6 +26,26 @@ func _ready() -> void:
 	await _kristal_testi()
 	print("— Kontrol noktasi —")
 	await _kontrol_testi()
+	print("— Affetme: kojot cevirme —")
+	await _kojot_testi()
+	print("— Yeniden deneme suresi —")
+	await _yeniden_deneme_testi()
+	print("— Isabet kutulari —")
+	await _isabet_testi()
+	print("— Oda tabanli kamera —")
+	await _kamera_testi()
+	print("— Inis gostergesi —")
+	await _inis_testi()
+	print("— En az cevirme hedefi —")
+	_en_az_testi()
+	print("— Hayalet yaris —")
+	await _hayalet_testi()
+	print("— Yardim modu —")
+	await _yardim_testi()
+	print("— Olum haritasi —")
+	await _olum_haritasi_testi()
+	print("— Ayarlarin kaydi —")
+	_ayar_kayit_testi()
 	print("— Kapi, madalya ve ilerleme —")
 	await _kapi_testi()
 	print("%d dogrulama, %d hata" % [_sayi, _hata])
@@ -291,3 +311,365 @@ func _kapiya_dokun(oyun: Node2D, o: CharacterBody2D) -> void:
 	for i in 6:
 		await get_tree().physics_frame
 	await get_tree().create_timer(1.6).timeout
+
+
+# --- tur 2: affetme, okunurluk, farklilastiranlar ----------------------------
+
+## Cevirmeyi affet: yuzeyden yeni ayrildiysan cevirme hakkin CEVIR_KOJOT kadar surer.
+func _kojot_testi() -> void:
+	var b := Bolum.new()
+	add_child(b)
+	b.kur(Bolumler.BOLUMLER[0])
+	var o: CharacterBody2D = OYUNCU.instantiate()
+	add_child(o)
+	o.girdi_acik = false
+	o.hazirla(b.baslangic)
+	for i in 30:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor(), "kojot: oyuncu once zeminde")
+	# Yuzeyden yeni ayrildi: hala cevirebilmeli.
+	o.position.y -= 40.0
+	for i in 2:
+		await get_tree().physics_frame
+	_dogrula(not o.is_on_floor(), "kojot: oyuncu havada")
+	_dogrula(o.cevir(), "kojot suresi icinde havada cevirme KABUL edildi")
+
+	# Ayni durum, ama kojot suresi dolduktan sonra: reddedilmeli.
+	o.hazirla(b.baslangic)
+	for i in 30:
+		await get_tree().physics_frame
+	o.position.y -= 40.0
+	for i in 14:      # 14 kare = 0,23 sn > CEVIR_KOJOT (0,08)
+		await get_tree().physics_frame
+	_dogrula(not o.cevir(), "kojot suresi bitince havada cevirme REDDEDILDI")
+	_dogrula(Ayarlar.CEVIR_KOJOT >= 0.07 and Ayarlar.CEVIR_TAMPONU >= 0.09,
+		"kojot 0,08 + tampon 0,10 (%.2f / %.2f)" % [Ayarlar.CEVIR_KOJOT, Ayarlar.CEVIR_TAMPONU])
+	o.queue_free()
+	b.queue_free()
+	await get_tree().process_frame
+
+
+## Yeniden deneme 0,3 sn'nin ALTINDA olmali ve sahne yeniden YUKLENMEMELI.
+func _yeniden_deneme_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 12         # 64 sutunluk, hareketli parcali bolum
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var bolum: Bolum = oyun.get_node("Dunya/Bolum")
+	var kimlik := bolum.get_instance_id()
+	# Hareketli parcayi yerinden oynat: yeniden denemede basa donmeli.
+	var hareketli: Node2D = null
+	for c in bolum.get_children():
+		if c is AnimatableBody2D or (c is Area2D and c.name.begins_with("@")):
+			hareketli = c
+	o.position += Vector2(120.0, 0.0)
+	for i in 30:
+		await get_tree().physics_frame
+	var basla := Time.get_ticks_msec()
+	o.oldur()
+	var tur := 0
+	while not o.yasiyor and tur < 200:
+		tur += 1
+		await get_tree().process_frame
+	var gecen := Time.get_ticks_msec() - basla
+	_dogrula(o.yasiyor, "olumden sonra yeniden dogdu")
+	_dogrula(gecen < 300, "yeniden deneme 0,3 sn'den kisa (%d ms)" % gecen)
+	_dogrula(bolum.get_instance_id() == kimlik, "sahne yeniden YUKLENMEDI (ayni bolum dugumu)")
+	if hareketli != null:
+		_dogrula(is_instance_valid(hareketli), "hareketli parca ayni dugum olarak kaldi")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Oldurucu seylerin isabet kutusu gorselinden kucuk olmali (diken 16x16,
+## gezgin diken 24x10). Basilan platformda boyle bir pay YOK — kutu gorselle ayni.
+func _isabet_testi() -> void:
+	var pay: int = Ayarlar.DIKEN_PAY
+	_dogrula(pay >= 2 and pay <= 3, "diken payi 2-3 px (%d)" % pay)
+	# Sabit diken: 40. bolumde degil, dikenli 4. bolumde
+	var b := Bolum.new()
+	add_child(b)
+	b.kur(Bolumler.BOLUMLER[3])
+	await get_tree().physics_frame
+	var dikenler: Area2D = b.get_node("Dikenler")
+	_dogrula(dikenler.get_child_count() > 0, "sabit diken kutulari kuruldu")
+	var en_dar := 999.0
+	for c in dikenler.get_children():
+		var sekil: RectangleShape2D = (c as CollisionShape2D).shape
+		en_dar = minf(en_dar, minf(16.0 - sekil.size.x, 16.0 - sekil.size.y) * 0.5)
+	_dogrula(en_dar >= float(pay), "sabit diken kutusu gorselden >= %d px icerde (%.1f)" % [pay, en_dar])
+	b.queue_free()
+	await get_tree().process_frame
+
+	# Gezgin diken: 11. bolumde var
+	var g := Bolum.new()
+	add_child(g)
+	g.kur(Bolumler.BOLUMLER[10])
+	await get_tree().physics_frame
+	var bulundu := false
+	for c in g.get_children():
+		if not (c is Area2D) or c.name in ["Dikenler", "Kapi", "Kristal", "Kontrol"]:
+			continue
+		var sekil2: RectangleShape2D = (c.get_child(0) as CollisionShape2D).shape
+		bulundu = true
+		_dogrula(is_equal_approx(sekil2.size.x, 24.0 - pay * 2) and is_equal_approx(sekil2.size.y, 10.0 - pay * 2),
+			"gezgin diken kutusu gorselden %d px icerde (%s)" % [pay, sekil2.size])
+	_dogrula(bulundu, "gezgin diken bulundu")
+	g.queue_free()
+	await get_tree().process_frame
+
+
+## Oda tabanli kamera: kamera oda icinde SABIT durur, oda degisince atlar ve
+## hicbir zaman bolumun disini gostermez.
+func _kamera_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 12
+	Ayarlar.secilen_bolum = 12         # 64 sutun = 1024 px = 2 oda
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var kam: Camera2D = oyun.get_node("Dunya/Kamera")
+	var bolum: Bolum = oyun.get_node("Dunya/Bolum")
+	_dogrula(bolum.genislik_px == 1024, "13. bolum 1024 px genis (%d)" % bolum.genislik_px)
+
+	o.position.x = 100.0
+	oyun._kamera_guncelle(true)
+	var ilk: float = kam.position.x
+	_dogrula(is_equal_approx(ilk, 320.0), "ilk oda ortalandi (%.0f)" % ilk)
+	o.position.x = 600.0
+	oyun._kamera_guncelle(false)
+	_dogrula(is_equal_approx(kam.position.x, ilk), "ayni odada kamera KIMILDAMADI (%.0f)" % kam.position.x)
+	o.position.x = 700.0
+	oyun._kamera_guncelle(true)
+	_dogrula(kam.position.x > ilk, "sonraki odaya gecildi (%.0f)" % kam.position.x)
+	_dogrula(kam.position.x + 320.0 <= 1024.0 + 0.5, "kamera bolumun sagini asmadi")
+	_dogrula(kam.position.x - 320.0 >= -0.5, "kamera bolumun solunu asmadi")
+	_dogrula(is_equal_approx(kam.position.y, bolum.yukseklik_px * 0.5), "kamera dikeyde bolumu ortaladi")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Inis gostergesi: cevirme tusuna basilsa oyuncu nereye duserdi?
+func _inis_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	for i in 20:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor(), "inis testi: oyuncu zeminde")
+	var t: Dictionary = oyun._inis_tahmini()
+	_dogrula(bool(t["var"]), "inis noktasi bulundu")
+	_dogrula(float(t["yon"]) == -1.0, "cevirince yercekimi yukari doner")
+	_dogrula(float(t["konum"].y) < 40.0, "inis noktasi tavanda (y=%.0f)" % float(t["konum"].y))
+	_dogrula(not bool(t["tehlike"]), "1. bolumde inis yolunda diken yok")
+	# 5. bolum: tavanda diken var, ustune cevirmek tehlikeli olmali
+	oyun.bolum_yukle(4)
+	await get_tree().physics_frame
+	var b: Bolum = oyun.get_node("Dunya/Bolum")
+	var diken_sutun := -1
+	var tavan: String = b.harita[1]
+	for c in tavan.length():
+		if tavan[c] == "v":
+			diken_sutun = c
+			break
+	_dogrula(diken_sutun > 0, "5. bolumde tavan dikeni var")
+	o.position.x = diken_sutun * Ayarlar.HUCRE + 8.0
+	for i in 12:
+		await get_tree().physics_frame
+	var t2: Dictionary = oyun._inis_tahmini()
+	_dogrula(bool(t2["var"]) and bool(t2["tehlike"]), "diken altinda cevirme TEHLIKELI isaretlendi")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Ikinci hedef: her bolumun "en az cevirme" sayisi ve rekor tutulmasi.
+func _en_az_testi() -> void:
+	Ayarlar.sifirla()
+	for i in Ayarlar.bolum_sayisi():
+		var h := Ayarlar.en_az_hedef(i)
+		_dogrula(h >= 0 and h % 2 == 0, "bolum %d: en az cevirme cift ve >= 0 (%d)" % [i + 1, h])
+		_dogrula(Ayarlar.en_az_al(i) == -1, "bolum %d: baslangicta cevirme rekoru yok" % (i + 1))
+	_dogrula(Ayarlar.en_az_hedef(0) == 0, "1. bolum cevirmesiz bitirilebilir")
+	_dogrula(Ayarlar.en_az_hedef(1) == 2, "2. bolum en az 2 cevirme (%d)" % Ayarlar.en_az_hedef(1))
+	Ayarlar.bolum_bitti(1, 9.0, 6)
+	_dogrula(Ayarlar.en_az_al(1) == 6, "cevirme rekoru kaydedildi (%d)" % Ayarlar.en_az_al(1))
+	Ayarlar.bolum_bitti(1, 9.0, 9)
+	_dogrula(Ayarlar.en_az_al(1) == 6, "daha KOTU cevirme rekoru ezmedi (%d)" % Ayarlar.en_az_al(1))
+	var sonuc: Dictionary = Ayarlar.bolum_bitti(1, 9.0, 3)
+	_dogrula(Ayarlar.en_az_al(1) == 3 and bool(sonuc["az_rekor"]), "daha IYI cevirme rekoru yazildi")
+
+
+## Hayalet yaris: en iyi kosunun kaydi diske yazilir ve geri okunur.
+func _hayalet_testi() -> void:
+	Ayarlar.sifirla()
+	var yol := PackedVector2Array([Vector2(1, 2), Vector2(3, 4), Vector2(5, 6)])
+	Ayarlar.hayalet_kaydet(7, yol)
+	var geri := Ayarlar.hayalet_yukle(7)
+	_dogrula(geri.size() == 3 and geri[2] == Vector2(5, 6), "hayalet kaydedildi ve okundu (%d nokta)" % geri.size())
+	_dogrula(Ayarlar.hayalet_yukle(19).is_empty(), "kaydi olmayan bolumde hayalet yok")
+	# Yardim modunda hayalet kaydedilmez (adil olmayan kosu kayit olmaz).
+	var onceki := Ayarlar.yardim_acik
+	Ayarlar.yardim_acik = true
+	Ayarlar.hayalet_kaydet(18, yol)
+	_dogrula(Ayarlar.hayalet_yukle(18).is_empty(), "yardim modunda hayalet KAYDEDILMEDI")
+	Ayarlar.yardim_acik = onceki
+
+	# Oyun sahnesinde hayalet gercekten kosuyor mu?
+	Ayarlar.secilen_bolum = 7
+	# 2 saniyelik kayit: testin kac kare surdugune bagli kalmasin.
+	var uzun := PackedVector2Array()
+	for i in 60:
+		uzun.append(Vector2(60.0 + i, 300.0))
+	Ayarlar.hayalet_kaydet(7, uzun)
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	oyun.get_node("Dunya/Oyuncu").girdi_acik = false
+	var h: Sprite2D = oyun.get_node("Dunya/Hayalet")
+	for i in 4:
+		await get_tree().process_frame
+	_dogrula(h.visible, "hayalet ekranda")
+	_dogrula(absf(h.global_position.y - 300.0) < 1.0 and h.global_position.x >= 59.0,
+		"hayalet kayittaki yolu izliyor (%s)" % h.global_position)
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Yardim modu: hiz, olumsuzluk, bolum atlama; madalya YOK, kristal VAR.
+func _yardim_testi() -> void:
+	Ayarlar.sifirla()
+	var yedek := [Ayarlar.yardim_acik, Ayarlar.yardim_hiz, Ayarlar.yardim_olumsuz]
+
+	# Oyun hizi
+	Ayarlar.yardim_acik = true
+	Ayarlar.yardim_hiz = 0.5
+	Ayarlar.zaman_uygula()
+	_dogrula(is_equal_approx(Engine.time_scale, 0.5), "yardim modu oyunu yavaslatti (%.2f)" % Engine.time_scale)
+	Ayarlar.zaman_sifirla()
+	_dogrula(is_equal_approx(Engine.time_scale, 1.0), "menude hiz 1.0'a dondu")
+	Ayarlar.yardim_hiz = 1.0
+
+	# Madalya ve sure kaydi tutulmaz, bolum yine acilir
+	var sonuc: Dictionary = Ayarlar.bolum_bitti(0, 0.5, 2)
+	_dogrula(int(sonuc["madalya"]) == 0 and not bool(sonuc["rekor"]), "yardim modunda madalya/rekor verilmedi")
+	_dogrula(bool(sonuc["yardim"]), "sonuc yardim modunu bildiriyor")
+	_dogrula(not Ayarlar.en_iyi.has(0), "yardim modunda en iyi sure YAZILMADI")
+	_dogrula(Ayarlar.en_az_al(0) == -1, "yardim modunda cevirme rekoru YAZILMADI")
+	_dogrula(Ayarlar.acilan_bolum == 1, "yardim modunda da sonraki bolum acildi")
+	Ayarlar.kristal_topla(0)
+	_dogrula(Ayarlar.kristal_var(0), "yardim modunda kristal SAYILIYOR")
+
+	# Bolum atlama
+	Ayarlar.bolum_ac(1)
+	_dogrula(Ayarlar.acilan_bolum == 2, "bolum atlama yolu acti (%d)" % Ayarlar.acilan_bolum)
+
+	# Olumsuzluk: diken oldurmez, geri iter
+	Ayarlar.yardim_olumsuz = true
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 3
+	Ayarlar.secilen_bolum = 3
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var basla: Vector2 = o.position
+	o.position = Vector2(16 * 14 + 8, basla.y)
+	for i in 8:
+		await get_tree().physics_frame
+	_dogrula(o.yasiyor, "yardim modunda diken OLDURMEDI")
+	_dogrula(oyun.olum == 0, "olum sayaci artmadi (%d)" % oyun.olum)
+	oyun.queue_free()
+	await get_tree().process_frame
+
+	Ayarlar.yardim_acik = yedek[0]
+	Ayarlar.yardim_hiz = yedek[1]
+	Ayarlar.yardim_olumsuz = yedek[2]
+	Ayarlar.zaman_sifirla()
+
+
+## Olum haritasi: bolum bitince oldugun her nokta isaretlenir.
+func _olum_haritasi_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var harita: Panel = oyun.get_node("Arayuz/OlumHaritasi")
+	_dogrula(not harita.visible, "baslangicta olum haritasi kapali")
+	for tur in 2:
+		o.oldur()
+		await get_tree().create_timer(0.4).timeout
+	_dogrula(oyun.olum == 2, "iki kez olundu (%d)" % oyun.olum)
+	var kapi: Area2D = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(harita.visible, "bolum bitince olum haritasi acildi")
+	var alan: Control = oyun.get_node("Arayuz/OlumHaritasi/Alan")
+	var isaret := 0
+	for c in alan.get_children():
+		if c is Label and (c as Label).text == "×":
+			isaret += 1
+	_dogrula(isaret == 2, "her olum icin bir X isareti (%d)" % isaret)
+	_dogrula(alan.get_child_count() > isaret, "haritanin plani da cizildi")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Yeni ayarlar kayit dosyasina gercekten yaziliyor ve geri okunuyor mu?
+func _ayar_kayit_testi() -> void:
+	var yedek := {
+		"kontrast": Ayarlar.yuksek_kontrast, "ok": Ayarlar.yercekimi_oku,
+		"inis": Ayarlar.inis_gostergesi, "solak": Ayarlar.solak,
+		"opak": Ayarlar.dokunmatik_opaklik, "titresim": Ayarlar.titresim,
+		"yardim": Ayarlar.yardim_acik, "hiz": Ayarlar.yardim_hiz,
+		"olumsuz": Ayarlar.yardim_olumsuz,
+	}
+	Ayarlar.yuksek_kontrast = true
+	Ayarlar.yercekimi_oku = false
+	Ayarlar.inis_gostergesi = false
+	Ayarlar.solak = true
+	Ayarlar.dokunmatik_opaklik = 0.8
+	Ayarlar.titresim = false
+	Ayarlar.yardim_acik = true
+	Ayarlar.yardim_hiz = 0.6
+	Ayarlar.yardim_olumsuz = true
+	Ayarlar.kaydet()
+	# Bellegi bozup dosyadan geri okuyalim
+	Ayarlar.yuksek_kontrast = false
+	Ayarlar.yardim_hiz = 1.0
+	Ayarlar.solak = false
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.yuksek_kontrast, "yuksek kontrast kaydedildi")
+	_dogrula(not Ayarlar.yercekimi_oku, "yercekimi oku kaydedildi")
+	_dogrula(not Ayarlar.inis_gostergesi, "inis gostergesi kaydedildi")
+	_dogrula(Ayarlar.solak, "solak dokunmatik kaydedildi")
+	_dogrula(is_equal_approx(Ayarlar.dokunmatik_opaklik, 0.8), "dugme opakligi kaydedildi")
+	_dogrula(not Ayarlar.titresim, "titresim kaydedildi")
+	_dogrula(Ayarlar.yardim_acik, "yardim modu kaydedildi")
+	_dogrula(is_equal_approx(Ayarlar.yardim_hiz, 0.6), "yardim hizi kaydedildi (%.2f)" % Ayarlar.yardim_hiz)
+	_dogrula(Ayarlar.yardim_olumsuz, "olumsuzluk kaydedildi")
+	# Eski hale dondur
+	Ayarlar.yuksek_kontrast = yedek["kontrast"]
+	Ayarlar.yercekimi_oku = yedek["ok"]
+	Ayarlar.inis_gostergesi = yedek["inis"]
+	Ayarlar.solak = yedek["solak"]
+	Ayarlar.dokunmatik_opaklik = yedek["opak"]
+	Ayarlar.titresim = yedek["titresim"]
+	Ayarlar.yardim_acik = yedek["yardim"]
+	Ayarlar.yardim_hiz = yedek["hiz"]
+	Ayarlar.yardim_olumsuz = yedek["olumsuz"]
+	Ayarlar.kaydet()
+	Ayarlar.zaman_sifirla()
