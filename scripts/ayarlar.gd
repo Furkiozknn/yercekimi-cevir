@@ -13,7 +13,27 @@ const HAVA_CARPANI: float = 0.75     ## havadayken yatay kontrol
 const YERCEKIMI: float = 900.0
 const EN_YUKSEK_DUSUS: float = 430.0
 const CEVIR_TAMPONU: float = 0.10    ## yuzeye degmeden once basilan cevirmeyi hatirla
+const CEVIR_KOJOT: float = 0.08      ## yuzeyden ayrildiktan sonra cevirme hakki surer
 const CEVIR_ITISI: float = 45.0      ## cevirince yuzeyden kopma hizi
+
+# --- Affetme ve yeniden deneme ---
+const OLUM_BEKLEME: float = 0.18     ## olumden yeniden dogusa (sahne YENIDEN YUKLENMEZ)
+const DIKEN_PAY: int = 3             ## isabet kutusu gorselden her yonden bu kadar kucuk
+
+# --- Oda tabanli kamera ---
+## Kamera oyuncuyu izlemez, oda oda atlar: bir odadaki tehlikenin tamami hep ekranda.
+const ODA_GENISLIGI: int = 640
+const ODA_YUKSEKLIGI: int = 360
+const ODA_GECISI: float = 0.16
+
+# --- Hayalet yaris ---
+const HAYALET_ARALIGI: int = 2       ## kac fizik karesinde bir konum kaydedilir (60/2 = 30 Hz)
+const HAYALET_EN_FAZLA: int = 3600   ## ~2 dakika; daha uzun kosu kaydedilmez
+const HAYALET_YOLU: String = "user://hayalet_%d.dat"
+const HAYALET_RENGI: Color = Color(0.75, 0.80, 0.90, 0.40)
+
+# --- Yardim modu ---
+const YARDIM_EN_YAVAS: float = 0.5   ## oyun hizi alt siniri (%50)
 
 # --- Hareketli parcalar ---
 const PLATFORM_HIZI: float = 46.0
@@ -55,6 +75,7 @@ var acilan_bolum: int = 0        ## en yuksek acilan bolum indeksi (0 tabanli)
 var en_iyi: Dictionary = {}      ## bolum indeksi (int) -> en iyi sure (float sn)
 var madalya: Dictionary = {}     ## bolum indeksi (int) -> 0 yok / 1 bronz / 2 gumus / 3 altin
 var kristal: Dictionary = {}     ## bolum indeksi (int) -> true (toplandi)
+var en_az: Dictionary = {}       ## bolum indeksi (int) -> o bolumdeki en az cevirme sayisi
 
 # --- Oyuncu ayarlari (kaydedilir) ---
 var muzik_ses: float = 0.7
@@ -63,6 +84,23 @@ var muzik_acik: bool = true
 var efekt_acik: bool = true
 var tam_ekran: bool = false
 var oyun_hissi: bool = true      ## sarsinti / parcacik / iz
+
+# --- Okunurluk / erisilebilirlik (kaydedilir) ---
+var yuksek_kontrast: bool = false   ## tehlikeler parlar, arka plan ve zemin koyulasir
+var yercekimi_oku: bool = true      ## oyuncunun yaninda yercekimi yonunu gosteren ok
+var inis_gostergesi: bool = true    ## cevirme tusunu basili tutunca inis noktasi
+
+# --- Dokunmatik (kaydedilir) ---
+var solak: bool = false             ## cevirme sol yarida, hareket sag yarida
+var dokunmatik_opaklik: float = 0.35
+var titresim: bool = true
+
+# --- Yardim modu (kaydedilir) ---
+## Amaci oyunu herkesin bitirebilmesi. Acikken sure/madalya/cevirme kaydi
+## tutulmaz, kristaller sayilir. Dil suclayici degil: bu bir ayar, itiraf degil.
+var yardim_acik: bool = false
+var yardim_hiz: float = 1.0         ## 0.5 - 1.0
+var yardim_olumsuz: bool = false    ## diken oldurmez, geri iter
 
 
 func _ready() -> void:
@@ -114,19 +152,49 @@ func kristal_sayisi() -> int:
 	return kristal.size()
 
 
-## Bolum bitince cagrilir. {"rekor": bool, "madalya": int, "yeni_madalya": bool}
-func bolum_bitti(i: int, sure: float) -> Dictionary:
-	var rekor: bool = not en_iyi.has(i) or sure < float(en_iyi[i])
-	if rekor:
-		en_iyi[i] = sure
-	var m := madalya_hesapla(i, sure)
-	var yeni := m > madalya_al(i)
-	if yeni:
-		madalya[i] = m
+## Ikinci hedef: bolumu bitirmek icin gereken en az cevirme (bolum verisinden).
+func en_az_hedef(i: int) -> int:
+	return int(bolum(i).get("cevirme", 0))
+
+
+## Oyuncunun o bolumde yaptigi en az cevirme; -1 = henuz bitirmedi.
+func en_az_al(i: int) -> int:
+	return int(en_az.get(i, -1))
+
+
+## Bolum bitince cagrilir.
+## {"rekor": bool, "madalya": int, "yeni_madalya": bool, "az_rekor": bool, "yardim": bool}
+## Yardim modu acikken sure, madalya ve cevirme rekoru KAYDEDILMEZ; bolum yine
+## acilir, kristal yine sayilir.
+func bolum_bitti(i: int, sure: float, cevirme: int = -1) -> Dictionary:
+	var yardim := yardim_acik
+	var rekor := false
+	var m := 0
+	var yeni := false
+	var az_rekor := false
+	if not yardim:
+		rekor = not en_iyi.has(i) or sure < float(en_iyi[i])
+		if rekor:
+			en_iyi[i] = sure
+		m = madalya_hesapla(i, sure)
+		yeni = m > madalya_al(i)
+		if yeni:
+			madalya[i] = m
+		if cevirme >= 0 and (not en_az.has(i) or cevirme < int(en_az[i])):
+			en_az[i] = cevirme
+			az_rekor = true
 	if i + 1 > acilan_bolum and i + 1 < bolum_sayisi():
 		acilan_bolum = i + 1
 	kaydet()
-	return {"rekor": rekor, "madalya": m, "yeni_madalya": yeni}
+	return {"rekor": rekor, "madalya": m, "yeni_madalya": yeni,
+		"az_rekor": az_rekor, "yardim": yardim}
+
+
+## Yardim modunda bolum atlama: bir sonrakini acar, sure/madalya vermez.
+func bolum_ac(i: int) -> void:
+	if i + 1 > acilan_bolum and i + 1 < bolum_sayisi():
+		acilan_bolum = i + 1
+		kaydet()
 
 
 func en_iyi_metin(i: int) -> String:
@@ -151,6 +219,39 @@ func _veriyolu(ad: String, duzey: float, acik: bool) -> void:
 		return
 	AudioServer.set_bus_volume_db(i, linear_to_db(clampf(duzey, 0.0001, 1.0)))
 	AudioServer.set_bus_mute(i, not acik or duzey <= 0.001)
+
+
+## Yardim modundaki oyun hizi. Menulerde 1.0'a doner (zaman_sifirla).
+func zaman_uygula() -> void:
+	Engine.time_scale = clampf(yardim_hiz, YARDIM_EN_YAVAS, 1.0) if yardim_acik else 1.0
+
+
+func zaman_sifirla() -> void:
+	Engine.time_scale = 1.0
+
+
+## Hayalet = en iyi kosunun konum dizisi. Yardim modunda kaydedilmez.
+func hayalet_kaydet(i: int, yol: PackedVector2Array) -> void:
+	if yardim_acik or yol.size() < 2 or yol.size() > HAYALET_EN_FAZLA:
+		return
+	var f := FileAccess.open(HAYALET_YOLU % i, FileAccess.WRITE)
+	if f == null:
+		push_warning("Hayalet yazilamadi: %d" % i)
+		return
+	f.store_var(yol)
+	f.close()
+
+
+func hayalet_yukle(i: int) -> PackedVector2Array:
+	var y: String = HAYALET_YOLU % i
+	if not FileAccess.file_exists(y):
+		return PackedVector2Array()
+	var f := FileAccess.open(y, FileAccess.READ)
+	if f == null:
+		return PackedVector2Array()
+	var v: Variant = f.get_var()
+	f.close()
+	return v if v is PackedVector2Array else PackedVector2Array()
 
 
 func ekran_uygula() -> void:
@@ -178,12 +279,24 @@ func yukle() -> void:
 	for anahtar in cfg.get_section_keys("kristal") if cfg.has_section("kristal") else []:
 		if bool(cfg.get_value("kristal", anahtar, false)):
 			kristal[int(anahtar)] = true
+	en_az.clear()
+	for anahtar in cfg.get_section_keys("en_az") if cfg.has_section("en_az") else []:
+		en_az[int(anahtar)] = int(cfg.get_value("en_az", anahtar, 0))
 	muzik_ses = clampf(float(cfg.get_value("ayar", "muzik_ses", muzik_ses)), 0.0, 1.0)
 	efekt_ses = clampf(float(cfg.get_value("ayar", "efekt_ses", efekt_ses)), 0.0, 1.0)
 	muzik_acik = bool(cfg.get_value("ayar", "muzik_acik", muzik_acik))
 	efekt_acik = bool(cfg.get_value("ayar", "efekt_acik", efekt_acik))
 	tam_ekran = bool(cfg.get_value("ayar", "tam_ekran", tam_ekran))
 	oyun_hissi = bool(cfg.get_value("ayar", "oyun_hissi", oyun_hissi))
+	yuksek_kontrast = bool(cfg.get_value("ayar", "yuksek_kontrast", yuksek_kontrast))
+	yercekimi_oku = bool(cfg.get_value("ayar", "yercekimi_oku", yercekimi_oku))
+	inis_gostergesi = bool(cfg.get_value("ayar", "inis_gostergesi", inis_gostergesi))
+	solak = bool(cfg.get_value("ayar", "solak", solak))
+	dokunmatik_opaklik = clampf(float(cfg.get_value("ayar", "dokunmatik_opaklik", dokunmatik_opaklik)), 0.1, 1.0)
+	titresim = bool(cfg.get_value("ayar", "titresim", titresim))
+	yardim_acik = bool(cfg.get_value("yardim", "acik", yardim_acik))
+	yardim_hiz = clampf(float(cfg.get_value("yardim", "hiz", yardim_hiz)), YARDIM_EN_YAVAS, 1.0)
+	yardim_olumsuz = bool(cfg.get_value("yardim", "olumsuz", yardim_olumsuz))
 
 
 func kaydet() -> void:
@@ -195,20 +308,36 @@ func kaydet() -> void:
 		cfg.set_value("madalya", str(i), madalya[i])
 	for i in kristal:
 		cfg.set_value("kristal", str(i), true)
+	for i in en_az:
+		cfg.set_value("en_az", str(i), en_az[i])
 	cfg.set_value("ayar", "muzik_ses", muzik_ses)
 	cfg.set_value("ayar", "efekt_ses", efekt_ses)
 	cfg.set_value("ayar", "muzik_acik", muzik_acik)
 	cfg.set_value("ayar", "efekt_acik", efekt_acik)
 	cfg.set_value("ayar", "tam_ekran", tam_ekran)
 	cfg.set_value("ayar", "oyun_hissi", oyun_hissi)
+	cfg.set_value("ayar", "yuksek_kontrast", yuksek_kontrast)
+	cfg.set_value("ayar", "yercekimi_oku", yercekimi_oku)
+	cfg.set_value("ayar", "inis_gostergesi", inis_gostergesi)
+	cfg.set_value("ayar", "solak", solak)
+	cfg.set_value("ayar", "dokunmatik_opaklik", dokunmatik_opaklik)
+	cfg.set_value("ayar", "titresim", titresim)
+	cfg.set_value("yardim", "acik", yardim_acik)
+	cfg.set_value("yardim", "hiz", yardim_hiz)
+	cfg.set_value("yardim", "olumsuz", yardim_olumsuz)
 	var hata := cfg.save(KAYIT_YOLU)
 	if hata != OK:
 		push_warning("Kayit yazilamadi: %d" % hata)
 
 
 ## Testlerin temiz baslamasi icin (ayarlar degil, yalniz ilerleme sifirlanir).
+## Hayalet dosyalari da ilerlemedir: onlar da silinir, yoksa onceki kosudan
+## kalan kayit testleri (ve yeni bir oyuncunun ilk kosusunu) kirletiyor.
 func sifirla() -> void:
+	for i in bolum_sayisi():
+		DirAccess.remove_absolute(HAYALET_YOLU % i)
 	acilan_bolum = 0
 	en_iyi.clear()
 	madalya.clear()
 	kristal.clear()
+	en_az.clear()

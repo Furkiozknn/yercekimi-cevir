@@ -21,6 +21,7 @@ const T_GEZGIN := preload("res://assets/sprites/gezgin.png")
 const T_KRISTAL := preload("res://assets/sprites/kristal.png")
 const T_KONTROL := preload("res://assets/sprites/kontrol.png")
 
+var harita: Array = []                        ## ASCII satirlar (inis tahmini + olum haritasi okur)
 var baslangic: Vector2 = Vector2.ZERO
 var genislik_px: int = 0
 var yukseklik_px: int = 0
@@ -52,7 +53,7 @@ func _ready() -> void:
 
 
 func kur(veri: Dictionary) -> void:
-	var harita: Array = veri["harita"]
+	harita = veri["harita"]
 	var satir_sayisi := harita.size()
 	var sutun_sayisi: int = String(harita[0]).length()
 	yukseklik_px = satir_sayisi * H
@@ -87,6 +88,8 @@ func kur(veri: Dictionary) -> void:
 					_kutu_ekle(kati, kutu)
 					continue
 				"^", "v":
+					# Isabet kutusu gorselden kucuk: yanlarda 4 px, ucta 8 px bos.
+					# (Diken 16x16 bir ucgen; ucuna degmek olduremez, govdesi olurur.)
 					var yukari := ch == "^"
 					var x := c * H
 					var y := r * H
@@ -183,6 +186,10 @@ func _hareketli_ekle(tip: String, r: int, c1: int, c2: int) -> void:
 	var y := r * H + H * 0.5
 	var genislik := Ayarlar.PLATFORM_GENISLIGI if tip == "-" else 24.0
 	var yukseklik := 10.0
+	# Platform BASILAN bir yuzey: carpisma gorselle ayni olmali.
+	# Gezgin diken OLDUREN bir sey: isabet kutusu gorselden her yonden
+	# DIKEN_PAY kadar kucuk, yoksa disine degmek olduruyor.
+	var pay: float = 0.0 if tip == "-" else float(Ayarlar.DIKEN_PAY)
 	var dugum: Node2D
 	if tip == "-":
 		var p := AnimatableBody2D.new()
@@ -193,9 +200,12 @@ func _hareketli_ekle(tip: String, r: int, c1: int, c2: int) -> void:
 		a.body_entered.connect(_govde_girdi.bind(true))
 		dugum = a
 	dugum.position = Vector2(sol + genislik * 0.5, y)
-	_kutu_ekle(dugum, Rect2(-genislik * 0.5, -yukseklik * 0.5, genislik, yukseklik))
+	_kutu_ekle(dugum, Rect2(-genislik * 0.5 + pay, -yukseklik * 0.5 + pay,
+		genislik - pay * 2.0, yukseklik - pay * 2.0))
 	var gorsel := Sprite2D.new()
 	gorsel.texture = T_PLATFORM if tip == "-" else T_GEZGIN
+	if tip != "-" and Ayarlar.yuksek_kontrast:
+		gorsel.modulate = Color(1.35, 1.10, 1.10)
 	dugum.add_child(gorsel)
 	add_child(dugum)
 	_hareketliler.append({
@@ -243,20 +253,26 @@ func _govde_girdi(govde: Node, olumcul: bool) -> void:
 		kapiya_varildi.emit()
 
 
+## Yuksek kontrast: zemin koyulasir, tehlike parlar. Renk korlugune karsi
+## tek basina yeterli degil (diken ucgen ve dis cizgili), ama dusuk kontrastli
+## ekranlarda tehlikeyi zeminden ayiran sey bu.
 func _draw() -> void:
+	var kontrast := Ayarlar.yuksek_kontrast
+	var zemin_ton: Color = Color(0.62, 0.66, 0.78) if kontrast else Color.WHITE
+	var tehlike_ton: Color = Color(1.35, 1.10, 1.10) if kontrast else Color.WHITE
 	for k in _blok_kutulari:
-		draw_texture_rect(T_KARO, k, true)
+		draw_texture_rect(T_KARO, k, true, zemin_ton)
 	for p in _ust_hucreler:
-		draw_texture_rect(T_KARO_UST, Rect2(p, Vector2(H, H)), false)
+		draw_texture_rect(T_KARO_UST, Rect2(p, Vector2(H, H)), false, zemin_ton)
 	for p in _alt_hucreler:
 		# dikey ayna: negatif yukseklik
-		draw_texture_rect(T_KARO_UST, Rect2(p.x, p.y + H, H, -H), false)
+		draw_texture_rect(T_KARO_UST, Rect2(p.x, p.y + H, H, -H), false, zemin_ton)
 	for d in _dikenler:
 		var p: Vector2 = d[0]
 		if d[1]:
-			draw_texture_rect(T_DIKEN, Rect2(p, Vector2(H, H)), false)
+			draw_texture_rect(T_DIKEN, Rect2(p, Vector2(H, H)), false, tehlike_ton)
 		else:
-			draw_texture_rect(T_DIKEN, Rect2(p.x, p.y + H, H, -H), false)
+			draw_texture_rect(T_DIKEN, Rect2(p.x, p.y + H, H, -H), false, tehlike_ton)
 	for k in _kapi_kutulari:
 		draw_texture_rect(T_KAPI, k, false)
 
@@ -275,6 +291,28 @@ func sifirla() -> void:
 		var d: Node2D = h["dugum"]
 		d.position.x = h["min_x"]
 		h["yon"] = 1.0
+
+
+## Verilen dunya noktasi kati bir karo mu? (inis gostergesi bunu kullanir)
+func kati_mi(nokta: Vector2) -> bool:
+	return _hucre(nokta) == "#"
+
+
+## Verilen dunya noktasi diken karesi mi? (inis gostergesi uyariyi buradan alir)
+func olumcul_mu(nokta: Vector2) -> bool:
+	var ch := _hucre(nokta)
+	return ch == "^" or ch == "v"
+
+
+func _hucre(nokta: Vector2) -> String:
+	var c := int(floor(nokta.x / float(H)))
+	var r := int(floor(nokta.y / float(H)))
+	if r < 0 or r >= harita.size():
+		return "#"
+	var satir: String = harita[r]
+	if c < 0 or c >= satir.length():
+		return "#"
+	return satir[c]
 
 
 ## Ekran/bolum disina dusmek olumdur.

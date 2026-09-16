@@ -16,6 +16,13 @@ animation = &"idle"
 [node name="Carpisma" type="CollisionShape2D" parent="."]
 shape = SubResource("1_govde")
 
-[node name="Kamera" type="Camera2D" parent="."]
-position_smoothing_enabled = true
-position_smoothing_speed = 9.0
+[node name="Ok" type="Node2D" parent="."]
+position = Vector2(11, 0)
+
+[node name="OkGolge" type="Polygon2D" parent="Ok"]
+color = Color(0.09, 0.08, 0.14, 0.9)
+polygon = PackedVector2Array(-4, -5, 4, -5, 0, 6)
+
+[node name="OkIc" type="Polygon2D" parent="Ok"]
+color = Color(0.17, 0.91, 0.96, 1)
+polygon = PackedVector2Array(-3, -4, 3, -4, 0, 4)
