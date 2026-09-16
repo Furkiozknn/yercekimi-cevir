@@ -3,6 +3,8 @@ extends Control
 
 func _ready() -> void:
 	Ayarlar.zaman_sifirla()
+	Ayarlar.dokunmatik_degisti.connect(_alt_basligi_yaz)
+	_alt_basligi_yaz()
 	$Kutu/Basla.pressed.connect(_basla)
 	$Kutu/Sec.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
@@ -25,6 +27,11 @@ func _ready() -> void:
 		"      Yardım modu açık" if Ayarlar.yardim_acik else ""]
 	$Kutu/Basla.grab_focus()
 	Ses.muzik(&"menu")
+
+
+## "Tek tus" yazisi dokunmatikte yalan; tablo uzerinden cevrilir.
+func _alt_basligi_yaz() -> void:
+	$AltBaslik.text = Ayarlar.kontrol_metni("Zıplama yok. Tek tuş: yerçekimini çevir.")
 
 
 func _basla() -> void:

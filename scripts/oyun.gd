@@ -77,6 +77,7 @@ func _ready() -> void:
 	$Arayuz/Duraklat/Kutu/Menu.pressed.connect(_menuye)
 	$Arayuz/Bitis/Kutu/Menu.pressed.connect(_menuye)
 	_dokunmatik_kur()
+	Ayarlar.dokunmatik_degisti.connect(_dokunmatik_acildi)
 	_hayalet.modulate = Ayarlar.HAYALET_RENGI
 	Ses.muzik(&"oyun")
 	bolum_yukle(Ayarlar.secilen_bolum)
@@ -89,7 +90,7 @@ func _ready() -> void:
 ## Gorunmez genis alanlar: parmak kucuk bir dugme aramaz, ekranin yarisi dugmedir.
 ## Solak secenegi taraflari degistirir; opaklik yalniz ipucu harflerini etkiler.
 func _dokunmatik_kur() -> void:
-	_dokunmatik.visible = DisplayServer.is_touchscreen_available()
+	_dokunmatik.visible = Ayarlar.dokunmatik_mi()
 	_dokunmatik.modulate.a = Ayarlar.dokunmatik_opaklik
 	var ust := 40.0                       # ust seritteki arayuzu kapatma
 	var yuk := 360.0 - ust
@@ -109,8 +110,16 @@ func _alan(dugme_adi: String, kutu: Rect2, eylem: String) -> void:
 	d.offset_bottom = kutu.end.y
 	for durum in ["normal", "hover", "pressed", "focus", "disabled"]:
 		d.add_theme_stylebox_override(durum, StyleBoxEmpty.new())
-	d.button_down.connect(func() -> void: Input.action_press(eylem))
-	d.button_up.connect(func() -> void: Input.action_release(eylem))
+	# _dokunmatik_kur() dokunus algilaninca ikinci kez calisabilir: iki kez baglama.
+	if d.button_down.get_connections().is_empty():
+		d.button_down.connect(func() -> void: Input.action_press(eylem))
+		d.button_up.connect(func() -> void: Input.action_release(eylem))
+
+
+## Oyun acikken dokunus algilandi: alanlari goster, ipucunu dokunmaya cevir.
+func _dokunmatik_acildi() -> void:
+	_dokunmatik_kur()
+	_ipucu.text = Ayarlar.kontrol_metni(String(Ayarlar.bolum(bolum_i)["ipucu"]))
 
 
 func _titret() -> void:
@@ -159,7 +168,7 @@ func bolum_yukle(i: int) -> void:
 	_hayalet.modulate = _hayalet_rengi()
 	_hayalet.visible = false
 	_ad.text = String(veri["ad"])
-	_ipucu.text = String(veri["ipucu"])
+	_ipucu.text = Ayarlar.kontrol_metni(String(veri["ipucu"]))
 	_yardim_rozet.visible = Ayarlar.yardim_acik
 	$Arayuz/YardimArka.visible = Ayarlar.yardim_acik
 	if Ayarlar.yardim_acik:

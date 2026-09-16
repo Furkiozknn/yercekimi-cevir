@@ -65,6 +65,7 @@ const MADALYA_RENK: Array = [
 
 const KAYIT_YOLU: String = "user://kayit.cfg"
 const LISTE := preload("res://scripts/bolumler.gd")
+const SIMGELER := preload("res://scripts/simgeler.gd")
 
 # --- Oturum durumu ---
 var secilen_bolum: int = 0       ## Oyun sahnesi acilirken hangi bolum yuklenecek
@@ -90,7 +91,21 @@ var yuksek_kontrast: bool = false   ## tehlikeler parlar, arka plan ve zemin koy
 var yercekimi_oku: bool = true      ## oyuncunun yaninda yercekimi yonunu gosteren ok
 var inis_gostergesi: bool = true    ## cevirme tusunu basili tutunca inis noktasi
 
-# --- Dokunmatik (kaydedilir) ---
+# --- Dokunmatik ---
+## Klavye terimlerini dokunma karsiligiyla degistiren tablo. Bolum ipuclari
+## uretilen bolumler.gd'de duruyor; orayi elle duzenlemek yerine metni burada
+## ceviriyoruz, boylece menu yazisi da ayni tablodan gecer.
+const DOKUNMA_METNI: Array = [
+	["A / D ile yürü", "Sol alttaki iki alanla yürü"],
+	["BOŞLUK yerçekimini çevirir", "Sağ yarıya dokunmak yerçekimini çevirir"],
+	["Tek tuş", "Tek dokunuş"],
+]
+
+## Cihaz dokunmatik bildirmese de ilk ekran dokunusunda acilir (bkz. _input).
+## Kaydedilmez: cihazin kendisi soyler, kullanici ayari degil.
+var dokunmatik_algilandi: bool = false
+
+# --- Dokunmatik ayarlari (kaydedilir) ---
 var solak: bool = false             ## cevirme sol yarida, hareket sag yarida
 var dokunmatik_opaklik: float = 0.35
 var titresim: bool = true
@@ -102,11 +117,40 @@ var yardim_acik: bool = false
 var yardim_hiz: float = 1.0         ## 0.5 - 1.0
 var yardim_olumsuz: bool = false    ## diken oldurmez, geri iter
 
+## Dokunmatik ilk kez algilandiginda: arayuz metinleri ve dokunma alanlari
+## icin. Sahneler bagli kalir, cunku dokunus menu acildiktan sonra gelebilir.
+signal dokunmatik_degisti
+
 
 func _ready() -> void:
+	# Web yapisinda sistem yazi tipi yedegi yok; ⟳ ● — gibi simgeler
+	# gomulu Open Sans'ta olmadigi icin kutu olarak cikiyorlardi.
+	SIMGELER.kur()
 	yukle()
 	ses_uygula()
 	ekran_uygula()
+
+
+## Cihaz dokunmatik bildirmiyorsa bile ilk ekran dokunusu bunu ortaya cikarir
+## (tarayicida DisplayServer her zaman dogru sonuc vermiyor).
+func _input(olay: InputEvent) -> void:
+	if not dokunmatik_algilandi and olay is InputEventScreenTouch:
+		dokunmatik_algilandi = true
+		dokunmatik_degisti.emit()
+
+
+func dokunmatik_mi() -> bool:
+	return dokunmatik_algilandi or DisplayServer.is_touchscreen_available()
+
+
+## Klavye metnini dokunmatik cihazda dokunma karsiligiyla verir.
+## Masaustunde metin oldugu gibi doner.
+func kontrol_metni(m: String) -> String:
+	if not dokunmatik_mi():
+		return m
+	for c in DOKUNMA_METNI:
+		m = m.replace(String(c[0]), String(c[1]))
+	return m
 
 
 func bolum_sayisi() -> int:

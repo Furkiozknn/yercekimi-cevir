@@ -44,6 +44,10 @@ func _ready() -> void:
 	await _yardim_testi()
 	print("— Olum haritasi —")
 	await _olum_haritasi_testi()
+	print("— Simge yazi tipi —")
+	await _simge_testi()
+	print("— Dokunmatik metinler —")
+	await _dokunma_metni_testi()
 	print("— Ayarlarin kaydi —")
 	_ayar_kayit_testi()
 	print("— Kapi, madalya ve ilerleme —")
@@ -629,6 +633,94 @@ func _olum_haritasi_testi() -> void:
 
 
 ## Yeni ayarlar kayit dosyasina gercekten yaziliyor ve geri okunuyor mu?
+## Web yapisinda sistem yazi tipi yedegi yoktur: gomulu Open Sans'ta olmayan
+## her simge kutu olarak cikar. Bu test web'deki durumu olcer (kur() cagrilmazsa
+## ayni test kalir), cunku has_char sistem yazi tipine bakmaz.
+func _simge_testi() -> void:
+	_dogrula(ResourceLoader.exists(Simgeler.YOL), "simge yazi tipi projede var")
+	_dogrula(Simgeler.eksikler("⟳●—") == "",
+		"HUD simgeleri yazi tipinde var (eksik: '%s')" % Simgeler.eksikler("⟳●—"))
+
+	# Test bos olmasin: yedek kaldirilinca eksik gercekten cikmali. Cikmiyorsa
+	# bu test web'i degil masaustunu olcuyor demektir.
+	var yedekler: Array[Font] = ThemeDB.fallback_font.fallbacks.duplicate()
+	ThemeDB.fallback_font.fallbacks = []
+	_dogrula(Simgeler.eksikler("⟳●") == "⟳●",
+		"yedeksiz yazi tipinde simgeler GERCEKTEN eksik (web durumu olculuyor)")
+	ThemeDB.fallback_font.fallbacks = yedekler
+
+	# kur() birden cok kez cagrilabiliyor (menu + oyun sahnesi); yedek bir kez eklenmeli.
+	var once: int = ThemeDB.fallback_font.fallbacks.size()
+	Simgeler.kur()
+	Simgeler.kur()
+	_dogrula(ThemeDB.fallback_font.fallbacks.size() == once,
+		"kur() tekrar cagrilinca yedek cogalmadi (%d)" % ThemeDB.fallback_font.fallbacks.size())
+
+	# Asil guvence: gercekten ekrana basilan metinlerde eksik simge kalmasin.
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	await get_tree().process_frame
+	var metin := ""
+	for ad in ["Ad", "Sayac", "Hedef", "Ipucu", "KristalYazi"]:
+		metin += (oyun.get_node("Arayuz/" + ad) as Label).text
+	_dogrula(Simgeler.eksikler(metin) == "",
+		"HUD metinlerinde eksik simge yok (eksik: '%s')" % Simgeler.eksikler(metin))
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Dokunmatik cihazda "A / D ile yürü" yalan. Metinler tablodan geciriliyor.
+func _dokunma_metni_testi() -> void:
+	var yedek := Ayarlar.dokunmatik_algilandi
+	Ayarlar.dokunmatik_algilandi = false
+
+	# Tablodaki her klavye terimi gercekten bir arayuz metninde geciyor mu?
+	# Gecmiyorsa metin degismis, ceviri sessizce olu kalmis demektir.
+	var tum := "Zıplama yok. Tek tuş: yerçekimini çevir."
+	for i in Ayarlar.bolum_sayisi():
+		tum += String(Ayarlar.bolum(i)["ipucu"])
+	for c in Ayarlar.DOKUNMA_METNI:
+		_dogrula(tum.contains(String(c[0])), "ceviri hedefi arayuzde duruyor: '%s'" % c[0])
+
+	if not DisplayServer.is_touchscreen_available():
+		_dogrula(Ayarlar.kontrol_metni(tum) == tum, "masaustunde metin degismiyor")
+
+	Ayarlar.dokunmatik_algilandi = true
+	_dogrula(Ayarlar.dokunmatik_mi(), "ekran dokunusu dokunmatik modu aciyor")
+	var cevrilmis := Ayarlar.kontrol_metni(tum)
+	for c in Ayarlar.DOKUNMA_METNI:
+		_dogrula(not cevrilmis.contains(String(c[0])), "klavye terimi kalkti: '%s'" % c[0])
+		_dogrula(cevrilmis.contains(String(c[1])), "dokunma karsiligi kondu: '%s'" % c[1])
+	_dogrula(Simgeler.eksikler(cevrilmis) == "", "dokunma metinlerinde eksik simge yok")
+
+	# Dokunus algilaninca oyun sahnesi alanlari acmali ve ipucunu degistirmeli.
+	Ayarlar.sifirla()
+	Ayarlar.dokunmatik_algilandi = false
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var ipucu: Label = oyun.get_node("Arayuz/Ipucu")
+	var alanlar: Control = oyun.get_node("Arayuz/Dokunmatik")
+	if not DisplayServer.is_touchscreen_available():
+		_dogrula(not alanlar.visible, "masaustunde dokunma alanlari kapali")
+		_dogrula(ipucu.text.contains("A / D"), "masaustunde klavye ipucu duruyor")
+	Ayarlar.dokunmatik_algilandi = true
+	Ayarlar.dokunmatik_degisti.emit()
+	_dogrula(alanlar.visible, "dokunus algilaninca alanlar acildi")
+	_dogrula(not ipucu.text.contains("A / D"), "ipucu dokunmaya cevrildi: '%s'" % ipucu.text)
+	# Alanlar iki kez kurulunca dugme sinyali cogalmamali (tek dokunus = tek basma).
+	var sol: Button = alanlar.get_node("Sol")
+	_dogrula(sol.button_down.get_connections().size() == 1,
+		"alan sinyali tek kez bagli (%d)" % sol.button_down.get_connections().size())
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.dokunmatik_algilandi = yedek
+
+
 func _ayar_kayit_testi() -> void:
 	var yedek := {
 		"kontrast": Ayarlar.yuksek_kontrast, "ok": Ayarlar.yercekimi_oku,
