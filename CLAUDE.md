@@ -22,15 +22,19 @@ Arayüz ve tüm belgeler **Türkçe**.
 | İsabet kutusu | Öldüren şeyde görselden `DIKEN_PAY` (3 px) küçük, **basılan** yüzeyde birebir | küçük kutu affeder, küçük platform yalan söyler |
 | Web ses yolu | `audio/general/default_playback_type.web=2` (Stream) | Sample yolunda perde/döngü de bozuluyor (Godot #95850) |
 | WAV | 16 bit, 22050 Hz, mono | 8 bit WAV'lar içe aktarımda hata basıyor |
+| Simge yazı tipi | `assets/fonts/simgeler.ttf`, `Simgeler.kur()` `Ayarlar._ready()` içinde | gömülü Open Sans'ta `⟳ ●` yok; web'de sistem yazı tipi yedeği olmadığı için kutu çıkıyordu |
+| En-boy oranı | `keep` (siyah şerit) — `expand` **yapılmadı** | oda kamerası 640 px'lik odalara kilitli; geniş görüş alanı 40 sütunluk bölümlerde bölüm dışını gösterir |
 
 ## Klasör yapısı
 
 ```
 scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet) · ses.gd (autoload)
+             simgeler.gd (web'de eksik simgeler için yedek yazı tipi; ortak dosya)
              bolum.gd (ASCII harita -> sahne) · oyuncu.gd · oyun.gd · menu.gd
              bolum_sec.gd · ayarlar_ekrani.gd · bolumler.gd (ÜRETİLİR, elle düzenleme)
 scenes/      menu · bolum_sec · ayarlar_ekrani · oyun · oyuncu
 assets/      sprites/*.png (ÜRETİLİR) · audio/*.wav (ÜRETİLİR) · oyuncu_frames.tres
+             fonts/simgeler.ttf + LISANS-simgeler.txt (lisans gereği yanında kalmalı)
 tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · sesler.md
 arac/        uret_bolumler.py
 tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı)
@@ -123,6 +127,15 @@ kararı Furki verir.
 8. **`Ayarlar` autoload'una `const` içinden erişilemez.** `const ODA := Ayarlar.X`
    derlenmez; `const A := preload("res://scripts/ayarlar.gd")` üzerinden git
    (`bolum.gd` ve `oyun.gd` böyle yapıyor).
-9. **Bölüm bitiş beklemesi ölüm haritasına bağlı.** Ölüm yoksa 1,0 sn, varsa
+9. **Web'de simge yerine kutu.** Godot'nun gömülü yazı tipinde `★ ✓ ⟳ ● ← → ₺`
+   gibi simgeler yok. Masaüstünde sistem yazı tipi örttüğü için Windows ekran
+   görüntülerinde **görünmez**; web yapısında kutu çıkar. Yeni bir simge
+   kullanmadan önce `assets/fonts/LISANS-simgeler.txt` başındaki listeye bak,
+   yoksa kullanma. `tests/testler.gd` → `_simge_testi` bunu ölçüyor.
+10. **Arayüz metni klavye tuşu adı içeriyorsa** `Ayarlar.kontrol_metni()` ile
+   yaz; dokunmatikte "A / D ile yürü" yalan olur. Çeviri tablosu
+   `Ayarlar.DOKUNMA_METNI`, testi `_dokunma_metni_testi` (tablodaki terim arayüzden
+   kalkarsa test kalır, çeviri sessizce ölü kalmaz).
+11. **Bölüm bitiş beklemesi ölüm haritasına bağlı.** Ölüm yoksa 1,0 sn, varsa
    2,4 sn. Testler bu süreye göre bekliyor; sabiti değiştirirsen `_kapiya_dokun`
    beklemesini de değiştir.

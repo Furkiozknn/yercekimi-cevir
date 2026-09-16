@@ -127,10 +127,17 @@ Tarayıcıda oynanır; Windows sürümü de indirilebilir.
 | Web çerçevesi | 1280 × 720, "Fullscreen button" açık |
 | SharedArrayBuffer | **Kapalı** — web yapısı `thread_support=false` ile alındı, gerek yok |
 
+## Lisans bildirimi (sayfanın altına)
+
+Font: "Oyun Simgeleri" — DejaVu Sans Bold alt kümesi, Bitstream Vera lisansı.
+Copyright (c) 2003 by Bitstream, Inc. DejaVu changes are in public domain.
+
 ## Yükleme öncesi kontrol listesi
 
 - [ ] `build/web/` içeriğini zip'le (index.html kökte olmalı)
 - [ ] Web yapısını bir tarayıcıda aç, sesin geldiğini ve müziğin **ikinci tura girdiğini** doğrula
+- [ ] Tarayıcıda HUD'a bak: `⟳` ve `●` simge olarak çıkıyor mu (v0.3.1 düzeltmesi,
+      tarayıcıda görülmedi); telefon emülasyonunda eğitim metni dokunmaya çevrildi mi
 - [ ] Windows yapısını zip'le (`yercekimi-cevir.exe` + `.pck` birlikte)
 - [ ] Kapak görselini (630×500) ve 4 ekran görüntüsünü yükle
 - [ ] Kapağı itch'in **120×45 küçük kapsülünde** gözle kontrol et — 2. turda yeniden

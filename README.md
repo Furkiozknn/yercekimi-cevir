@@ -57,6 +57,12 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
   menüsünden bölüm atlanır. Açıkken süre, madalya ve çevirme kaydı tutulmaz;
   kristaller sayılır. İstediğin an kapatılır.
 
+## Lisanslar
+
+Kod ve varlıklar bu depoya ait. `assets/fonts/simgeler.ttf` ("Oyun Simgeleri")
+DejaVu Sans Bold'un 34 simgelik alt kümesidir; Bitstream Vera lisansı altında
+dağıtılır, bildirim `assets/fonts/LISANS-simgeler.txt` dosyasındadır.
+
 ## Ekranlar
 
 | | |
@@ -146,12 +152,31 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
   "önce bak sonra çevir" mümkün değil; basılı tutmak "şimdi nereye iniyorum"
   sorusunu havadayken canlı yanıtlıyor.
 
+## 3. turda verilen kararlar (v0.3.1 — web düzeltmesi)
+
+- **Simgeler için ayrı bir yedek yazı tipi.** `⟳` ve `●` web yapısında kutu
+  çıkıyordu: Godot'nun gömülü yazı tipinde yoklar, masaüstünde sistem yazı tipi
+  örttüğü için Windows ekran görüntülerinde hiç görünmemişti. Simgeleri metinden
+  atmak yerine 4 KB'lık bir DejaVu alt kümesi (`assets/fonts/simgeler.ttf`)
+  yedek olarak eklendi; sayaç ve madalya satırı olduğu gibi kaldı.
+- **Klavye metinleri dokunmatikte çevriliyor.** "A / D ile yürü" telefonda yalan.
+  Bölüm ipuçları üretilen `bolumler.gd` içinde durduğu için metinler orada
+  değiştirilmedi; `Ayarlar.kontrol_metni()` küçük bir terim tablosundan geçiriyor.
+  Dokunmatik, cihaz bildirmese bile **ilk ekran dokunuşunda** açılır ve dokunma
+  alanları o anda görünür olur.
+- **Geniş telefonlardaki siyah şeritler kaldı** (`stretch/aspect=keep`).
+  `expand` görüş alanını yatayda büyütür; oda tabanlı kamera 640 px'lik odalara
+  kilitli olduğu için 40 sütunluk (= tam bir oda) bölümlerde bölümün dışındaki
+  boşluk görünür, dokunma alanları da 640 px'e göre yerleştiği için sağda ölü
+  şerit kalırdı. Siyah şerit, bölüm dışını göstermekten iyidir.
+
 ## Durum
 
-**v0.3 — rakip analizi iyileştirmeleri.** v0.2'nin üstüne: affetme (kojot +
+**v0.3.1 — v0.3 + web düzeltmesi.** v0.2'nin üstüne: affetme (kojot +
 küçültülmüş isabet kutusu + 0,18 sn yeniden deneme), oda tabanlı kamera, yardım
 modu, yüksek kontrast / yerçekimi oku / iniş göstergesi, geniş dokunmatik alanlar,
-hayalet yarış, ölüm haritası, "en az çevirme" ikinci hedefi. Yükleme yapılmadı.
+hayalet yarış, ölüm haritası, "en az çevirme" ikinci hedefi. v0.3.1: web'de kutu
+çıkan simgeler ve dokunmatikteki klavye metinleri düzeltildi. Yükleme yapılmadı.
 Sonraki adımlar: `YOL-HARITASI.md`.
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta

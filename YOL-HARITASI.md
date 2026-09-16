@@ -81,6 +81,20 @@ Kaynak: `oyun-terminalleri/tasarim/yercekimi-cevir-rakip-analizi.md`.
 - [x] Ayarlar ekranı iki sütuna ayrıldı (13 ayar tek ekrana sığıyor)
 - [x] Testler 362 → **464 doğrulama**; ekran aracına özellik denetim modu (`-3`)
 
+## Tur 3 — web düzeltmesi v0.3.1 (2026-09-16)
+
+Bulutta Chromium'da açılan v0.3 web yapısından çıkan iki hata.
+
+- [x] `⟳` ve `●` web'de kutu çıkıyordu → `assets/fonts/simgeler.ttf` yedek yazı
+      tipi, `Simgeler.kur()` `Ayarlar._ready()` içinde. Test: `_simge_testi`
+      (yedek kaldırılınca gerçekten kalıyor, yani web durumunu ölçüyor)
+- [x] Dokunmatikte klavye metni ("A / D ile yürü", "BOŞLUK...", "Tek tuş") →
+      `Ayarlar.kontrol_metni()` terim tablosu. Dokunmatik ilk ekran dokunuşunda
+      da açılır, alanlar o anda görünür olur. Test: `_dokunma_metni_testi`
+- [x] Yayın ekran görüntüleri yeni yazı tipiyle yeniden alındı
+- [~] Geniş telefonda siyah şerit **bilerek bırakıldı** — gerekçe README'de
+      (oda kamerası 640 px'e kilitli, `expand` bölüm dışını gösterir)
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
@@ -93,7 +107,9 @@ Kaynak: `oyun-terminalleri/tasarim/yercekimi-cevir-rakip-analizi.md`.
       formülü hiç insan koşusuyla karşılaştırılmadı; altın fazla kolay ya da
       imkânsız olabilir.
 - [ ] Web yapısını tarayıcıda aç: sesin geldiğini ve müziğin **ikinci tura girdiğini**
-      doğrula (döngü kodla kuruluyor, tarayıcıda doğrulanmadı).
+      doğrula (döngü kodla kuruluyor, tarayıcıda doğrulanmadı). v0.3.1'in simge
+      ve dokunmatik metin düzeltmesi de **tarayıcıda görülmedi**, yalnız
+      başsız testle ölçüldü.
 
 ### Oynanış
 
@@ -119,6 +135,8 @@ Kaynak: `oyun-terminalleri/tasarim/yercekimi-cevir-rakip-analizi.md`.
 
 - [ ] Geniş dokunma alanlarını **gerçek telefonda** dene: sol/sağ çeyrek ayrımı
       parmakla ayırt edilebiliyor mu, titreşim rahatsız ediyor mu
+- [ ] Dokunmatik ipucu metinleri gerçek telefonda okunuyor mu ("Sol alttaki iki
+      alanla yürü" alanların yerini doğru tarif ediyor mu, solak modda da)
 - [ ] Android dışa aktarımı + dokunmatik hedef boyutlarını büyüt
 - [ ] Dikey en-boy oranında test
 
