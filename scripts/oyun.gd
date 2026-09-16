@@ -1,16 +1,20 @@
 extends Node2D
 ## Bolum dongusu: yukle -> oyna -> ol/bitir -> sonraki.
-## Kontrol noktasi, kristal, madalya, duraklatma ve bitis ekrani da burada.
+## Kontrol noktasi, kristal, madalya, hayalet yaris, olum haritasi, inis
+## gostergesi, yardim modu, duraklatma ve bitis ekrani da burada.
 
 enum { OYNA, OLDU, TAMAM, BITTI }
 
-const OLUM_BEKLEME: float = 0.30   ## olunce bu kadar sonra otomatik yeniden dene
-const TAMAM_BEKLEME: float = 1.00
+const TAMAM_BEKLEME: float = 1.00   ## bolum bitisinde sonraki boluma gecmeden once
+const TAMAM_HARITA: float = 2.40    ## olum haritasi varsa: okumaya yetecek kadar
 const GECIS_SURESI: float = 0.22
+const A := preload("res://scripts/ayarlar.gd")
+const ODA: float = float(A.ODA_GENISLIGI)
 
 var bolum_i: int = 0
 var sure: float = 0.0
 var olum: int = 0
+var cevirme: int = 0          ## bu bolumdeki cevirme sayisi (ikinci hedef)
 var toplam_sure: float = 0.0
 var toplam_olum: int = 0
 
@@ -22,9 +26,24 @@ var _sarsinti: float = 0.0
 var _arka_tween: Tween = null
 var _gecis: bool = false   ## bolum gecisi surerken _sonraki() tekrar cagrilmasin
 
+# Oda tabanli kamera
+var _oda: int = -1
+var _oda_tween: Tween = null
+
+# Hayalet yaris
+var _yol: PackedVector2Array = PackedVector2Array()   ## bu kosunun kaydi
+var _kare: int = 0
+var _hayalet_yol: PackedVector2Array = PackedVector2Array()
+
+# Olum haritasi
+var _olum_yerleri: Array[Vector2] = []
+var _bekleme: float = TAMAM_BEKLEME   ## bu bolum bitisinde beklenecek sure
+
 @onready var _dunya: Node2D = $Dunya
 @onready var _oyuncu: CharacterBody2D = $Dunya/Oyuncu
-@onready var _kamera: Camera2D = $Dunya/Oyuncu/Kamera
+@onready var _kamera: Camera2D = $Dunya/Kamera
+@onready var _hayalet: Sprite2D = $Dunya/Hayalet
+@onready var _inis: Sprite2D = $Dunya/Inis
 @onready var _toz: CPUParticles2D = $Dunya/Toz
 @onready var _olum_parca: CPUParticles2D = $Dunya/Olum
 @onready var _toplama: CPUParticles2D = $Dunya/Toplama
@@ -34,8 +53,11 @@ var _gecis: bool = false   ## bolum gecisi surerken _sonraki() tekrar cagrilmasi
 @onready var _hedef: Label = $Arayuz/Hedef
 @onready var _ipucu: Label = $Arayuz/Ipucu
 @onready var _mesaj: Label = $Arayuz/Mesaj
+@onready var _yardim_rozet: Label = $Arayuz/Yardim
 @onready var _kristal_ikon: TextureRect = $Arayuz/KristalIkon
 @onready var _kristal_yazi: Label = $Arayuz/KristalYazi
+@onready var _olum_haritasi: Panel = $Arayuz/OlumHaritasi
+@onready var _harita_alan: Control = $Arayuz/OlumHaritasi/Alan
 @onready var _duraklat: Panel = $Arayuz/Duraklat
 @onready var _bitis: Panel = $Arayuz/Bitis
 @onready var _bitis_metin: Label = $Arayuz/Bitis/Kutu/Metin
@@ -44,29 +66,59 @@ var _gecis: bool = false   ## bolum gecisi surerken _sonraki() tekrar cagrilmasi
 
 
 func _ready() -> void:
+	Ayarlar.zaman_uygula()
 	_oyuncu.oldu.connect(_olum_oldu)
 	_oyuncu.cevirdi.connect(_cevirdi)
 	_oyuncu.kondu.connect(_kondu)
 	$Arayuz/Duraklat/Kutu/Devam.pressed.connect(_devam)
 	$Arayuz/Duraklat/Kutu/Bastan.pressed.connect(_bastan)
+	$Arayuz/Duraklat/Kutu/Atla.pressed.connect(_atla)
 	$Arayuz/Duraklat/Kutu/Ayar.pressed.connect(_ayarlara)
 	$Arayuz/Duraklat/Kutu/Menu.pressed.connect(_menuye)
 	$Arayuz/Bitis/Kutu/Menu.pressed.connect(_menuye)
-	_dokunmatik.visible = DisplayServer.is_touchscreen_available()
-	_dokunmatik_bagla("Sol", "move_left")
-	_dokunmatik_bagla("Sag", "move_right")
-	_dokunmatik_bagla("Cevir", "cevir")
+	_dokunmatik_kur()
+	_hayalet.modulate = Ayarlar.HAYALET_RENGI
 	Ses.muzik(&"oyun")
 	bolum_yukle(Ayarlar.secilen_bolum)
 	_karartma.color.a = 1.0
 	_karart(false)
 
 
-func _dokunmatik_bagla(dugme_adi: String, eylem: String) -> void:
+# --- dokunmatik ---------------------------------------------------------------
+
+## Gorunmez genis alanlar: parmak kucuk bir dugme aramaz, ekranin yarisi dugmedir.
+## Solak secenegi taraflari degistirir; opaklik yalniz ipucu harflerini etkiler.
+func _dokunmatik_kur() -> void:
+	_dokunmatik.visible = DisplayServer.is_touchscreen_available()
+	_dokunmatik.modulate.a = Ayarlar.dokunmatik_opaklik
+	var ust := 40.0                       # ust seritteki arayuzu kapatma
+	var yuk := 360.0 - ust
+	var hareket_x := 320.0 if Ayarlar.solak else 0.0
+	var cevir_x := 0.0 if Ayarlar.solak else 320.0
+	_alan("Sol", Rect2(hareket_x, ust, 160.0, yuk), "move_left")
+	_alan("Sag", Rect2(hareket_x + 160.0, ust, 160.0, yuk), "move_right")
+	_alan("Cevir", Rect2(cevir_x, ust, 320.0, yuk), "cevir")
+
+
+func _alan(dugme_adi: String, kutu: Rect2, eylem: String) -> void:
 	var d: Button = _dokunmatik.get_node(dugme_adi)
+	d.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	d.offset_left = kutu.position.x
+	d.offset_top = kutu.position.y
+	d.offset_right = kutu.end.x
+	d.offset_bottom = kutu.end.y
+	for durum in ["normal", "hover", "pressed", "focus", "disabled"]:
+		d.add_theme_stylebox_override(durum, StyleBoxEmpty.new())
 	d.button_down.connect(func() -> void: Input.action_press(eylem))
 	d.button_up.connect(func() -> void: Input.action_release(eylem))
 
+
+func _titret() -> void:
+	if Ayarlar.titresim and DisplayServer.is_touchscreen_available():
+		Input.vibrate_handheld(30)
+
+
+# --- bolum dongusu ------------------------------------------------------------
 
 func bolum_yukle(i: int) -> void:
 	bolum_i = clampi(i, 0, Ayarlar.bolum_sayisi() - 1)
@@ -89,21 +141,46 @@ func bolum_yukle(i: int) -> void:
 		_bolum.kristali_gizle()
 
 	_kamera.limit_left = 0
-	_kamera.limit_right = maxi(_bolum.genislik_px, 640)
-	var ust := int((_bolum.yukseklik_px - 360) / 2.0)
+	_kamera.limit_right = maxi(_bolum.genislik_px, Ayarlar.ODA_GENISLIGI)
+	var ust := int((_bolum.yukseklik_px - Ayarlar.ODA_YUKSEKLIGI) / 2.0)
 	_kamera.limit_top = ust
-	_kamera.limit_bottom = ust + 360
+	_kamera.limit_bottom = ust + Ayarlar.ODA_YUKSEKLIGI
 
 	sure = 0.0
 	olum = 0
+	cevirme = 0
 	_gecis = false
 	_dogus = _bolum.baslangic
+	_yol = PackedVector2Array()
+	_kare = 0
+	_olum_yerleri.clear()
+	_olum_haritasi.visible = false
+	_hayalet_yol = Ayarlar.hayalet_yukle(bolum_i)
+	_hayalet.modulate = _hayalet_rengi()
+	_hayalet.visible = false
 	_ad.text = String(veri["ad"])
 	_ipucu.text = String(veri["ipucu"])
-	_hedef.text = "Hedef  ● %.1f  ● %.1f  ● %.1f sn" % [veri["altin"], veri["gumus"], veri["bronz"]]
+	_yardim_rozet.visible = Ayarlar.yardim_acik
+	$Arayuz/YardimArka.visible = Ayarlar.yardim_acik
+	if Ayarlar.yardim_acik:
+		_yardim_rozet.text = "Yardım modu · hız %d%%%s" % [
+			roundi(Ayarlar.yardim_hiz * 100.0),
+			"  · dikenler itiyor" if Ayarlar.yardim_olumsuz else ""]
+	_hedef_guncelle()
 	_kristal_guncelle()
 	_arka_ton(1.0, true)
 	yeniden_basla()
+	_oda = -1
+	_kamera_guncelle(true)
+
+
+func _hayalet_rengi() -> Color:
+	## Hayalet, o bolumun en iyi kosusudur; rengi o kosunun madalyasi.
+	var m := Ayarlar.madalya_al(bolum_i)
+	if m <= 0:
+		return Ayarlar.HAYALET_RENGI
+	var c: Color = Ayarlar.MADALYA_RENK[m]
+	return Color(c.r, c.g, c.b, Ayarlar.HAYALET_RENGI.a)
 
 
 func yeniden_basla() -> void:
@@ -114,12 +191,32 @@ func yeniden_basla() -> void:
 	_durum = OYNA
 	_zaman = 0.0
 	_arka_ton(1.0, true)
+	_kamera_guncelle(true)
+
+
+func _hedef_guncelle() -> void:
+	var veri: Dictionary = Ayarlar.bolum(bolum_i)
+	var az := Ayarlar.en_az_al(bolum_i)
+	_hedef.text = "● %.1f ● %.1f ● %.1f sn · en az ⟳ %d · en iyi %s%s" % [
+		veri["altin"], veri["gumus"], veri["bronz"], Ayarlar.en_az_hedef(bolum_i),
+		Ayarlar.en_iyi_metin(bolum_i), (" / ⟳ %d" % az) if az >= 0 else ""]
 
 
 func _kristal_guncelle() -> void:
 	var var_mi := Ayarlar.kristal_var(bolum_i)
 	_kristal_ikon.modulate.a = 1.0 if var_mi else 0.28
 	_kristal_yazi.text = "%d / %d kristal" % [Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi()]
+
+
+# --- kare dongusu -------------------------------------------------------------
+
+func _physics_process(_delta: float) -> void:
+	if _durum != OYNA or get_tree().paused:
+		return
+	# Hayalet kaydi: her HAYALET_ARALIGI fizik karesinde bir konum.
+	_kare += 1
+	if _kare % Ayarlar.HAYALET_ARALIGI == 0 and _yol.size() < Ayarlar.HAYALET_EN_FAZLA:
+		_yol.append(_oyuncu.global_position)
 
 
 func _process(delta: float) -> void:
@@ -131,15 +228,103 @@ func _process(delta: float) -> void:
 		OYNA:
 			sure += delta
 			if _bolum.disarida(_oyuncu.global_position):
-				_oyuncu.oldur()
+				if Ayarlar.yardim_acik and Ayarlar.yardim_olumsuz:
+					_oyuncu.hazirla(_dogus)   # olum sayilmaz, kosu surer
+				else:
+					_oyuncu.oldur()
+			_kamera_guncelle(false)
+			_hayalet_isle()
+			_inis_isle()
 		OLDU:
-			if _zaman >= OLUM_BEKLEME:
+			if _zaman >= Ayarlar.OLUM_BEKLEME:
 				yeniden_basla()
 		TAMAM:
-			if _zaman >= TAMAM_BEKLEME and not _gecis:
+			if _zaman >= _bekleme and not _gecis:
 				_gecis = true
 				_sonraki()
-	_sayac.text = "Süre %.2f   Ölüm %d   En iyi %s" % [sure, olum, Ayarlar.en_iyi_metin(bolum_i)]
+	_sayac.text = "Süre %.2f   Ölüm %d   ⟳ %d" % [sure, olum, cevirme]
+
+
+## Oda tabanli kamera: kamera oyuncuyu izlemez, 640 px'lik odalar arasinda atlar.
+## Boylece bir odadaki tehlikenin tamami hep ekranda — turun en sik sikayeti olan
+## "ekran disindan gelen olum" ortadan kalkar.
+func _kamera_guncelle(aninda: bool) -> void:
+	var g: float = float(maxi(_bolum.genislik_px, Ayarlar.ODA_GENISLIGI))
+	var son_oda: int = int(ceil(g / ODA)) - 1
+	var oda: int = clampi(int(floor(_oyuncu.global_position.x / ODA)), 0, son_oda)
+	if oda == _oda and not aninda:
+		return
+	_oda = oda
+	var hedef := Vector2(
+		clampf(oda * ODA + ODA * 0.5, ODA * 0.5, g - ODA * 0.5),
+		_bolum.yukseklik_px * 0.5)
+	if _oda_tween != null and _oda_tween.is_valid():
+		_oda_tween.kill()
+	if aninda:
+		_kamera.position = hedef
+		return
+	_oda_tween = create_tween()
+	_oda_tween.tween_property(_kamera, "position", hedef, Ayarlar.ODA_GECISI) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+## Hayalet yaris: bolumun en iyi kosusu yari saydam olarak yaninda kosar.
+func _hayalet_isle() -> void:
+	if _hayalet_yol.is_empty():
+		_hayalet.visible = false
+		return
+	var i := int(sure * 60.0 / float(Ayarlar.HAYALET_ARALIGI))
+	_hayalet.visible = i < _hayalet_yol.size()
+	if _hayalet.visible:
+		_hayalet.global_position = _hayalet_yol[i]
+
+
+## Inis gostergesi: cevirme tusu BASILI tutulurken karsi yuzeyde nereye
+## inecegini gosterir. Yesil/mavi = bos yuzey, kirmizi = yolda diken var.
+func _inis_isle() -> void:
+	if not Ayarlar.inis_gostergesi or not Input.is_action_pressed("cevir"):
+		_inis.visible = false
+		return
+	var t := _inis_tahmini()
+	_inis.visible = bool(t["var"])
+	if not _inis.visible:
+		return
+	_inis.position = t["konum"]
+	_inis.scale.y = t["yon"]
+	_inis.modulate = Color(1.0, 0.35, 0.35) if bool(t["tehlike"]) else Color(0.35, 0.95, 1.0)
+
+
+## Oyuncunun hareketini ileri sarar: yerdeyse once cevirir, sonra karsi yuzeye
+## kadar adim adim duser. Hareketli platformlari saymaz (sabit harita uzerinden).
+func _inis_tahmini() -> Dictionary:
+	var yok := {"var": false, "konum": Vector2.ZERO, "yon": 1.0, "tehlike": false}
+	if _bolum == null or not _oyuncu.yasiyor:
+		return yok
+	var yon: float = _oyuncu.yercekimi_yonu
+	var hiz: Vector2 = _oyuncu.velocity
+	var k: Vector2 = _oyuncu.global_position
+	if _oyuncu.is_on_floor():
+		yon = -yon
+		hiz.y = Ayarlar.CEVIR_ITISI * yon
+	var girdi := Input.get_axis("move_left", "move_right")
+	var d := 1.0 / 60.0
+	var tehlike := false
+	for adim in 200:
+		hiz.y = clampf(hiz.y + Ayarlar.YERCEKIMI * yon * d,
+			-Ayarlar.EN_YUKSEK_DUSUS, Ayarlar.EN_YUKSEK_DUSUS)
+		var carpan := Ayarlar.HAVA_CARPANI
+		if girdi != 0.0:
+			hiz.x = move_toward(hiz.x, girdi * Ayarlar.HIZ, Ayarlar.IVME * d * carpan)
+		else:
+			hiz.x = move_toward(hiz.x, 0.0, Ayarlar.SURTUNME * d * carpan)
+		k += hiz * d
+		var ayak := k + Vector2(0.0, Ayarlar.GOVDE.y * 0.5 * yon)
+		if _bolum.olumcul_mu(ayak):
+			tehlike = true
+		if _bolum.kati_mi(ayak):
+			return {"var": true, "konum": Vector2(roundf(k.x), roundf(ayak.y)),
+				"yon": yon, "tehlike": tehlike}
+	return yok
 
 
 # --- oyun hissi --------------------------------------------------------------
@@ -170,6 +355,9 @@ func _parcacik(p: CPUParticles2D, konum: Vector2) -> void:
 ## Ters yercekiminde arka plan soguga kayar — durum tek bakista okunur.
 func _arka_ton(yon: float, aninda: bool = false) -> void:
 	var hedef: Color = Ayarlar.ARKA_DUZ if yon > 0.0 else Ayarlar.ARKA_TERS
+	if Ayarlar.yuksek_kontrast:
+		# Yuksek kontrastta arka plan geri cekilir; oynanis katmani one cikar.
+		hedef = hedef * 0.45
 	if _arka_tween != null and _arka_tween.is_valid():
 		_arka_tween.kill()
 	if aninda or not Ayarlar.oyun_hissi:
@@ -189,9 +377,11 @@ func _karart(kapali: bool) -> void:
 # --- olaylar -----------------------------------------------------------------
 
 func _cevirdi(yeni_yon: float) -> void:
+	cevirme += 1
 	Ses.cal((&"cevir" if yeni_yon < 0.0 else &"cevir_ters"))
 	sars(Ayarlar.SARSINTI_CEVIR)
 	_arka_ton(yeni_yon)
+	_titret()
 
 
 func _kondu() -> void:
@@ -211,17 +401,27 @@ func _olum_oldu() -> void:
 		return
 	olum += 1
 	toplam_olum += 1
+	_olum_yerleri.append(_oyuncu.global_position)
 	_durum = OLDU
 	_zaman = 0.0
 	_mesaj.text = "ÖLDÜN"
+	_inis.visible = false
 	Ses.cal(&"olum")
 	sars(Ayarlar.SARSINTI_OLUM)
 	_parcacik(_olum_parca, _oyuncu.global_position)
+	_titret()
 
 
 func _diken_temasi() -> void:
-	if _durum == OYNA:
-		_oyuncu.oldur()
+	if _durum != OYNA:
+		return
+	if Ayarlar.yardim_acik and Ayarlar.yardim_olumsuz:
+		# Yardim modunda diken oldurmez, geri iter: bolum yine ogretir, cezalandirmaz.
+		_oyuncu.geri_it()
+		Ses.cal(&"inis")
+		sars(Ayarlar.SARSINTI_CEVIR)
+		return
+	_oyuncu.oldur()
 
 
 func _kristal() -> void:
@@ -245,21 +445,85 @@ func _kapi() -> void:
 		return
 	_durum = TAMAM
 	_zaman = 0.0
+	_inis.visible = false
+	_hayalet.visible = false
 	toplam_sure += sure
-	var sonuc: Dictionary = Ayarlar.bolum_bitti(bolum_i, sure)
+	var sonuc: Dictionary = Ayarlar.bolum_bitti(bolum_i, sure, cevirme)
 	var m: int = sonuc["madalya"]
 	Ses.cal(&"bolum_sonu")
 	if m > 0:
 		Ses.cal(&"madalya")
-	var ek := ""
 	if bool(sonuc["rekor"]):
-		ek += "  YENİ REKOR!"
-	_mesaj.text = "BÖLÜM TAMAM — %.2f sn%s\n%s madalya" % [sure, ek, Ayarlar.MADALYA_AD[m]]
-	_mesaj.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[m])
+		Ayarlar.hayalet_kaydet(bolum_i, _yol)
+	if bool(sonuc["yardim"]):
+		_mesaj.text = ("BÖLÜM TAMAM — %.2f sn · %d çevirme\n"
+			+ "Yardım modu açık: süre ve madalya kaydı tutulmuyor, kristaller sayılıyor.") % [sure, cevirme]
+		_mesaj.add_theme_color_override("font_color", Ayarlar.RENK_METIN)
+	else:
+		var ek := ""
+		if bool(sonuc["rekor"]):
+			ek += "  YENİ REKOR!"
+		if bool(sonuc["az_rekor"]):
+			ek += "  EN AZ ÇEVİRME: %d" % cevirme
+		_mesaj.text = "BÖLÜM TAMAM — %.2f sn%s\n%s madalya" % [sure, ek, Ayarlar.MADALYA_AD[m]]
+		_mesaj.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[m])
+	_hedef_guncelle()
+	_olum_haritasi_goster()
+	_bekleme = TAMAM_HARITA if _olum_haritasi.visible else TAMAM_BEKLEME
 	_oyuncu.set_physics_process(false)
 
 
+## Olum haritasi: bolumun kucultulmus plani ve oldugun her nokta X ile.
+## Neden: tekrar tekrar ayni yerde olurken bunu fark etmek zor; harita
+## "burada takiliyorsun" der ve ekran goruntusu olarak paylasilabilir.
+func _olum_haritasi_goster() -> void:
+	for c in _harita_alan.get_children():
+		c.queue_free()
+	if _olum_yerleri.is_empty():
+		_olum_haritasi.visible = false
+		return
+	# Olcek hem genislige hem yukseklige sigsin: 40 ve 64 sutunluk bolumler ayni
+	# yukseklikte cizilsin diye kucuk olan secilir.
+	var olcek: float = minf(_harita_alan.size.x / float(maxi(_bolum.genislik_px, 1)),
+		_harita_alan.size.y / float(maxi(_bolum.yukseklik_px, 1)))
+	var kaydir := Vector2((_harita_alan.size.x - _bolum.genislik_px * olcek) * 0.5, 0.0)
+	for satir_i in _bolum.harita.size():
+		var satir: String = _bolum.harita[satir_i]
+		var c := 0
+		while c < satir.length():
+			var ch := satir[c]
+			if ch != "#" and ch != "^" and ch != "v" and ch != "K":
+				c += 1
+				continue
+			var bas := c
+			while c < satir.length() and satir[c] == ch:
+				c += 1
+			var kutu := ColorRect.new()
+			kutu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			kutu.position = kaydir + Vector2(bas * Ayarlar.HUCRE * olcek, satir_i * Ayarlar.HUCRE * olcek)
+			kutu.size = Vector2(maxf((c - bas) * Ayarlar.HUCRE * olcek, 1.0),
+				maxf(Ayarlar.HUCRE * olcek, 1.0))
+			match ch:
+				"#": kutu.color = Color(0.29, 0.33, 0.46)
+				"K": kutu.color = Color(0.39, 0.78, 0.30)
+				_: kutu.color = Color(0.89, 0.23, 0.27)
+			_harita_alan.add_child(kutu)
+	for yer in _olum_yerleri:
+		var x := Label.new()
+		x.text = "×"
+		x.add_theme_font_size_override("font_size", 12)
+		x.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+		x.add_theme_color_override("font_outline_color", Color(0.05, 0.05, 0.08))
+		x.add_theme_constant_override("outline_size", 3)
+		x.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		x.position = kaydir + Vector2(yer.x * olcek - 4.0, yer.y * olcek - 8.0)
+		_harita_alan.add_child(x)
+	$Arayuz/OlumHaritasi/Baslik.text = "Bu bölümde %d kez öldün" % _olum_yerleri.size()
+	_olum_haritasi.visible = true
+
+
 func _sonraki() -> void:
+	_olum_haritasi.visible = false
 	if bolum_i + 1 < Ayarlar.bolum_sayisi():
 		_mesaj.add_theme_color_override("font_color", Ayarlar.RENK_METIN)
 		_karart(true)
@@ -271,14 +535,18 @@ func _sonraki() -> void:
 		_mesaj.text = ""
 		_oyuncu.visible = false
 		var madalyalar := 0
+		var az := 0
 		for i in Ayarlar.bolum_sayisi():
 			if Ayarlar.madalya_al(i) > 0:
 				madalyalar += 1
+			if Ayarlar.en_az_al(i) >= 0 and Ayarlar.en_az_al(i) <= Ayarlar.en_az_hedef(i):
+				az += 1
 		_bitis_metin.text = ("Tüm %d bölüm bitti!\n\nToplam süre: %.2f sn\nToplam ölüm: %d\n"
-			+ "Kristal: %d / %d\nMadalya kazanılan bölüm: %d / %d") % [
+			+ "Kristal: %d / %d\nMadalya kazanılan bölüm: %d / %d\n"
+			+ "En az çevirmeyle biten bölüm: %d / %d") % [
 				Ayarlar.bolum_sayisi(), toplam_sure, toplam_olum,
 				Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
-				madalyalar, Ayarlar.bolum_sayisi()]
+				madalyalar, Ayarlar.bolum_sayisi(), az, Ayarlar.bolum_sayisi()]
 		_bitis.visible = true
 		Ses.muzik(&"bitis")
 
@@ -292,6 +560,7 @@ func _unhandled_input(olay: InputEvent) -> void:
 		else:
 			get_tree().paused = true
 			_duraklat.visible = true
+			$Arayuz/Duraklat/Kutu/Atla.visible = Ayarlar.yardim_acik
 			$Arayuz/Duraklat/Kutu/Devam.grab_focus()
 			Ses.cal(&"menu")
 
@@ -311,6 +580,18 @@ func _bastan() -> void:
 	bolum_yukle(bolum_i)
 
 
+## Yardim modu: bolum atlama. Sure/madalya vermez, yalniz yolu acar.
+func _atla() -> void:
+	Ses.cal(&"menu")
+	get_tree().paused = false
+	_duraklat.visible = false
+	if bolum_i + 1 >= Ayarlar.bolum_sayisi():
+		_menuye()
+		return
+	Ayarlar.bolum_ac(bolum_i)
+	bolum_yukle(bolum_i + 1)
+
+
 func _ayarlara() -> void:
 	Ses.cal(&"menu")
 	get_tree().paused = false
@@ -322,4 +603,5 @@ func _ayarlara() -> void:
 func _menuye() -> void:
 	Ses.cal(&"menu")
 	get_tree().paused = false
+	Ayarlar.zaman_sifirla()
 	get_tree().change_scene_to_file("res://scenes/menu.tscn")

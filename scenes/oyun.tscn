@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/oyun.gd" id="1_kod"]
 [ext_resource type="PackedScene" path="res://scenes/oyuncu.tscn" id="2_oyuncu"]
@@ -6,6 +6,8 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/arka_1.png" id="4_arka1"]
 [ext_resource type="Texture2D" path="res://assets/sprites/arka_2.png" id="5_arka2"]
 [ext_resource type="Texture2D" path="res://assets/sprites/kristal.png" id="6_kristal"]
+[ext_resource type="Texture2D" path="res://assets/sprites/oyuncu.png" id="7_oyuncu_tex"]
+[ext_resource type="Texture2D" path="res://assets/sprites/inis.png" id="8_inis"]
 
 [node name="Oyun" type="Node2D"]
 process_mode = 3
@@ -42,6 +44,20 @@ centered = false
 
 [node name="Dunya" type="Node2D" parent="."]
 process_mode = 1
+
+[node name="Kamera" type="Camera2D" parent="Dunya"]
+position = Vector2(320, 176)
+
+[node name="Hayalet" type="Sprite2D" parent="Dunya"]
+visible = false
+z_index = -1
+texture = ExtResource("7_oyuncu_tex")
+region_enabled = true
+region_rect = Rect2(0, 0, 16, 24)
+
+[node name="Inis" type="Sprite2D" parent="Dunya"]
+visible = false
+texture = ExtResource("8_inis")
 
 [node name="Oyuncu" parent="Dunya" instance=ExtResource("2_oyuncu")]
 
@@ -185,19 +201,64 @@ theme_override_colors/font_color = Color(0.95, 0.95, 0.98, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="YardimArka" type="ColorRect" parent="Arayuz"]
+visible = false
+offset_top = 336.0
+offset_right = 300.0
+offset_bottom = 360.0
+color = Color(0.02, 0.02, 0.05, 0.7)
+mouse_filter = 2
+
+[node name="Yardim" type="Label" parent="Arayuz"]
+visible = false
+theme_override_constants/outline_size = 4
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+offset_left = 8.0
+offset_top = 340.0
+offset_right = 420.0
+offset_bottom = 356.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.99, 0.68, 0.21, 1)
+
+[node name="OlumHaritasi" type="Panel" parent="Arayuz"]
+visible = false
+offset_left = 160.0
+offset_top = 196.0
+offset_right = 480.0
+offset_bottom = 330.0
+mouse_filter = 2
+
+[node name="Baslik" type="Label" parent="Arayuz/OlumHaritasi"]
+offset_left = 10.0
+offset_top = 4.0
+offset_right = 310.0
+offset_bottom = 20.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="Alan" type="Control" parent="Arayuz/OlumHaritasi"]
+clip_contents = true
+offset_left = 10.0
+offset_top = 24.0
+offset_right = 310.0
+offset_bottom = 124.0
+mouse_filter = 2
+
 [node name="Duraklat" type="Panel" parent="Arayuz"]
 visible = false
 offset_left = 190.0
-offset_top = 76.0
+offset_top = 54.0
 offset_right = 450.0
-offset_bottom = 284.0
+offset_bottom = 316.0
 
 [node name="Kutu" type="VBoxContainer" parent="Arayuz/Duraklat"]
 offset_left = 20.0
-offset_top = 18.0
+offset_top = 16.0
 offset_right = 240.0
-offset_bottom = 190.0
-theme_override_constants/separation = 10
+offset_bottom = 246.0
+theme_override_constants/separation = 8
 
 [node name="Baslik" type="Label" parent="Arayuz/Duraklat/Kutu"]
 layout_mode = 2
@@ -212,6 +273,11 @@ text = "Devam"
 [node name="Bastan" type="Button" parent="Arayuz/Duraklat/Kutu"]
 layout_mode = 2
 text = "Bölümü Baştan Başlat"
+
+[node name="Atla" type="Button" parent="Arayuz/Duraklat/Kutu"]
+visible = false
+layout_mode = 2
+text = "Bölümü Atla"
 
 [node name="Ayar" type="Button" parent="Arayuz/Duraklat/Kutu"]
 layout_mode = 2
@@ -257,27 +323,24 @@ modulate = Color(1, 1, 1, 0.4)
 mouse_filter = 2
 
 [node name="Sol" type="Button" parent="Arayuz/Dokunmatik"]
-offset_left = 12.0
-offset_top = 286.0
-offset_right = 76.0
-offset_bottom = 350.0
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 text = "<"
 
 [node name="Sag" type="Button" parent="Arayuz/Dokunmatik"]
-offset_left = 84.0
-offset_top = 286.0
-offset_right = 148.0
-offset_bottom = 350.0
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 text = ">"
 
 [node name="Cevir" type="Button" parent="Arayuz/Dokunmatik"]
-offset_left = 476.0
-offset_top = 286.0
-offset_right = 628.0
-offset_bottom = 350.0
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.17, 0.91, 0.96, 1)
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 text = "ÇEVİR"
 
 [node name="Gecis" type="CanvasLayer" parent="."]
