@@ -62,6 +62,14 @@ solak dokunmatik, düğme opaklığı, titreşim, yardım modu (açık/hız/öl�
 Yeni bir ayar eklerken **üç yeri** birden güncelle: `var`, `yukle()`, `kaydet()` —
 ve `tests/testler.gd` içindeki `_ayar_kayit_testi` bunu doğruluyor.
 
+**Günün bölümü** (`Ayarlar.gunluk_*`): tarihten seçilen bölüm + değiştirici
+(0 ters başlangıç, 1 kristal zorunlu), `[gunluk]` bölümünde **ayrı kayıt**.
+`Ayarlar.gunluk_mod` oturum bayrağı; `menu.gd` `_ready()` içinde kapatır, menü
+düğmesi açar. Oyun sahnesinde `gunluk_mod` açıkken `bolum_bitti()`,
+`kristal_topla()`, `hayalet_kaydet()`, `bolum_ac()` **çağrılmaz** —
+`_gunluk_testi` ana ilerlemenin el değmediğini ölçüyor. Tarihi test/ekran için
+`Ayarlar.tarih_zorla` ile sabitle (0 = sistem tarihi).
+
 **Hayalet kayıtları** `user://hayalet_<bolum>.dat` (PackedVector2Array).
 `Ayarlar.sifirla()` bunları da siler; silmezse önceki koşudan kalan kayıt
 testleri ve yeni oyuncunun ilk koşusunu kirletiyor.
@@ -75,6 +83,9 @@ python arac/uret_bolumler.py     # scripts/bolumler.gd (çözülebilirliği doğ
 godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 5
                                  # scripts/rota_verisi.gd + scripts/altin_hayalet.gd
                                  # (5 = bölüm başına koşu; 3. argüman "iz" tanılama yazar)
+godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 5 -1 - insan
+                                 # "insan" tepki bandı (0,18-0,35 sn): DOSYA YAZMAZ,
+                                 # yalnız tablo basar — madalya çarpanı gerekçesi için
 python tools/uret_sprite.py      # assets/sprites/*.png + docs/varliklar.png
 python tools/uret_ses.py         # assets/audio/*.wav (rFXGen gerekir)
 godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_oyun.wav --ruh gizemli --tohum 5
@@ -93,6 +104,7 @@ godot --path . res://tests/ekran.tscn -- -1 <klasör>    # menü / bölüm seç 
 godot --path . res://tests/ekran.tscn -- -3 <klasör>    # tur 2 özellik denetim kareleri
 godot --path . res://tests/ekran.tscn -- -4 <klasör>    # tur 3: altın hayalet, platformlu iniş
 godot --path . res://tests/ekran.tscn -- -5 yayin/tanitim   # 3 sn tanıtım kareleri + kareler.raw
+godot --path . res://tests/ekran.tscn -- -6 <klasör>    # tur 4 (v0.5): solak alanlar, 19. bölüm, günün bölümü
 python tools/gif_yap.py yayin/tanitim/kareler.raw yayin/tanitim/tanitim.gif 320 180 10
 python tools/gif_yap.py --dogrula                       # GIF kodlayıcısının öz denetimi
 godot --headless --path . --export-release "Windows Masaustu"
@@ -170,3 +182,16 @@ kararı Furki verir.
 14. **Bölüm bitiş beklemesi ölüm haritasına bağlı.** Ölüm yoksa 1,0 sn, varsa
    2,4 sn. Testler bu süreye göre bekliyor; sabiti değiştirirsen `_kapiya_dokun`
    beklemesini de değiştir.
+15. **Gezen dikenin kaçış yüzeyi açık olmalı.** Gezen dikenin menzilindeki bir
+   sütunda karşı yüzey de tehlikeliyse iki yüzey birden öldürür ve bölüm
+   yalnız tam hızda süzülerek geçilir (18 ve 19. bölüm v0.4'te böyleydi).
+   `arac/uret_bolumler.py` bunu `assert` ile, `_gezgin_kacis_testi` üretilen
+   haritada ölçüyor. Bant penceresi kuralı (3 hücre) bunu **yakalamıyordu**.
+16. **Günlük bölüm seçiminde Knuth çarpımsal karma kullanma.** Ardışık günler
+   bölümleri birer birer geriye sayıyordu (adım mod 20 = 19). `_gunluk_karma`
+   32 bit karıştırıcı (`lowbias32` ailesi); `_gunluk_testi` 30 günde en az 10
+   farklı bölüm ve en fazla 6 ardışık geçiş istiyor.
+17. **Günlük modda kapı testi sahneyi değiştirir.** `_sonraki()` günlük modda
+   `_menuye()` çağırır → `change_scene_to_file` test ağacını söker. Testte kapıya
+   değdikten sonra 1,0 sn dolmadan `queue_free()` et; `_kapiya_dokun` (1,6 sn
+   bekler) günlük modda **kullanılmaz**.

@@ -20,7 +20,8 @@ tamponu) ve yüzeyden ayrıldıktan sonra da ~0,08 sn hakkın sürer (kojot çev
 "Bir kare geç bastım" ölümü bu yüzden yok.
 
 Dokunmatikte küçük düğme aramazsın: ekranın sol yarısı hareket (sol çeyrek sol,
-sağ çeyrek sağ), sağ yarısı çevirme. Solak seçeneği tarafları değiştirir,
+sağ çeyrek sağ), sağ yarısı çevirme. Solak seçeneği tarafları değiştirir —
+alan harfleri **ve** ekrandaki ipucu metni de onunla birlikte taraf değiştirir;
 düğme opaklığı ve titreşim ayarlardan.
 
 Diken ya da ekran dışına düşmek öldürür; ölünce **0,18 sn** sonra otomatik olarak
@@ -36,7 +37,9 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
   üstünde yazıyor, en iyi madalyan Bölüm Seç'te görünüyor. Hedefler **formülden
   değil ölçümden**: bir bot 20 bölümün hepsini gerçek fizikte, bölüm başına
   5 kez oynuyor (her karara 0,05–0,20 sn tepki gecikmesiyle) ve eşikler o
-  koşuların ortancasından çıkıyor.
+  koşuların ortancasından çıkıyor. Çarpanlar (altın ×1,35, gümüş ×1,75,
+  bronz ×2,40) aynı botun **insan tepki bandında** (0,18–0,35 sn) yeniden
+  koşturulmasıyla gerekçeli: altın, insan tepkisiyle ölümsüz doğru hattın süresi.
 - **Kontrol noktası.** 64 sütunluk uzun bölümlerin ortasında bir mavi direk;
   ona değdikten sonra ölünce oraya dönersin.
 - **"En az çevirme" ikinci hedefi.** Süreden bağımsız: her bölümün kaç çevirmeyle
@@ -50,6 +53,14 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
   Ayarlardan kapatılır.
 - **Ölüm haritası.** Bölüm bitince bölümün küçültülmüş planı ve öldüğün her nokta
   X ile. "Burada takılıyorsun" demenin en kısa yolu.
+- **Günün bölümü.** Ana menüden: tarihten seçilen bir bölüm + küçük bir
+  değiştirici — **ters başlangıç** (tavandan doğarsın; kontrol noktasından
+  dönüş normal) ya da **kristal zorunlu** (kapı kristal alınmadan açılmaz;
+  kristal ana oyunda toplanmış olsa da o gün yeniden yerinde). Aynı gün herkes
+  aynı bölümü oynar. Kaydı **ayrı**: günün en iyi süresi menüde yazar, gün
+  değişince sıfırlanır; madalya, hayalet, kristal sayacı ve açılan bölüm
+  **değişmez**. Hayaletler günlük modda kapalı (normal başlangıcın kaydı, ters
+  başlangıçta yalan söylerler).
 
 ## Okunurluk ve yardım
 
@@ -209,13 +220,62 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
   oluyor, gövdenin geri kalanı dikenin içinden geçerken tahmin "temiz" diyordu),
   ve hareketli parçalar hiç sayılmıyordu.
 
+## 5. turda verilen kararlar (v0.5 — solak, fırtına, günün bölümü, insan payı)
+
+- **Solak ipucu metni tarafı söylüyor.** Dokunma alanları solak ayarıyla yer
+  değiştiriyordu ama ipucu "Sol alttaki iki alanla yürü" sabitti. Metin artık
+  `{h}`/`{c}` yer tutucularıyla tablodan geçiyor ve `kontrol_metni()` tarafı
+  ayara göre dolduruyor. Alan harfleri (`<` `>` `ÇEVİR`) zaten alanla birlikte
+  taşınıyordu; iki modun ekran görüntüsü `docs/tur4/01-02`.
+- **19 — Fırtına yeniden kuruldu; kök neden bir üreteç kuralı eksikliğiydi.**
+  Gezen dikenin menzili (32–38) tavan dikeniyle (34–39) üst üsteydi: o
+  sütunlarda iki yüzey de öldürüyordu ve tek çözüm tam hızda süzülmekti —
+  oyunun geri kalanının öğrettiği "dar yerde fren" refleksinin tersi. Üreteçteki
+  3 hücrelik pencere kuralı bunu **yakalamıyordu**, çünkü gezen dikenler
+  bant değil. Yeni kural (`arac/uret_bolumler.py` + `_gezgin_kacis_testi`):
+  *gezen dikenin menzilindeki her sütunda karşı yüzey güvenli olmalı.* Kural
+  **18 — Koridor'u da yakaladı** (gezgin 32–38, tavan dikeni 35–40); ikisi de
+  aynı desenle düzeltildi: gezen diken tavanı temiz bir koridora alındı, tavan
+  dikeni onun ardına kaydı. Bot yeni Fırtına'yı 5/5 koşuda ölümsüz bitiriyor
+  (eski düzende 5 koşunun biri 14,85 sn'lik bir kazaydı); süresi 7,33 → 8,23 sn,
+  yani bölüm **daha yavaş ama artık frenle geçiliyor**. Fırtına hissi (gezen
+  diken + platformlu delik + 6 çevirme) korundu.
+- **Günün bölümü ayrı bir mod, ayrı bir yuva.** Tarihten 32 bit karıştırıcıyla
+  bölüm + değiştirici seçiliyor (Knuth çarpımsal karma denendi, ardışık günler
+  bölümleri birer geriye sayıyordu). İki değiştirici: ters başlangıç (tavandan
+  doğarsın; kontrol noktasından dönüş normal) ve kristal zorunlu (kapı kristal
+  alınmadan açılmaz). Kayıt `[gunluk]` bölümünde: yalnız o günün en iyi süresi
+  ve bitiş sayısı, gün değişince sıfırlanır. Ana ilerlemeye (madalya, en iyi,
+  kristal, en az çevirme, hayalet, açılan bölüm) **hiç yazılmıyor** ve
+  `_gunluk_testi` bunu her iki değiştiricide bitişe kadar oynayarak ölçüyor.
+  Hayaletler günlük modda kapalı: normal başlangıcın kaydı, ters başlangıçta
+  yanlış yolu gösterirler. Günlük mod açıkken duraklatmadaki "Bölümü Atla"
+  gizli (ana ilerlemeyi açıyor).
+- **Altın ×1,15 → ×1,35; gümüş ×1,50 → ×1,75; bronz ×2,00 → ×2,40.** Gerekçe
+  ölçüm: aynı bot `insan` modunda (tepki 0,18–0,35 sn; basit görsel tepki
+  süresinin insan bandı) koşturuldu. 20 bölümün 9'unda süre **hiç değişmedi**
+  (tepki penceresi olan yerde yavaşlamak gerekmiyor), ortanca oran 1,02;
+  ama 6, 7 ve 15'te gecikme bir zorunlu fren doğurdu ve süre %26–30 uzadı.
+  ×1,15 ile insan bandındaki bot 3 bölümde altın **alamıyordu** — yani insan
+  için ulaşılmaz altın vardı. ×1,35 ölçülen en kötü oranı (1,297) %4 payla
+  örtüyor. Gümüş bir ölüm (ölüm ≈ 0,18 sn + geri yürüme ≈ +%55 kısa bölümde),
+  bronz iki ölüm demek. Kanca'daki 1,45'ten düşük kaldı çünkü bu oyunda bot
+  insanın yapamadığı bir hile bilmiyor; tek farkı tepki süresi ve onun bedeli
+  ölçüldü.
+- **İnsan bandında 20 — Son Kapı'yı bot 5 koşunun 1'inde bitirdi** (diğerleri
+  90 sn tavanda bekledi, ölüm yok). Bölüm hatası değil, bot sınırı: son delikten
+  (54–57) kapı önündeki 2 hücreye (58–59) inmesi gerekiyor; gecikmeyle kapıyı
+  geçince "kapının ötesine inme" kuralı çevirmeyi yasaklıyor ve bot geri
+  yürümeyi bilmiyor. İnsan geri yürür. Bölüm değiştirilmedi, yol haritasına
+  yazıldı.
+
 ## Durum
 
-**v0.4 — ölçüm turu.** v0.3.1'in üstüne: madalya süreleri ve "en az çevirme"
-hedefleri gerçek bot koşusundan ölçüldü (20/20 bölüm, tahmin yok), altın
-hayalet, hareketli parçaları ve gövdeyi sayan iniş göstergesi, kapağın
-315×250 ve 120×45 kapsülleri, 3 saniyelik tanıtım GIF'i. 612 doğrulama
-(v0.3.1'de 486). Yükleme yapılmadı. Sonraki adımlar: `YOL-HARITASI.md`.
+**v0.5 — solak, fırtına, günün bölümü, insan payı.** v0.4'ün üstüne: solak
+ipucu düzeltildi, 18 ve 19. bölümler "gezen dikenin kaçış yüzeyi" kuralıyla
+yeniden kuruldu ve bot ölçümü yenilendi, günün bölümü (2 değiştirici, ayrı
+kayıt), madalya çarpanları insan tepki bandı ölçümüyle yükseltildi. 672
+doğrulama (v0.4'te 612). Yükleme yapılmadı. Sonraki adımlar: `YOL-HARITASI.md`.
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta
 `%APPDATA%\Godot\app_userdata\Yerçekimi Çevir\kayit.cfg`).

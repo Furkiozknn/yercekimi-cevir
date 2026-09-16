@@ -119,19 +119,45 @@ Kaynak: `oyun-terminalleri/aktif/H8-yercekimi-cevir.md`.
       + kareler; `tools/gif_yap.py` bağımlılıksız GIF89a yazıcı
 - [x] Testler 486 → **612 doğrulama**; Windows + Web dışa aktarımı temiz
 
+## Tur 5 — solak, fırtına, günün bölümü, insan payı v0.5 (2026-09-16)
+
+Kaynak: `oyun-terminalleri/aktif/H11-yercekimi-cevir.md`.
+
+- [x] **Solak ipucu** tarafı söylüyor: `DOKUNMA_METNI` yer tutuculu (`{h}`/`{c}`),
+      `kontrol_metni()` solak ayarına göre dolduruyor. Test iki modda alan
+      konumu + ipucu metnini birlikte ölçüyor; ekran görüntüleri `docs/tur4/`
+- [x] **19 — Fırtına yeniden kuruldu.** Gezen diken 33–39'a (tavanı temiz koridor),
+      tavan dikeni 42–47'ye, platformlu delik 51–57'ye. Bot 8,23 sn, 6 çevirme,
+      5/5 ölümsüz (eski: 7,33 sn ama 5 koşunun 1'i kaza). Altın 11,12 sn
+- [x] **Kök neden kuralı:** gezen dikenin menzilinde karşı yüzey güvenli olmalı —
+      üreteçte `assert`, testte `_gezgin_kacis_testi`. Kural 18 — Koridor'u da
+      yakaladı; aynı desenle düzeltildi (gezgin 43–48, delik 49–55)
+- [x] **Günün bölümü:** tarihten 32 bit karıştırıcıyla bölüm + değiştirici (ters
+      başlangıç / kristal zorunlu), `[gunluk]` ayrı kayıt, menüde günün bölümü ve
+      en iyi süre, HUD'da rozet. Ana ilerlemeye yazmıyor — `_gunluk_testi` iki
+      değiştiricide de bitişe kadar oynayıp ölçüyor
+- [x] **Madalya çarpanları** insan tepki bandı ölçümüyle (`bot.gd -- … insan`)
+      yükseltildi: altın ×1,35, gümüş ×1,75, bronz ×2,40. Tablo raporda
+- [x] Testler 612 → **672 doğrulama**; ekran aracına tur 4 modu (`-6`);
+      Windows + Web dışa aktarımı temiz; yayın paketi 0.5.0
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
 
-- [ ] **20 bölümü elle baştan sona oyna.** Hâlâ en büyük belirsizlik: bot ölçümü
-      insanı temsil etmiyor. 16 (Kılçık) ve 19 (Fırtına) artık ölçüldü ve
-      çözülebilir olduğu kanıtlandı (8 ve 6 çevirme, ölümsüz), ama 19'un
-      34–38. sütunlarında tavan dikeni ile gezen diken ÜST ÜSTE binmiş
-      durumda: tek geçiş yolu tavandan tam hızda süzülüp gezen dikenin
-      menzilinin tamamını uçarak geçmek. Bir insan bunu bulabilir mi, bilmiyoruz.
-- [ ] **Bot tam hızda süzülüyor, insan süzülmez.** Altın eşiği botun "gerektiği
-      yerde fren, gerekmediği yerde hiç durma" koşusuna dayanıyor. Gerçek bir
-      oyuncu bu ayrımı yapabiliyor mu, ölçülmedi.
+- [ ] **20 bölümü elle baştan sona oyna.** Hâlâ en büyük belirsizlik. 19'un
+      "iki yüzey de ölümlü" tuzağı kalktı ve bot artık frenle geçiyor; ama
+      insan bandındaki botun bile 6, 7 ve 15'te bir zorunlu fren yediği ölçüldü —
+      gerçek oyuncunun kaç fren yediği ölçülmedi. Altın ×1,35 buna göre
+      seçildi; insan oynayınca doğrulanmalı.
+- [ ] **20 — Son Kapı'nın sonu:** delik 54–57'den kapı önündeki 2 hücreye (58–59)
+      iniş, üretecin izin verdiği en dar bitiş. İnsan bandındaki bot geri
+      yürümeyi bilmediği için 5 koşunun 4'ünde tavanda kaldı. İnsan geri
+      yürür; ama elle oynanınca bu bitiş "haksız" geliyorsa deliği 1 sütun
+      sola al.
+- [ ] **Tavanda yürüyen oyuncu üst HUD şeritlerinin arkasında kalıyor**
+      (x < 232 ve x > 398; şeritler yarı saydam). Ekran görüntülerinde
+      görüldü, oynanışta ne kadar rahatsız ettiği ölçülmedi.
 - [ ] Web yapısını tarayıcıda aç: sesin geldiğini ve müziğin **ikinci tura girdiğini**
       doğrula (döngü kodla kuruluyor, tarayıcıda doğrulanmadı). v0.3.1'in simge
       ve dokunmatik metin düzeltmesi de **tarayıcıda görülmedi**, yalnız
@@ -141,6 +167,9 @@ Kaynak: `oyun-terminalleri/aktif/H8-yercekimi-cevir.md`.
 
 - [ ] Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform, dikey kaydırmalı bölüm
 - [ ] Bölüm başı tabelası / en iyi süre listesi ekranı
+- [ ] Günün bölümü: seri sayacı (ardışık gün), 3. değiştirici (ör. hayalet
+      yarışı zorunlu: altın hayaleti geç), günün sonucunu paylaşılabilir metin
+      olarak kopyala
 
 ### Görsel ve ses
 
@@ -152,10 +181,8 @@ Kaynak: `oyun-terminalleri/aktif/H8-yercekimi-cevir.md`.
 
 - [ ] Geniş dokunma alanlarını **gerçek telefonda** dene: sol/sağ çeyrek ayrımı
       parmakla ayırt edilebiliyor mu, titreşim rahatsız ediyor mu
-- [ ] **Solak modda dokunma ipucu yanlış tarafı söylüyor.** Alanlar yer
-      değiştiriyor ama "Sol alttaki iki alanla yürü" metni değişmiyor
-      (v0.3.1, bilinen). Metin de solağa göre yazılmalı; gerçek telefonda
-      tarifin anlaşılır olup olmadığıyla birlikte denenmeli
+- [x] ~~Solak modda dokunma ipucu yanlış tarafı söylüyor~~ — v0.5'te düzeltildi;
+      gerçek telefonda tarifin anlaşılır olup olmadığı hâlâ denenmeli
 - [ ] Android dışa aktarımı + dokunmatik hedef boyutlarını büyüt
 - [ ] Dikey en-boy oranında test
 

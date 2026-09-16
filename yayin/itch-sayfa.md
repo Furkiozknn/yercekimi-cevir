@@ -37,6 +37,9 @@ after you left the surface.
 - **Gold ghost** — race the bot's measured best run as a second target. Both
   ghosts are labelled, so yours never gets confused with it
 - **Death map** at the end of every level: your level, your deaths, marked with X
+- **Daily level** — one level picked from the date, with a twist (start upside
+  down, or the crystal is required to open the exit). Separate best time, never
+  touches your main progress; everyone gets the same level on the same day
 - Room-based camera: hazards are never off screen
 - Checkpoints in the longer levels
 - Instant respawn — death costs you 0.18 seconds, not your run
@@ -45,6 +48,7 @@ after you left the surface.
 - Readability options: high-contrast palette, gravity-direction arrow, and a
   landing indicator that shows where a flip would put you
 - Keyboard, gamepad and touch — big invisible touch zones, left-handed option
+  (the on-screen hint follows the swapped sides)
 - Generated pixel art and chiptune audio, single 32-colour palette
 - Turkish interface
 
@@ -90,6 +94,9 @@ bastıysan da.
 - Bölüm başına altın / gümüş / bronz hedef süre + ayrı bir **"en az çevirme"** hedefi
 - **Hayalet yarış** — o bölümdeki en iyi koşun yanında koşar, rengi madalyası
 - **Ölüm haritası** — bölüm bitince bölümün planı ve öldüğün her nokta X ile
+- **Günün bölümü** — tarihten seçilen bir bölüm + küçük bir değiştirici (ters
+  başlangıç ya da kristal zorunlu). Ayrı en iyi süre, ana ilerlemeye dokunmaz;
+  aynı gün herkes aynı bölümü oynar
 - Oda tabanlı kamera: tehlike ekran dışında kalmaz
 - Uzun bölümlerde kontrol noktası
 - Anında yeniden doğma — ölüm 0,18 saniyeye mal olur, koşuna değil
@@ -98,6 +105,7 @@ bastıysan da.
 - Okunurluk seçenekleri: yüksek kontrast paleti, yerçekimi yönü oku ve çevirince
   nereye ineceğini gösteren iniş göstergesi
 - Klavye, gamepad ve dokunmatik — geniş görünmez dokunma alanları, solak seçeneği
+  (ekrandaki ipucu da tarafları takip eder)
 - Kodla üretilmiş pixel art ve chiptune müzik, tek bir 32 renklik palet
 - Türkçe arayüz
 
@@ -122,7 +130,7 @@ Tarayıcıda oynanır; Windows sürümü de indirilebilir.
 | Alan | Değer |
 |---|---|
 | Başlık | Yerçekimi Çevir (Gravity Flip) |
-| Kısa açıklama | No jump button. One button: flip gravity. 20 levels of precision platforming. |
+| Kısa açıklama | No jump button. One button: flip gravity. 20 levels of precision platforming + a daily level. |
 | Sınıflandırma | Game |
 | Tür | Platformer |
 | Etiketler | `precision-platformer`, `gravity`, `pixel-art`, `one-button`, `godot`, `speedrun`, `accessible`, `turkish` |

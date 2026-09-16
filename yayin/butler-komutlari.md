@@ -42,10 +42,10 @@ build/web/index.html + index.wasm + index.pck + index.js + 2 worklet
 
 ```bash
 # Tarayıcıda oynanan sürüm
-butler push build/web     <kullanici>/yercekimi-cevir:html5   --userversion 0.2.0
+butler push build/web     <kullanici>/yercekimi-cevir:html5   --userversion 0.5.0
 
 # Windows
-butler push build/windows <kullanici>/yercekimi-cevir:windows --userversion 0.2.0
+butler push build/windows <kullanici>/yercekimi-cevir:windows --userversion 0.5.0
 ```
 
 `html5` kanalı itch.io tarafında otomatik olarak "oynanabilir" işaretlenir.
