@@ -154,7 +154,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 0)
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.99, 0.68, 0.21, 1)
-text = "YARDIM VE DOKUNMATİK"
+text = "YARIŞ, YARDIM VE DOKUNMATİK"
 vertical_alignment = 1
 
 [node name="Izgara" type="GridContainer" parent="Kutu/Sag"]
@@ -163,6 +163,19 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 4
 columns = 3
 
+[node name="AltinYazi" type="Label" parent="Kutu/Sag/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(104, 0)
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "Altın hayalet"
+vertical_alignment = 1
+[node name="AltinBosluk" type="Control" parent="Kutu/Sag/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(92, 4)
+[node name="AltinHayalet" type="CheckButton" parent="Kutu/Sag/Izgara"]
+layout_mode = 2
+toggle_mode = true
 [node name="YardimYazi" type="Label" parent="Kutu/Sag/Izgara"]
 layout_mode = 2
 custom_minimum_size = Vector2(104, 0)

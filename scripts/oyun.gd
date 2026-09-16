@@ -34,6 +34,7 @@ var _oda_tween: Tween = null
 var _yol: PackedVector2Array = PackedVector2Array()   ## bu kosunun kaydi
 var _kare: int = 0
 var _hayalet_yol: PackedVector2Array = PackedVector2Array()
+var _altin_yol: PackedVector2Array = PackedVector2Array()   ## botun olculmus altin kosusu
 
 # Olum haritasi
 var _olum_yerleri: Array[Vector2] = []
@@ -43,6 +44,7 @@ var _bekleme: float = TAMAM_BEKLEME   ## bu bolum bitisinde beklenecek sure
 @onready var _oyuncu: CharacterBody2D = $Dunya/Oyuncu
 @onready var _kamera: Camera2D = $Dunya/Kamera
 @onready var _hayalet: Sprite2D = $Dunya/Hayalet
+@onready var _altin: Sprite2D = $Dunya/AltinHayalet
 @onready var _inis: Sprite2D = $Dunya/Inis
 @onready var _toz: CPUParticles2D = $Dunya/Toz
 @onready var _olum_parca: CPUParticles2D = $Dunya/Olum
@@ -79,6 +81,7 @@ func _ready() -> void:
 	_dokunmatik_kur()
 	Ayarlar.dokunmatik_degisti.connect(_dokunmatik_acildi)
 	_hayalet.modulate = Ayarlar.HAYALET_RENGI
+	_altin.modulate = Ayarlar.ALTIN_HAYALET_RENGI
 	Ses.muzik(&"oyun")
 	bolum_yukle(Ayarlar.secilen_bolum)
 	_karartma.color.a = 1.0
@@ -167,6 +170,8 @@ func bolum_yukle(i: int) -> void:
 	_hayalet_yol = Ayarlar.hayalet_yukle(bolum_i)
 	_hayalet.modulate = _hayalet_rengi()
 	_hayalet.visible = false
+	_altin_yol = Ayarlar.altin_hayalet_yolu(bolum_i)
+	_altin.visible = false
 	_ad.text = String(veri["ad"])
 	_ipucu.text = Ayarlar.kontrol_metni(String(veri["ipucu"]))
 	_yardim_rozet.visible = Ayarlar.yardim_acik
@@ -204,10 +209,10 @@ func yeniden_basla() -> void:
 
 
 func _hedef_guncelle() -> void:
-	var veri: Dictionary = Ayarlar.bolum(bolum_i)
 	var az := Ayarlar.en_az_al(bolum_i)
-	_hedef.text = "● %.1f ● %.1f ● %.1f sn · en az ⟳ %d · en iyi %s%s" % [
-		veri["altin"], veri["gumus"], veri["bronz"], Ayarlar.en_az_hedef(bolum_i),
+	var e := Ayarlar.esik(bolum_i)
+	_hedef.text = "● %.2f ● %.2f ● %.2f sn · en az ⟳ %d · en iyi %s%s" % [
+		e["altin"], e["gumus"], e["bronz"], Ayarlar.en_az_hedef(bolum_i),
 		Ayarlar.en_iyi_metin(bolum_i), (" / ⟳ %d" % az) if az >= 0 else ""]
 
 
@@ -277,15 +282,21 @@ func _kamera_guncelle(aninda: bool) -> void:
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-## Hayalet yaris: bolumun en iyi kosusu yari saydam olarak yaninda kosar.
+## Hayalet yaris. Iki hayalet olabilir ve karismamalari gerekir:
+##   "sen"   = senin en iyi kosun, rengi o kosunun madalyasi
+##   "altın" = botun OLCULMUS altin kosusu (tools/bot.gd), sabit altin renk
+## Ikisi de etiketli — renk tek basina yetmez, cunku altin madalyan varsa
+## kendi hayaletin de altin renkte olur.
 func _hayalet_isle() -> void:
-	if _hayalet_yol.is_empty():
-		_hayalet.visible = false
-		return
 	var i := int(sure * 60.0 / float(Ayarlar.HAYALET_ARALIGI))
-	_hayalet.visible = i < _hayalet_yol.size()
-	if _hayalet.visible:
-		_hayalet.global_position = _hayalet_yol[i]
+	_hayalet_koy(_hayalet, _hayalet_yol, i)
+	_hayalet_koy(_altin, _altin_yol, i)
+
+
+func _hayalet_koy(d: Sprite2D, yol: PackedVector2Array, i: int) -> void:
+	d.visible = i >= 0 and i < yol.size()
+	if d.visible:
+		d.global_position = yol[i]
 
 
 ## Inis gostergesi: cevirme tusu BASILI tutulurken karsi yuzeyde nereye
@@ -304,9 +315,14 @@ func _inis_isle() -> void:
 
 
 ## Oyuncunun hareketini ileri sarar: yerdeyse once cevirir, sonra karsi yuzeye
-## kadar adim adim duser. Hareketli platformlari saymaz (sabit harita uzerinden).
+## kadar adim adim duser.
+##
+## Hareketli platformlar ve gezen dikenler HESABA KATILIR ve her adimda o adimin
+## zamanina gore ilerletilir (bkz. Bolum.hareketli_kesisiyor). v0.3'te tahmin
+## yalniz sabit harita uzerinden yapiliyordu: platformlu bolumlerde gosterge
+## platformu yok sayip altindaki zemini (ya da bolum disini) gosteriyordu.
 func _inis_tahmini() -> Dictionary:
-	var yok := {"var": false, "konum": Vector2.ZERO, "yon": 1.0, "tehlike": false}
+	var yok := {"var": false, "konum": Vector2.ZERO, "yon": 1.0, "tehlike": false, "sure": 0.0}
 	if _bolum == null or not _oyuncu.yasiyor:
 		return yok
 	var yon: float = _oyuncu.yercekimi_yonu
@@ -328,11 +344,16 @@ func _inis_tahmini() -> Dictionary:
 			hiz.x = move_toward(hiz.x, 0.0, Ayarlar.SURTUNME * d * carpan)
 		k += hiz * d
 		var ayak := k + Vector2(0.0, Ayarlar.GOVDE.y * 0.5 * yon)
-		if _bolum.olumcul_mu(ayak):
+		var t: float = float(adim + 1) * d
+		# Tehlike GOVDE kutusuyla aranir, ayak noktasiyla degil: cevirdikten
+		# sonra "ayak" yukari bakar ve govdenin alt yarisi zemin dikeninin
+		# icinden gecerken tahmin "temiz" diyordu.
+		var govde := Rect2(k - Ayarlar.GOVDE * 0.5, Ayarlar.GOVDE)
+		if _bolum.olumcul_kutu(govde) or _bolum.hareketli_kesisiyor(govde, false, t):
 			tehlike = true
-		if _bolum.kati_mi(ayak):
+		if _bolum.kati_mi(ayak) or _bolum.hareketli_nokta(ayak, true, t):
 			return {"var": true, "konum": Vector2(roundf(k.x), roundf(ayak.y)),
-				"yon": yon, "tehlike": tehlike}
+				"yon": yon, "tehlike": tehlike, "sure": t}
 	return yok
 
 
@@ -456,6 +477,7 @@ func _kapi() -> void:
 	_zaman = 0.0
 	_inis.visible = false
 	_hayalet.visible = false
+	_altin.visible = false
 	toplam_sure += sure
 	var sonuc: Dictionary = Ayarlar.bolum_bitti(bolum_i, sure, cevirme)
 	var m: int = sonuc["madalya"]

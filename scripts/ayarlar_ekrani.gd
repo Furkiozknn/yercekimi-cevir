@@ -28,6 +28,9 @@ func _ready() -> void:
 	_anahtar("InisGostergesi", Ayarlar.inis_gostergesi, func(a: bool) -> void:
 		Ayarlar.inis_gostergesi = a)
 
+	_anahtar("AltinHayalet", Ayarlar.altin_hayalet, func(a: bool) -> void:
+		Ayarlar.altin_hayalet = a)
+
 	_anahtar("YardimAcik", Ayarlar.yardim_acik, func(a: bool) -> void:
 		Ayarlar.yardim_acik = a
 		_yardim_goster())
