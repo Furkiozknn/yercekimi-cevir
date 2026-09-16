@@ -1,0 +1,2 @@
+Tur 0 (prototip) ekran goruntuleri. Tur 1'de oyunun gorseli tamamen degisti,
+docs/ altindaki karsiliklari yenilendi. Silinmedi, buraya tasindi.
