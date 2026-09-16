@@ -7,16 +7,28 @@ const T_KRISTAL := preload("res://assets/sprites/kristal.png")
 
 
 func _ready() -> void:
+	Ayarlar.zaman_sifirla()
 	var izgara: GridContainer = $Kutu/Izgara
 	for i in Ayarlar.bolum_sayisi():
 		izgara.add_child(_hucre(i))
 	$Geri.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
 		get_tree().change_scene_to_file("res://scenes/menu.tscn"))
-	$Ozet.text = "Kristal %d / %d     Madalya %d / %d" % [
+	$Ozet.text = "Kristal %d / %d     Madalya %d / %d     En az çevirme %d / %d" % [
 		Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
-		_madalyali_bolum(), Ayarlar.bolum_sayisi()]
+		_madalyali_bolum(), Ayarlar.bolum_sayisi(),
+		_en_az_bolum(), Ayarlar.bolum_sayisi()]
 	Ses.muzik(&"menu")
+
+
+## Hedefteki en az cevirmeyle (ya da daha aziyla) bitirilen bolum sayisi.
+func _en_az_bolum() -> int:
+	var n := 0
+	for i in Ayarlar.bolum_sayisi():
+		var az := Ayarlar.en_az_al(i)
+		if az >= 0 and az <= Ayarlar.en_az_hedef(i):
+			n += 1
+	return n
 
 
 func _madalyali_bolum() -> int:
@@ -47,7 +59,10 @@ func _hucre(i: int) -> Button:
 	kutu.add_child(no)
 
 	var sure := Label.new()
+	var az := Ayarlar.en_az_al(i)
 	sure.text = Ayarlar.en_iyi_metin(i) if acik else "kilitli"
+	if acik and az >= 0:
+		sure.text += "  ⟳%d" % az
 	sure.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sure.add_theme_font_size_override("font_size", 9)
 	sure.mouse_filter = Control.MOUSE_FILTER_IGNORE

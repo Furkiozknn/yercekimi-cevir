@@ -2,6 +2,7 @@ extends Control
 ## Ana menu.
 
 func _ready() -> void:
+	Ayarlar.zaman_sifirla()
 	$Kutu/Basla.pressed.connect(_basla)
 	$Kutu/Sec.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
@@ -18,9 +19,10 @@ func _ready() -> void:
 		get_tree().quit())
 	if OS.has_feature("web"):
 		$Kutu/Cikis.hide()
-	$Durum.text = "%d / %d kristal      Açık bölüm: %d / %d" % [
+	$Durum.text = "%d / %d kristal      Açık bölüm: %d / %d%s" % [
 		Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
-		Ayarlar.acilan_bolum + 1, Ayarlar.bolum_sayisi()]
+		Ayarlar.acilan_bolum + 1, Ayarlar.bolum_sayisi(),
+		"      Yardım modu açık" if Ayarlar.yardim_acik else ""]
 	$Kutu/Basla.grab_focus()
 	Ses.muzik(&"menu")
 
