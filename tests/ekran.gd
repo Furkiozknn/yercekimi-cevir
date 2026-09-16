@@ -33,6 +33,7 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(_klasor)
 
 	Ayarlar.sifirla()
+	_varsayilan_gorunum()
 	Ayarlar.acilan_bolum = Ayarlar.bolum_sayisi() - 1
 	if mod == -1:
 		await _menu_cek()
@@ -47,6 +48,22 @@ func _ready() -> void:
 	else:
 		await _oynanis_cek(mod)
 	get_tree().quit(0)
+
+
+## Ekran goruntusu OYUNUN VARSAYILAN halini gostermeli. Ayarlar user://
+## kayit.cfg'den geliyor ve bu makinede tools/bot.gd ile testler orayi
+## degistirip kaydedebiliyor; oyle bir turda yayin goruntuleri oyun hissi
+## kapali cekildi (cevirme izi, parcaciklar, sarsinti yok). Modlar bunun
+## ustune kendi istedigini kurar.
+func _varsayilan_gorunum() -> void:
+	Ayarlar.oyun_hissi = true
+	Ayarlar.inis_gostergesi = true
+	Ayarlar.yercekimi_oku = true
+	Ayarlar.altin_hayalet = true
+	Ayarlar.yuksek_kontrast = false
+	Ayarlar.yardim_acik = false
+	Ayarlar.yardim_olumsuz = false
+	Ayarlar.yardim_hiz = 1.0
 
 
 func _bekle(sn: float) -> void:
@@ -292,11 +309,14 @@ func _ozellik_cek() -> void:
 ## mod -4: tur 3'te eklenenler.
 func _tur3_cek() -> void:
 	_sahte_ilerleme()
-	Ayarlar.altin_hayalet = true
 
 	# 1) Altin hayalet + kendi hayaletin YAN YANA. Kendi hayaletin altin
 	#    madalyali (yani o da altin renkte) — etiketler ayirt ediyor mu?
-	var bolum := 2
+	# 1. bolum bilerek secildi: bot orada hic cevirmiyor, yani iki hayalet de
+	# butun kosu boyunca ZEMINDE ve acikca gorunuyor. 3. bolumde bot daha ilk
+	# saniyede tavana geciyordu ve hayaletler ust HUD seridinin arkasinda
+	# kaliyordu (kayitta gorunur=true diyor ama karede yoklar).
+	var bolum := 0
 	var altin := AltinHayalet.yol(bolum)
 	if altin.is_empty():
 		push_warning("altin hayalet kaydi yok: once tools/bot.tscn calistir")
@@ -308,7 +328,15 @@ func _tur3_cek() -> void:
 	Ayarlar.hayalet_kaydet(bolum, seninki)
 	await _oyunu_ac(bolum)
 	Input.action_press("move_right")
-	await _bekle(1.3)
+	# 0,5 sn: iki hayalet de cevirme gecisinin ortasinda, yani HUD seridinin
+	# altinda ve ayri ayri secilebilir durumda (1,3 sn'de ikisi de tavanda
+	# olup ust seridin arkasina giriyordu).
+	await _bekle(0.5)
+	print("TANI hayalet: kendi=%d altin=%d  gorunur=%s/%s  konum=%s/%s  ayar=%s" % [
+		_oyun._hayalet_yol.size(), _oyun._altin_yol.size(),
+		_oyun._hayalet.visible, _oyun._altin.visible,
+		_oyun._hayalet.global_position, _oyun._altin.global_position,
+		Ayarlar.altin_hayalet])
 	await _cek("altin-hayalet")
 	Input.action_release("move_right")
 	_oyun.queue_free()
@@ -329,8 +357,28 @@ func _tur3_cek() -> void:
 		o.up_direction = Vector2.DOWN
 		o.position = Vector2(plat.position.x, 16.0 + Ayarlar.GOVDE.y * 0.5)
 		await _bekle(0.5)
+		# Platform gidip geliyor ve tahmin ~0,9 sn SONRASINI soruyor; o sure
+		# icinde platform ~43 px yol aliyor. Yani gostergenin platformu
+		# isaretledigi yer platformun SU ANKI yeri degil. Dogru noktayi
+		# aramak zorundayiz — ki bu zaten duzeltmenin ta kendisi: v0.3'te
+		# boyle bir nokta hic yoktu, gosterge her yerde delige dusuyordu.
+		var bulundu := false
+		for adim in 40:
+			o.position.x = plat.position.x - 80.0 + adim * 4.0
+			await get_tree().physics_frame
+			var tah: Dictionary = _oyun._inis_tahmini()
+			if bool(tah["var"]) and float(tah["konum"].y) < 260.0:
+				bulundu = true
+				break
+		if not bulundu:
+			push_warning("inis gostergesi platformu isaretleyen nokta bulunamadi")
+	# Cevirme tusuna BASMAK ayni anda cevirmeyi de yapar; gosterge gecis
+	# boyunca inecegi noktayi isaretler. Platformlu bolumde isaretin
+	# platformun ustunde durmasi bu turun duzeltmesidir.
 	Input.action_press("cevir")
-	await _bekle(0.4)
+	await _bekle(0.22)
+	print("TANI inis: gorunur=%s konum=%s  platform=%s  zemin y=336" % [
+		_oyun._inis.visible, _oyun._inis.position, plat.position if plat != null else "yok"])
 	await _cek("inis-platform")
 	Input.action_release("cevir")
 	_oyun.queue_free()
@@ -344,18 +392,23 @@ func _tur3_cek() -> void:
 func _tanitim_cek() -> void:
 	const KARE: int = 30
 	const ARALIK: int = 6
-	Ayarlar.inis_gostergesi = true
-	Ayarlar.altin_hayalet = false
-	await _oyunu_ac(2)                        # 3 — Tavan Yolu
+	Ayarlar.altin_hayalet = false        ## tanitimda tek oyuncu olsun
+	# 4 — Diken: 14-22 sutunlarinda ZEMIN dikeni, tavan tertemiz. Tanitimin
+	# anlatmasi gereken sey tam olarak bu: dikenin uzerinden gecmiyorsun,
+	# tavana dusup ustunden yuruyorsun.
+	await _oyunu_ac(3)
 	_oyun.get_node("Arayuz/Ipucu").visible = false
 	var ham := PackedByteArray()
 	Input.action_press("move_right")
 	for k in KARE:
-		# 12. karede cevirme tusu BASILI tutulur (inis gostergesi cikar),
-		# 17. karede birakilir (cevirme gerceklesir).
-		if k == 12:
+		# Iki cevirme: 5. karede yukari (dikenlerin uzerine), 23. karede
+		# geri asagi. Tus BIRKAC KARE BASILI tutulur, cunku inis gostergesi
+		# yalniz basiliyken gorunur. Ikinci cevirmenin gostergesi ZEMINDE
+		# cikiyor ve acikca goruluyor; birincisininki tavanda, HUD seridinin
+		# arkasinda kaliyor.
+		if k == 5 or k == 23:
 			Input.action_press("cevir")
-		if k == 17:
+		if k == 11 or k == 29:
 			Input.action_release("cevir")
 		for f in ARALIK:
 			await get_tree().process_frame

@@ -29,8 +29,13 @@ after you left the surface.
 
 - 20 hand-tuned levels, each new mechanic introduced on its own safe level first
 - One hidden crystal per level, always on an optional detour off the main route
-- Gold / silver / bronze target times, plus a separate **fewest-flips** goal
+- Gold / silver / bronze target times, **measured by a bot that actually plays
+  every level** (five runs each, with a human-like 0.05–0.20 s reaction delay) —
+  not guessed from a formula
+- A separate **fewest-flips** goal, also measured rather than estimated
 - **Ghost race** — your best run on that level runs beside you, tinted by its medal
+- **Gold ghost** — race the bot's measured best run as a second target. Both
+  ghosts are labelled, so yours never gets confused with it
 - **Death map** at the end of every level: your level, your deaths, marked with X
 - Room-based camera: hazards are never off screen
 - Checkpoints in the longer levels
@@ -140,7 +145,11 @@ Copyright (c) 2003 by Bitstream, Inc. DejaVu changes are in public domain.
       tarayıcıda görülmedi); telefon emülasyonunda eğitim metni dokunmaya çevrildi mi
 - [ ] Windows yapısını zip'le (`yercekimi-cevir.exe` + `.pck` birlikte)
 - [ ] Kapak görselini (630×500) ve 4 ekran görüntüsünü yükle
-- [ ] Kapağı itch'in **120×45 küçük kapsülünde** gözle kontrol et — 2. turda yeniden
-      çizildi (2x yakınlaştırma + koyu şerit + parlak başlık) ama o ölçüde
-      denenmedi, bu makinede ölçekleyici yok
+- [x] Kapak **315×250 ve 120×45** boyutlarında üretildi ve gözle denetlendi
+      (`yayin/ekran/04..06`). 315×250'de her şey okunuyor; 120×45'te başlık
+      okunuyor, alt satır ("TEK TUŞ · 20 BÖLÜM") o ölçüde ~2 piksel yüksekliğe
+      indiği için dokuya dönüşüyor — hiçbir yazı tipi orada kurtulmaz, düzen
+      bilerek değiştirilmedi
+- [ ] Tanıtım GIF'i (`yayin/tanitim/tanitim.gif`, 3 sn, 292 KB) sayfaya eklensin mi
+      karar ver — kareler `yayin/tanitim/kare_*.png` altında, yeniden üretilebilir
 - [ ] Sayfayı önce **taslak** olarak kaydet, sonra yayınla

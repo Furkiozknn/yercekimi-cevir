@@ -95,17 +95,43 @@ Bulutta Chromium'da açılan v0.3 web yapısından çıkan iki hata.
 - [~] Geniş telefonda siyah şerit **bilerek bırakıldı** — gerekçe README'de
       (oda kamerası 640 px'e kilitli, `expand` bölüm dışını gösterir)
 
+## Tur 4 — ölçüm turu v0.4 (2026-09-16)
+
+Kaynak: `oyun-terminalleri/aktif/H8-yercekimi-cevir.md`.
+
+- [x] **Madalya süreleri ölçüldü.** `tools/bot.gd` bölümün ASCII haritasından
+      "hangi sütun hangi yüzeyde geçilir" planını çıkarıp bunu GERÇEK fizikte
+      oynuyor (gerçek Oyun sahnesi, gerçek oyuncu.gd, `Input.action_press` ile
+      basılan girdi). Her çevirme kararına 0,05–0,20 sn rastgele tepki gecikmesi.
+      Bölüm başına 5 koşu, ölçü ortanca. **20/20 bölüm ölçüldü, tahmine düşen yok.**
+      Eşikler tek yerden: üretilen `scripts/rota_verisi.gd` → `Ayarlar.esik()`
+- [x] Çarpanlar gerekçelendirildi (altın ×1,15 / gümüş ×1,50 / bronz ×2,00);
+      dayanak ölçülen fren bedeli (çevirme başına ~1,0–1,2 sn)
+- [x] **"En az çevirme" hedefleri ölçümle doğrulandı** — 20/20 bölümde geometri
+      hedefiyle aynı çıktı, yani 2. turun "cömert olabilir" şüphesi yanlışmış
+- [x] **Altın hayalet**: botun ölçülmüş en iyi koşusu ayrı hedef olarak koşuyor
+      (`scripts/altin_hayalet.gd`, üretilir). Kendi hayaletinle karışmasın diye
+      ikisi de etiketli ("sen" / "altın"); ayarlardan kapatılıyor
+- [x] **İniş göstergesi hareketli parçaları sayıyor** ve onları geçiş süresi
+      kadar ileri sarıyor; tehlike artık nokta değil GÖVDE kutusuyla aranıyor
+- [x] Kapak 315×250 ve 120×45'e küçültülüp gözle denetlendi (`Image.resize`)
+- [x] **Tanıtım GIF'i** `yayin/tanitim/tanitim.gif` (3 sn, 10 kare/sn, 292 KB)
+      + kareler; `tools/gif_yap.py` bağımlılıksız GIF89a yazıcı
+- [x] Testler 486 → **612 doğrulama**; Windows + Web dışa aktarımı temiz
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
 
-- [ ] **20 bölümü elle baştan sona oyna.** 2. turda affetme ve kamera düzeldi ama
-      zorluk eğrisi hâlâ hesapla dengelendi;
-      bot ölçümü insanı temsil etmiyor. Özellikle 16 (Kılçık) ve 19 (Fırtına)
-      şüpheli — bant aralığı 3 hücre, çevirme geçişi ~7 hücre sürüyor.
-- [ ] **Madalya sürelerini gerçek koşuyla doğrula.** Altın = temel × 1,15 + bant × 0,45
-      formülü hiç insan koşusuyla karşılaştırılmadı; altın fazla kolay ya da
-      imkânsız olabilir.
+- [ ] **20 bölümü elle baştan sona oyna.** Hâlâ en büyük belirsizlik: bot ölçümü
+      insanı temsil etmiyor. 16 (Kılçık) ve 19 (Fırtına) artık ölçüldü ve
+      çözülebilir olduğu kanıtlandı (8 ve 6 çevirme, ölümsüz), ama 19'un
+      34–38. sütunlarında tavan dikeni ile gezen diken ÜST ÜSTE binmiş
+      durumda: tek geçiş yolu tavandan tam hızda süzülüp gezen dikenin
+      menzilinin tamamını uçarak geçmek. Bir insan bunu bulabilir mi, bilmiyoruz.
+- [ ] **Bot tam hızda süzülüyor, insan süzülmez.** Altın eşiği botun "gerektiği
+      yerde fren, gerekmediği yerde hiç durma" koşusuna dayanıyor. Gerçek bir
+      oyuncu bu ayrımı yapabiliyor mu, ölçülmedi.
 - [ ] Web yapısını tarayıcıda aç: sesin geldiğini ve müziğin **ikinci tura girdiğini**
       doğrula (döngü kodla kuruluyor, tarayıcıda doğrulanmadı). v0.3.1'in simge
       ve dokunmatik metin düzeltmesi de **tarayıcıda görülmedi**, yalnız
@@ -115,18 +141,9 @@ Bulutta Chromium'da açılan v0.3 web yapısından çıkan iki hata.
 
 - [ ] Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform, dikey kaydırmalı bölüm
 - [ ] Bölüm başı tabelası / en iyi süre listesi ekranı
-- [ ] **Hedef hayaleti.** Şu an tek hayalet var (senin en iyi koşun). Gerçek bir
-      altın koşu kaydedilirse "altın hayalet" ayrı bir yarış hedefi olabilir —
-      madalya süreleri formülden geldiği için elde böyle bir koşu yok
-- [ ] **İniş göstergesi hareketli platformları saymıyor** (sabit harita üzerinden
-      hesaplıyor). Platformlu bölümlerde tahmin zeminin kendisini gösteriyor
-- [ ] **"En az çevirme" hedefi cömert.** Gezen dikenler tehlike sayıldığı için
-      hedef gerçek en iyiden yüksek olabilir; gerçek koşularla karşılaştır
 
 ### Görsel ve ses
 
-- [ ] Kapağı itch'in **120×45** küçük kapsülünde gerçekten gör. 2. turda yeniden
-      çizildi ama bu makinede görüntü ölçekleyici yok, o boyutta denenmedi
 - [ ] Kapı ve kristal için 2–4 kareli parıldama animasyonu (şu an tek kare)
 - [ ] Yürüme çevriminde kol sallanması (şu an yalnız bacaklar değişiyor)
 - [ ] Müziği bölüm grubuna göre değiştir (1–7 sakin, 8–14 gergin, 15–20 hızlı)
@@ -145,4 +162,3 @@ Bulutta Chromium'da açılan v0.3 web yapısından çıkan iki hata.
 ### Yayın
 
 - [ ] itch.io sayfasını aç ve `yayin/butler-komutlari.md` ile yükle — **Furki'nin kararı**
-- [ ] Tanıtım GIF'i (çevirme anı en iyi gösteren 3 saniye)

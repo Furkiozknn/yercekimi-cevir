@@ -95,6 +95,15 @@ func _ready() -> void:
 	_iz = arg.size() > 2 and String(arg[2]) == "iz"
 
 	Ayarlar.sifirla()
+	# Bot olcum icin birkac ayari degistiriyor, ama Ayarlar.bolum_bitti()
+	# her bolum sonunda kaydet() cagiriyor — yani bu degisiklikler kullanicinin
+	# user://kayit.cfg dosyasina YAZILIYOR. Bu sessizce iki ekran goruntusu
+	# turunu bozdu (oyun hissi ve inis gostergesi kapali cekildi), o yuzden
+	# cikista geri veriliyor.
+	var yedek := {
+		"hissi": Ayarlar.oyun_hissi, "inis": Ayarlar.inis_gostergesi,
+		"yardim": Ayarlar.yardim_acik,
+	}
 	Ayarlar.yardim_acik = false
 	Ayarlar.oyun_hissi = false          ## parcacik/tween olcumu degistirmez, yalniz yavaslatir
 	Ayarlar.inis_gostergesi = false
@@ -111,6 +120,12 @@ func _ready() -> void:
 			continue
 		kayit.append(await _bolumu_olc(i, kosu))
 	_yaz(kayit)
+
+	Ayarlar.oyun_hissi = bool(yedek["hissi"])
+	Ayarlar.inis_gostergesi = bool(yedek["inis"])
+	Ayarlar.yardim_acik = bool(yedek["yardim"])
+	Ayarlar.kaydet()
+	print("kullanici ayarlari geri verildi")
 
 	Ses.kapat()
 	await get_tree().create_timer(0.25).timeout

@@ -32,16 +32,25 @@ scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet) · s
              simgeler.gd (web'de eksik simgeler için yedek yazı tipi; ortak dosya)
              bolum.gd (ASCII harita -> sahne) · oyuncu.gd · oyun.gd · menu.gd
              bolum_sec.gd · ayarlar_ekrani.gd · bolumler.gd (ÜRETİLİR, elle düzenleme)
+             rota_verisi.gd (ÜRETİLİR: madalya eşikleri + en az çevirme)
+             altin_hayalet.gd (ÜRETİLİR: botun en iyi koşusunun yolu)
 scenes/      menu · bolum_sec · ayarlar_ekrani · oyun · oyuncu
 assets/      sprites/*.png (ÜRETİLİR) · audio/*.wav (ÜRETİLİR) · oyuncu_frames.tres
              fonts/simgeler.ttf + LISANS-simgeler.txt (lisans gereği yanında kalmalı)
 tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · sesler.md
+             bot.gd (madalya sürelerini ölçen bot) · gif_yap.py (bağımlılıksız GIF)
 arac/        uret_bolumler.py
 tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı)
-yayin/       itch.io paketi (yüklenmemiş)
+yayin/       itch.io paketi (yüklenmemiş) · yayin/tanitim/ 3 sn tanıtım GIF'i + kareler
 docs/        README görselleri · varliklar.png (sprite denetim levhası)
 build/       dışa aktarma çıktısı — `.gdignore` var, SİLME
 ```
+
+**Madalya eşikleri ve "en az çevirme" hedefi tek yerde:** üretilen
+`scripts/rota_verisi.gd`, `Ayarlar.esik()` üzerinden okunur. Dosya boşsa
+`bolumler.gd` içindeki geometri yedeğine düşer, yani oyun yine çalışır.
+**Eşiği kod içinde başka bir yerden okuma** — testler bile `Ayarlar.esik()`
+kullanmalı, yoksa iki kaynak olur (bu bir kez oldu: 60 test kaldı).
 
 **Denge sabitleri tek yerde:** `scripts/ayarlar.gd`. Hız, yerçekimi, çevirme
 tamponu ve kojotu, ölüm bekleme süresi, diken payı, oda ölçüsü, hayalet aralığı,
@@ -63,6 +72,9 @@ testleri ve yeni oyuncunun ilk koşusunu kirletiyor.
 
 ```bash
 python arac/uret_bolumler.py     # scripts/bolumler.gd (çözülebilirliği doğrular)
+godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 5
+                                 # scripts/rota_verisi.gd + scripts/altin_hayalet.gd
+                                 # (5 = bölüm başına koşu; 3. argüman "iz" tanılama yazar)
 python tools/uret_sprite.py      # assets/sprites/*.png + docs/varliklar.png
 python tools/uret_ses.py         # assets/audio/*.wav (rFXGen gerekir)
 godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_oyun.wav --ruh gizemli --tohum 5
@@ -79,6 +91,10 @@ godot --headless --path . res://tests/testler.tscn      # çıkış kodu 0 = ge�
 godot --path . res://tests/ekran.tscn -- -2 <klasör>    # yayın paketi görselleri
 godot --path . res://tests/ekran.tscn -- -1 <klasör>    # menü / bölüm seç / ayarlar
 godot --path . res://tests/ekran.tscn -- -3 <klasör>    # tur 2 özellik denetim kareleri
+godot --path . res://tests/ekran.tscn -- -4 <klasör>    # tur 3: altın hayalet, platformlu iniş
+godot --path . res://tests/ekran.tscn -- -5 yayin/tanitim   # 3 sn tanıtım kareleri + kareler.raw
+python tools/gif_yap.py yayin/tanitim/kareler.raw yayin/tanitim/tanitim.gif 320 180 10
+python tools/gif_yap.py --dogrula                       # GIF kodlayıcısının öz denetimi
 godot --headless --path . --export-release "Windows Masaustu"
 godot --headless --path . --export-release "Web (HTML5)"
 ```
@@ -136,6 +152,21 @@ kararı Furki verir.
    yaz; dokunmatikte "A / D ile yürü" yalan olur. Çeviri tablosu
    `Ayarlar.DOKUNMA_METNI`, testi `_dokunma_metni_testi` (tablodaki terim arayüzden
    kalkarsa test kalır, çeviri sessizce ölü kalmaz).
-11. **Bölüm bitiş beklemesi ölüm haritasına bağlı.** Ölüm yoksa 1,0 sn, varsa
+11. **Geliştirici araçları `user://kayit.cfg`'yi yazıyor.** `tools/bot.gd` ölçüm
+   için oyun hissini ve iniş göstergesini kapatıyor; `Ayarlar.bolum_bitti()` her
+   bölüm sonunda `kaydet()` çağırdığı için bu **diske yazılıyordu**. İki tur
+   yayın ekran görüntüsü bu yüzden oyun hissi kapalı çekildi (çevirme izi yok,
+   parçacık yok) ve kimse fark etmedi. Bot artık çıkışta ayarları geri veriyor,
+   `tests/ekran.gd` de her çekimden önce `_varsayilan_gorunum()` kuruyor.
+   Yeni bir araç ayar değiştirecekse ikisini de yap.
+12. **`Bolum._ileri_x()` konumu kendi aralığına geri katlıyor.** Testte bir
+   platformu "kenara itip yok saydırmak" işe yaramaz: üçgen dalga formülü
+   hangi x'i verirsen ver `[min_x, max_x]` aralığına geri getirir. Platformsuz
+   bir bölümle karşılaştır.
+13. **GIF'te LZW kod genişliği bir kod GECİKMELİ büyür.** Çözücünün tablosu
+   kodlayıcınınkinden bir geridedir; erken büyütürsen dosya hatasız ama bozuk
+   çıkar. `tools/gif_yap.py --dogrula` gerçek bir çözücüyle gidiş-dönüş
+   denetimi yapıyor, ilk yazımda hatayı o yakaladı.
+14. **Bölüm bitiş beklemesi ölüm haritasına bağlı.** Ölüm yoksa 1,0 sn, varsa
    2,4 sn. Testler bu süreye göre bekliyor; sabiti değiştirirsen `_kapiya_dokun`
    beklemesini de değiştir.

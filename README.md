@@ -33,14 +33,21 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 - **Gizli kristal** (her bölümde 1). Her zaman ana rotanın dışında: genelde tavanda,
   zeminde yürürken kaçamak yapman gereken bir yerde. Toplanınca kalıcı kaydedilir.
 - **Madalya süreleri.** Her bölümün altın / gümüş / bronz hedefi var; arayüzün sağ
-  üstünde yazıyor, en iyi madalyan Bölüm Seç'te görünüyor.
+  üstünde yazıyor, en iyi madalyan Bölüm Seç'te görünüyor. Hedefler **formülden
+  değil ölçümden**: bir bot 20 bölümün hepsini gerçek fizikte, bölüm başına
+  5 kez oynuyor (her karara 0,05–0,20 sn tepki gecikmesiyle) ve eşikler o
+  koşuların ortancasından çıkıyor.
 - **Kontrol noktası.** 64 sütunluk uzun bölümlerin ortasında bir mavi direk;
   ona değdikten sonra ölünce oraya dönersin.
 - **"En az çevirme" ikinci hedefi.** Süreden bağımsız: her bölümün kaç çevirmeyle
-  çözülebileceği bölüm verisinden hesaplanıyor, senin en iyi çevirme sayın
-  kaydediliyor. Hızlı bitirmek ve az çevirmek iki ayrı oyun.
+  çözülebileceği **ölçülmüş** (botun gerçekten bitirdiği en az çevirme sayısı),
+  senin en iyi çevirme sayın kaydediliyor. Hızlı bitirmek ve az çevirmek iki ayrı oyun.
 - **Hayalet yarış.** O bölümdeki en iyi koşun yarı saydam olarak yanında koşar;
   rengi o koşunun madalyası — altın koşu altın hayalet.
+- **Altın hayalet.** Botun ölçülmüş en iyi koşusu ayrı bir yarış hedefi olarak
+  koşar. Kendi hayaletinle karışmasın diye ikisi de etiketli ("sen" / "altın") —
+  renk yetmiyor, çünkü altın madalyan varsa senin hayaletin de altın renkte olur.
+  Ayarlardan kapatılır.
 - **Ölüm haritası.** Bölüm bitince bölümün küçültülmüş planı ve öldüğün her nokta
   X ile. "Burada takılıyorsun" demenin en kısa yolu.
 
@@ -51,7 +58,10 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 - **Yerçekimi oku.** Yanındaki küçük ok hangi yöne çekildiğini gösterir —
   durum renkten değil biçimden okunur.
 - **İniş göstergesi.** Çevirme tuşunu basılı tutarsan karşı yüzeyde nereye ineceğin
-  işaretlenir; yolda diken varsa işaret kırmızıya döner.
+  işaretlenir; yolda diken varsa işaret kırmızıya döner. **Hareketli platformları
+  ve gezen dikenleri sayar** ve onları geçiş süresi kadar ileri sarar: geçiş
+  ~0,9 sn sürüyor, o sürede platform 42 px yol alıyor, yani "şu an altımda"
+  ile "indiğimde orada olacak" aynı şey değil.
 - **Yüksek kontrast** seçeneği tehlikeleri parlatır, zemini ve arka planı geri çeker.
 - **Yardım modu.** Oyun hızı %50–100, dikenler öldürmek yerine iter, duraklatma
   menüsünden bölüm atlanır. Açıkken süre, madalya ve çevirme kaydı tutulmaz;
@@ -170,14 +180,42 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
   boşluk görünür, dokunma alanları da 640 px'e göre yerleştiği için sağda ölü
   şerit kalırdı. Siyah şerit, bölüm dışını göstermekten iyidir.
 
+## 4. turda verilen kararlar (v0.4 — ölçüm turu)
+
+- **Madalya eşikleri formülden ölçüme geçti.** Eski formül (`temel × 1,15 +
+  bant × 0,45`) hiçbir koşuyla karşılaştırılmamıştı ve **ortalama 1,35 kat
+  gevşekti**: 13. bölümde altın 11,1 sn diyordu, bot bölümü 7,28 sn'de
+  bitiriyor. Artık `tools/bot.gd` 20 bölümü gerçek fizikte oynuyor ve eşikler
+  ölçülen ortancadan geliyor (altın ×1,15, gümüş ×1,50, bronz ×2,00).
+- **"En az çevirme" hedefleri ölçümle DOĞRULANDI, değişmedi.** 2. turun
+  şüphesi ("gezen dikenler tehlike sayıldığı için hedef gerçek en iyiden
+  yüksek olabilir") ölçümde çıkmadı: yalnız zorunda kaldığında çeviren bot
+  20 bölümün 20'sinde de geometri hedefinin tam sayısını kullandı. Nedeni
+  ölçülebilir — gezen diken 62 px/sn, oyuncu 125 px/sn; arkadan yetişmek
+  çarpışmak demek, yani gezen diken gerçekten bir çevirmeyi zorunlu kılıyor.
+- **Bu oyunda tepki süresi saniye değil PENCERE kaybettiriyor.** 5 koşunun
+  yayılımı 20 bölümün 13'ünde %0,4'ün altında: çevirme yatay ilerlemeyi
+  durdurmadığı için geç basmak süreyi uzatmıyor. Kaybettiğinde ise koşu
+  tamamen değişiyor (18 ve 19. bölümde birer koşu 6 yerine 10 çevirme ve bir
+  ölümle bitti). Ölçüm bu yüzden ortanca + "en iyinin 1,5 katından kötü koşu
+  sayılmaz" kuralıyla yapılıyor.
+- **Frenin bedeli ölçüldü: çevirme başına ~1,0–1,2 sn.** Tam hızda çevirirsen
+  karşı yüzeye varana kadar ~7 hücre süzülürsün; bantlar 3 hücre arayla
+  kurulduğu için dar pencerelerde hızı kesmek ZORUNLU ve neredeyse dik inersin.
+  Madalya bandının anlamı bu: altın "gerektiği yerde fren, gerekmediği yerde
+  hiç durma", gümüş "her çevirmeden önce dur" koşusu.
+- **İniş göstergesi artık gövdeyle ve zamanla çalışıyor.** İki ayrı hata vardı:
+  tehlike tek bir "ayak" noktasıyla aranıyordu (çevirdikten sonra o nokta baş
+  oluyor, gövdenin geri kalanı dikenin içinden geçerken tahmin "temiz" diyordu),
+  ve hareketli parçalar hiç sayılmıyordu.
+
 ## Durum
 
-**v0.3.1 — v0.3 + web düzeltmesi.** v0.2'nin üstüne: affetme (kojot +
-küçültülmüş isabet kutusu + 0,18 sn yeniden deneme), oda tabanlı kamera, yardım
-modu, yüksek kontrast / yerçekimi oku / iniş göstergesi, geniş dokunmatik alanlar,
-hayalet yarış, ölüm haritası, "en az çevirme" ikinci hedefi. v0.3.1: web'de kutu
-çıkan simgeler ve dokunmatikteki klavye metinleri düzeltildi. Yükleme yapılmadı.
-Sonraki adımlar: `YOL-HARITASI.md`.
+**v0.4 — ölçüm turu.** v0.3.1'in üstüne: madalya süreleri ve "en az çevirme"
+hedefleri gerçek bot koşusundan ölçüldü (20/20 bölüm, tahmin yok), altın
+hayalet, hareketli parçaları ve gövdeyi sayan iniş göstergesi, kapağın
+315×250 ve 120×45 kapsülleri, 3 saniyelik tanıtım GIF'i. 612 doğrulama
+(v0.3.1'de 486). Yükleme yapılmadı. Sonraki adımlar: `YOL-HARITASI.md`.
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta
 `%APPDATA%\Godot\app_userdata\Yerçekimi Çevir\kayit.cfg`).
