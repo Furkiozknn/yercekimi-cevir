@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/bolum_sec.gd" id="1_kod"]
+
+[node name="BolumSec" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_kod")
+
+[node name="Arka" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.08, 0.13, 1)
+
+[node name="Baslik" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 12.0
+offset_right = 620.0
+offset_bottom = 38.0
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "BÖLÜM SEÇ"
+horizontal_alignment = 1
+
+[node name="Kutu" type="VBoxContainer" parent="."]
+offset_left = 44.0
+offset_top = 48.0
+offset_right = 596.0
+offset_bottom = 300.0
+
+[node name="Izgara" type="GridContainer" parent="Kutu"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 6
+
+[node name="Geri" type="Button" parent="."]
+offset_left = 270.0
+offset_top = 310.0
+offset_right = 370.0
+offset_bottom = 340.0
+text = "Geri"

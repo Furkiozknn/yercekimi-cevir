@@ -1,0 +1,61 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/menu.gd" id="1_kod"]
+
+[node name="Menu" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_kod")
+
+[node name="Arka" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.08, 0.13, 1)
+
+[node name="Baslik" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 44.0
+offset_right = 600.0
+offset_bottom = 84.0
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.29, 0.85, 0.45, 1)
+text = "YERÇEKİMİ ÇEVİR"
+horizontal_alignment = 1
+
+[node name="AltBaslik" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 86.0
+offset_right = 600.0
+offset_bottom = 104.0
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.7, 0.74, 0.85, 1)
+text = "Zıplama yok. Tek tuş: yerçekimini çevir."
+horizontal_alignment = 1
+
+[node name="Durum" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 300.0
+offset_right = 600.0
+offset_bottom = 318.0
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.6, 0.64, 0.75, 1)
+horizontal_alignment = 1
+
+[node name="Kutu" type="VBoxContainer" parent="."]
+offset_left = 245.0
+offset_top = 136.0
+offset_right = 395.0
+offset_bottom = 280.0
+theme_override_constants/separation = 12
+
+[node name="Basla" type="Button" parent="Kutu"]
+layout_mode = 2
+text = "Başla"
+
+[node name="Sec" type="Button" parent="Kutu"]
+layout_mode = 2
+text = "Bölüm Seç"
+
+[node name="Cikis" type="Button" parent="Kutu"]
+layout_mode = 2
+text = "Çıkış"
