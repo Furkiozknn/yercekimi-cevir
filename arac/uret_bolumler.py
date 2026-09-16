@@ -68,12 +68,12 @@ L = [
       hrk=[("plat", 11, 8, 15), ("plat", 10, 28, 35)]),
  dict(ad="18 — Koridor", w=64, ipucu="",
       bands=[("spike", 8, 13), ("ceil", 17, 22), ("spike", 26, 31), ("ceil", 35, 40),
-             ("gap", 44, 50), ("ceil", 54, 57)],
-      hrk=[("spike", 20, 32, 38)]),
+             ("gap", 49, 55)],
+      hrk=[("spike", 20, 43, 48)]),
  dict(ad="19 — Fırtına", w=64, ipucu="",
-      bands=[("gap", 7, 13), ("ceil", 17, 22), ("spike", 26, 30), ("ceil", 34, 39),
-             ("gap", 43, 49), ("ceil", 53, 57)],
-      hrk=[("plat", 11, 43, 49), ("spike", 20, 32, 38)]),
+      bands=[("gap", 7, 13), ("ceil", 17, 22), ("spike", 26, 31), ("ceil", 42, 47),
+             ("gap", 51, 57)],
+      hrk=[("plat", 11, 51, 57), ("spike", 20, 33, 39)]),
  dict(ad="20 — Son Kapı", w=64, ipucu="",
       bands=[("spike", 7, 10), ("ceil", 14, 17), ("gap", 21, 26), ("ceil", 30, 34),
              ("spike", 38, 42), ("ceil", 46, 50), ("gap", 54, 57)],
@@ -214,6 +214,18 @@ def kur(d):
     if bs:
         assert bs[0][1] >= BASLA_C + 3, (d["ad"], "ilk bant baslangica cok yakin")
         assert bs[-1][2] + 3 <= kapi, (d["ad"], "son bant kapiya cok yakin")
+    # Gezen dikenin KACIS YUZEYI acik olmali. Gezen diken bulundugu yuzeyi
+    # menzilinin her sutununda kapatabilir; o sutunlarda karsi yuzey de
+    # tehlikeliyse iki yuzey birden olumlu olur ve bolum ancak "tam hizda
+    # suzul" ile gecilir — oyunun geri kalaninin ogrettigi "dar yerde fren"
+    # refleksinin tersi. 18 ve 19. bolumler tam bunu yapiyordu (tur 4).
+    for tip, r, c1, c2 in d["hrk"]:
+        if tip != "spike":
+            continue
+        karsi = tavan_t if r > 2 else zemin_t
+        cakisma = sorted(karsi & set(range(c1, c2 + 1)))
+        assert not cakisma, (d["ad"], "gezen dikenin kacis yuzeyi kapali", cakisma)
+
     for tip, r, c1, c2 in d["hrk"]:
         assert 1 <= r <= H - 2 and 1 <= c1 < c2 <= w - 2, (d["ad"], "hareketli sinir disi")
         ch = "-" if tip == "plat" else "*"

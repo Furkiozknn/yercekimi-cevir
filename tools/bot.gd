@@ -1,7 +1,11 @@
 extends Node
 ## Madalya surelerini FORMULDEN degil OLCUMDEN cikaran bot.
 ##
-##   godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- [kosu] [bolum]
+##   godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- [kosu] [bolum] [iz] [insan]
+##
+##   "insan": tepki gecikmesi 0,18-0,35 sn (insan gorsel tepki suresi bandi;
+##   bot 0,05-0,20 ile olcer). Bu modda DOSYA YAZILMAZ, yalniz tablo basilir —
+##   amaci botun insani ne kadar gectigini olcmek (madalya carpani gerekcesi).
 ##
 ## Nasil calisir — iki asama:
 ##
@@ -32,13 +36,23 @@ const KOSU_SAYISI: int = 5
 const EN_FAZLA_KARE: int = 5400        ## 90 sn: bundan uzun kosu "bitiremedi"
 const TEPKI_EN_AZ: float = 0.05
 const TEPKI_EN_COK: float = 0.20
+## "insan" modu: basit gorsel tepki suresi ortancasi ~0,25 sn (laboratuvar
+## 0,20-0,25; humanbenchmark.com ortancasi ~0,27). Onceden gorulen tehlikeye
+## insan biraz erken davranir, o yuzden bant 0,18-0,35.
+const INSAN_TEPKI_EN_AZ: float = 0.18
+const INSAN_TEPKI_EN_COK: float = 0.35
 const KOTU_KOSU_CARPANI: float = 1.5   ## en iyinin bu katindan kotu kosu ortancaya girmez
 const AYKIRI_BOLUM_CARPANI: float = 2.0 ## olcegin bu katindan yavas bolum tahmine devreder
 
-# --- madalya carpanlari (gerekce raporda) ---
-const ALTIN: float = 1.15
-const GUMUS: float = 1.50
-const BRONZ: float = 2.00
+# --- madalya carpanlari (gerekce: gelistirme-4 raporu, "insan payi") ---
+## Insan tepki bandindaki bot (0,18-0,35 sn, "insan" modu) 20 bolumun 20'sinde
+## botun ortancasinin en fazla 1,30 katinda bitirdi (ortanca 1,02; 6-7-15'te
+## bir zorunlu fren = +%26-30). x1,15 ile o bot 3 bolumde altin alamiyordu,
+## yani insan icin ulasilmaz altin vardi. Altin = dogru hat + insan tepkisi +
+## olumsuz; gumus = bir olum ya da birkac tereddut (olum ~+%55); bronz = iki olum.
+const ALTIN: float = 1.35
+const GUMUS: float = 1.75
+const BRONZ: float = 2.40
 
 # --- bot davranisi ---
 const ONGORU: float = 170.0            ## tehlikeyi bu kadar once gormeye baslar
@@ -75,6 +89,9 @@ var _basili: int = 0                   ## cevir tusu kac kare daha basili kalaca
 var _fren: bool = false                ## cevirme guvenli olana kadar hizi kesiyor
 var _donma: int = 0                    ## cevirmeden sonra girdinin dondugu kare sayisi
 var _iz: bool = false                  ## tek bolum tanilamasi: her karari yaz
+var _insan: bool = false               ## insan tepki bandi, dosya yazilmaz
+var _tepki_az: float = TEPKI_EN_AZ
+var _tepki_cok: float = TEPKI_EN_COK
 var _kare_no: int = 0
 var _son_olum: int = 0
 
@@ -93,6 +110,11 @@ func _ready() -> void:
 	var kosu: int = int(arg[0]) if arg.size() > 0 else KOSU_SAYISI
 	var tek: int = int(arg[1]) if arg.size() > 1 else -1
 	_iz = arg.size() > 2 and String(arg[2]) == "iz"
+	_insan = arg.has("insan")
+	if _insan:
+		_tepki_az = INSAN_TEPKI_EN_AZ
+		_tepki_cok = INSAN_TEPKI_EN_COK
+		print("INSAN MODU: tepki %.2f-%.2f sn, dosya yazilmaz" % [_tepki_az, _tepki_cok])
 
 	Ayarlar.sifirla()
 	# Bot olcum icin birkac ayari degistiriyor, ama Ayarlar.bolum_bitti()
@@ -119,7 +141,10 @@ func _ready() -> void:
 			kayit.append(null)
 			continue
 		kayit.append(await _bolumu_olc(i, kosu))
-	_yaz(kayit)
+	if _insan:
+		_insan_tablosu(kayit)
+	else:
+		_yaz(kayit)
 
 	Ayarlar.oyun_hissi = bool(yedek["hissi"])
 	Ayarlar.inis_gostergesi = bool(yedek["inis"])
@@ -288,7 +313,7 @@ func _karar_ver(delta: float) -> void:
 	_fren = not guvenli and mesafe < SON_FREN
 	_yuru(not _fren)
 	if guvenli and _basili == 0:
-		_gecikme = randf_range(TEPKI_EN_AZ, TEPKI_EN_COK)
+		_gecikme = randf_range(_tepki_az, _tepki_cok)
 
 
 ## Simdi cevirsem: inecek yer var mi, yol temiz mi, indigim yuzey hem yeterince
@@ -512,6 +537,29 @@ func _hayalet_yaz(hayalet: Array) -> void:
 	m += "\treturn cikti\n"
 	_dosya("res://scripts/altin_hayalet.gd", m)
 	print("altin hayalet: %d nokta" % toplam)
+
+
+## "insan" modu: olcumu mevcut esiklerle yan yana bas. Rapora giren tablo bu.
+func _insan_tablosu(kayit: Array) -> void:
+	print("INSAN TABLOSU  bolum | bot ortanca (rota_verisi) | insan ortanca | oran | altin esigi | insan altin alir mi")
+	var altin_alan := 0
+	var toplam := 0
+	for k in kayit:
+		if k == null:
+			continue
+		var i: int = int(k["bolum"])
+		var e: Dictionary = Ayarlar.esik(i)
+		var bot: float = float(e["sure"])
+		var insan: float = float(k["sure"]) if not bool(k["tahmin"]) else -1.0
+		var oran: float = insan / bot if insan > 0.0 and bot > 0.0 else 0.0
+		var alir := insan > 0.0 and insan <= float(e["altin"])
+		toplam += 1
+		if alir:
+			altin_alan += 1
+		print("INSAN %2d %-16s bot %6.3f  insan %6.3f  oran %.3f  altin %6.3f  %s  (%d/%d bitti)" % [
+			i + 1, String(k["ad"]), bot, insan, oran, float(e["altin"]),
+			"ALTIN" if alir else "altin yok", int(k["biten"]), int(k["kosu"])])
+	print("INSAN OZET: %d/%d bolumde insan bandindaki bot mevcut altin esigini tutuyor" % [altin_alan, toplam])
 
 
 func _dosya(yol: String, metin: String) -> void:
