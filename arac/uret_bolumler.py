@@ -174,6 +174,12 @@ def kur(d):
                 tavan_t.add(c)
     assert not (zemin_t & tavan_t), (d["ad"], "ayni sutunda hem zemin hem tavan tehlikeli")
     bs = sorted(d["bands"], key=lambda b: b[1])
+    # Neden 3 hucre: zeminden tavana gecis ~0,94 sn surer (300 px, ivme 900,
+    # tavan hiz 430). Yon tusu BASILI tutulursa oyuncu bu sure icinde ~7 hucre
+    # yol alir; tusu birakirsa hava surtunmesi (1100 * 0,75) onu 0,15 sn'de,
+    # yani ~0,6 hucrede durdurur. Yani 3 hucrelik pencere "tusu birak ve dik in"
+    # oynayan icin rahat, hizi koruyan icin dar — zorlugun kaynagi bu, ve
+    # bolumler bu yuzden cozulebilir. Pencereyi daraltirsan ilki de imkansizlasir.
     for i in range(len(bs) - 1):
         assert bs[i][2] + 3 <= bs[i + 1][1], (d["ad"], "cevirme penceresi cok dar", bs[i], bs[i + 1])
     if bs:

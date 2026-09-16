@@ -13,7 +13,6 @@ var sure: float = 0.0
 var olum: int = 0
 var toplam_sure: float = 0.0
 var toplam_olum: int = 0
-var toplam_kristal: int = 0
 
 var _durum: int = OYNA
 var _zaman: float = 0.0
@@ -227,7 +226,6 @@ func _diken_temasi() -> void:
 
 func _kristal() -> void:
 	Ayarlar.kristal_topla(bolum_i)
-	toplam_kristal += 1
 	Ses.cal(&"kristal")
 	_parcacik(_toplama, _bolum.kristal_konumu)
 	_kristal_guncelle()
@@ -308,9 +306,9 @@ func _bastan() -> void:
 	Ses.cal(&"menu")
 	get_tree().paused = false
 	_duraklat.visible = false
-	_dogus = _bolum.baslangic
-	sure = 0.0
-	yeniden_basla()
+	# Bolumu bastan kur: yalniz dogus noktasini geri almak yetmez, etkinlesmis
+	# kontrol noktasi yanik kalir ve bir daha tetiklenmez.
+	bolum_yukle(bolum_i)
 
 
 func _ayarlara() -> void:

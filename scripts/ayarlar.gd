@@ -3,8 +3,7 @@ extends Node
 ## Ayar yapacaksan tek durak bu dosya.
 
 # --- Izgara ---
-const HUCRE: int = 16          ## piksel / kare
-const SATIR: int = 22          ## her bolum bu kadar satir yuksekliginde
+const HUCRE: int = 16          ## piksel / kare (bolum yuksekligi haritadan gelir)
 
 # --- Hareket ---
 const HIZ: float = 125.0             ## yatay en yuksek hiz
@@ -23,7 +22,6 @@ const PLATFORM_GENISLIGI: float = 48.0
 
 # --- Oyuncu govdesi ---
 const GOVDE: Vector2 = Vector2(12, 20)
-const OLUM_PAYI: float = 3.0         ## carpisma kutusunu bu kadar kucult (affedici olsun)
 
 # --- Oyun hissi (hepsi "oyun_hissi" ayariyla kapatilabilir) ---
 const IZ_SURESI: float = 0.45        ## cevirdikten sonra bu kadar sure hayalet birak
@@ -38,9 +36,7 @@ const ARKA_TERS: Color = Color(0.74, 0.86, 1.22)    ## ters yercekiminde (soguk 
 const ARKA_GECIS: float = 0.25
 
 # --- Renkler (arayuz) ---
-const RENK_ARKA: Color = Color(0.07, 0.08, 0.13)
 const RENK_METIN: Color = Color(0.90, 0.92, 0.97)
-const RENK_KRISTAL: Color = Color(0.17, 0.91, 0.96)
 const MADALYA_AD: Array = ["—", "Bronz", "Gümüş", "Altın"]
 const MADALYA_RENK: Array = [
 	Color(0.55, 0.59, 0.70), Color(0.72, 0.44, 0.31),
