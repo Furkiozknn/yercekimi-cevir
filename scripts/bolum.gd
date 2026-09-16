@@ -214,6 +214,10 @@ func _hareketli_ekle(tip: String, r: int, c1: int, c2: int) -> void:
 		"max_x": sag - genislik * 0.5,
 		"yon": 1.0,
 		"hiz": Ayarlar.PLATFORM_HIZI if tip == "-" else Ayarlar.GEZGIN_DIKEN_HIZI,
+		# Asagidaki iki alan inis gostergesi ve bot icin: parcanin ne oldugu
+		# (basilabilir mi, olduruyor mu) ve carpisma kutusunun yari olcusu.
+		"kati": tip == "-",
+		"yari": Vector2(genislik * 0.5 - pay, yukseklik * 0.5 - pay),
 	})
 
 
@@ -293,9 +297,81 @@ func sifirla() -> void:
 		h["yon"] = 1.0
 
 
+## --- Hareketli parcalar: zaman farkindali sorgular --------------------------
+##
+## Inis gostergesi ve bot "simdi cevirirsem nereye inerim" diye soruyor; cevap
+## ~0,9 saniye SONRASI icin. O sure icinde platform 42 px, gezgin diken 56 px
+## yol aliyor. Bu yuzden sorgular bir t (saniye) alir ve parcayi o kadar
+## ilerletir; t = 0 su anki konumdur.
+
+## Parcanin t saniye sonraki x konumu. Gidip gelen hareket ucgen dalgadir:
+## konumu [0, 2*acikl) araligina acip geri katliyoruz — kare kare benzetmeye
+## gerek yok, kapali cozum var.
+func _ileri_x(h: Dictionary, t: float) -> float:
+	var mn: float = h["min_x"]
+	var mx: float = h["max_x"]
+	var acikl: float = mx - mn
+	if acikl <= 0.0 or t <= 0.0:
+		return float((h["dugum"] as Node2D).position.x)
+	var x: float = float((h["dugum"] as Node2D).position.x)
+	var faz: float = (x - mn) if float(h["yon"]) >= 0.0 else (2.0 * acikl - (x - mn))
+	faz = fposmod(faz + float(h["hiz"]) * t, 2.0 * acikl)
+	return mn + (faz if faz <= acikl else 2.0 * acikl - faz)
+
+
+## kati=true  -> platform (basilabilir yuzey)
+## kati=false -> gezen diken (oldurur)
+##
+## Oldurucu parcanin kutusu sorguda 4 px buyutulur: inis benzetmesi 1/60 sn
+## adimlarla ilerliyor, en yuksek dusus hizinda adim 7,2 px, gezgin dikenin
+## kutusu ise yalniz 4 px yuksek — buyutmezsek benzetme dikenin icinden
+## gecip "temiz" diyebiliyor. Tehlikede comert olmak dogru yon.
+func hareketli_kesisiyor(kutu: Rect2, kati: bool, t: float = 0.0) -> bool:
+	for h in _hareketliler:
+		if bool(h["kati"]) != kati:
+			continue
+		var yari: Vector2 = h["yari"]
+		var merkez := Vector2(_ileri_x(h, t), (h["dugum"] as Node2D).position.y)
+		var p := Rect2(merkez - yari, yari * 2.0)
+		if not kati:
+			p = p.grow(4.0)
+		if p.intersects(kutu):
+			return true
+	return false
+
+
+## Nokta sorgusu (inis benzetmesi ayak noktasini boyle soruyor).
+func hareketli_nokta(nokta: Vector2, kati: bool, t: float = 0.0) -> bool:
+	return hareketli_kesisiyor(Rect2(nokta - Vector2(0.5, 0.5), Vector2.ONE), kati, t)
+
+
 ## Verilen dunya noktasi kati bir karo mu? (inis gostergesi bunu kullanir)
 func kati_mi(nokta: Vector2) -> bool:
 	return _hucre(nokta) == "#"
+
+
+## Verilen dikdortgen bir dikene DEGIYOR mu?
+##
+## Nokta sorgusu (olumcul_mu) yetmiyor: inis tahmini ayak noktasini izliyordu,
+## cevirdikten sonra "ayak" bas oluyor ve govdenin geri kalani zemin dikeninin
+## icinden gecerken tahmin "temiz" diyordu. Burada dikenin GERCEK isabet
+## kutusu kullaniliyor (gorselden DIKEN_PAY kadar kucuk, bkz. kur()).
+func olumcul_kutu(kutu: Rect2) -> bool:
+	var c1 := int(floor(kutu.position.x / float(H)))
+	var c2 := int(floor((kutu.end.x - 0.001) / float(H)))
+	var r1 := int(floor(kutu.position.y / float(H)))
+	var r2 := int(floor((kutu.end.y - 0.001) / float(H)))
+	for r in range(maxi(r1, 0), mini(r2 + 1, harita.size())):
+		var satir: String = harita[r]
+		for c in range(maxi(c1, 0), mini(c2 + 1, satir.length())):
+			var ch := satir[c]
+			if ch != "^" and ch != "v":
+				continue
+			var y := float(r * H)
+			var d := Rect2(float(c * H) + 4.0, (y + 8.0) if ch == "^" else y, 8.0, 8.0)
+			if d.intersects(kutu):
+				return true
+	return false
 
 
 ## Verilen dunya noktasi diken karesi mi? (inis gostergesi uyariyi buradan alir)
