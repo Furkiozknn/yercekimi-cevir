@@ -1,8 +1,13 @@
 extends CharacterBody2D
 ## Tek dikey eylem: CEVIR. Yercekimi isaretini ters cevirir, oyuncu tavana "duser".
 ## Ziplama yok. Cevirme yalniz bir yuzeye degerken calisir + kisa giris tamponu var.
+##
+## Okunurluk: cevirince kisa bir hayalet izi birakir, sprite esneyip sikisir ve
+## "cevirdi" sinyaliyle sahneye sarsinti/ses/arka plan kaymasi haber verilir.
 
 signal oldu
+signal cevirdi(yeni_yon: float)
+signal kondu
 
 var yercekimi_yonu: float = 1.0   ## 1 = asagi ceker, -1 = yukari ceker
 var yasiyor: bool = true
@@ -10,6 +15,10 @@ var girdi_acik: bool = true       ## testler kapatabilsin diye
 
 var _tampon: float = 0.0
 var _bakis: float = 1.0
+var _iz_kalan: float = 0.0
+var _iz_sayaci: float = 0.0
+var _onceki_yerde: bool = true
+var _ezilme: Tween = null
 
 @onready var _gorsel: AnimatedSprite2D = $Gorsel
 
@@ -19,7 +28,7 @@ func _ready() -> void:
 	up_direction = Vector2(0.0, -yercekimi_yonu)
 
 
-## Bolum basina dondurur.
+## Bolum basina (ya da kontrol noktasina) dondurur.
 func hazirla(konum: Vector2) -> void:
 	position = konum
 	velocity = Vector2.ZERO
@@ -27,8 +36,11 @@ func hazirla(konum: Vector2) -> void:
 	up_direction = Vector2.UP
 	_tampon = 0.0
 	_bakis = 1.0
+	_iz_kalan = 0.0
+	_onceki_yerde = true
 	yasiyor = true
 	_gorsel.flip_v = false
+	_gorsel.scale = Vector2.ONE
 	visible = true
 	set_physics_process(true)
 
@@ -38,6 +50,7 @@ func oldur() -> void:
 		return
 	yasiyor = false
 	velocity = Vector2.ZERO
+	_iz_kalan = 0.0
 	set_physics_process(false)
 	oldu.emit()
 
@@ -50,6 +63,10 @@ func cevir() -> bool:
 	up_direction = Vector2(0.0, -yercekimi_yonu)
 	velocity.y = Ayarlar.CEVIR_ITISI * yercekimi_yonu
 	_tampon = 0.0
+	_iz_kalan = Ayarlar.IZ_SURESI
+	_iz_sayaci = 0.0
+	_ezil(Vector2(0.72, 1.28))
+	cevirdi.emit(yercekimi_yonu)
 	return true
 
 
@@ -86,15 +103,59 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	var simdi_yerde := is_on_floor()
+	if simdi_yerde and not _onceki_yerde:
+		_ezil(Vector2(1.28, 0.72))
+		kondu.emit()
+	_onceki_yerde = simdi_yerde
+
+	_iz_isle(delta)
+
 	if yon != 0.0:
 		_bakis = yon
 	_gorsel.flip_h = _bakis < 0.0
 	_gorsel.flip_v = yercekimi_yonu < 0.0
 
 	var anim: StringName
-	if is_on_floor():
+	if simdi_yerde:
 		anim = &"idle" if absf(velocity.x) < 5.0 else &"yuru"
 	else:
 		anim = &"zipla" if velocity.y * yercekimi_yonu < 0.0 else &"dus"
 	if _gorsel.animation != anim:
 		_gorsel.play(anim)
+
+
+## Cevirme anini okunur kilan kisa hayalet izi.
+func _iz_isle(delta: float) -> void:
+	if _iz_kalan <= 0.0:
+		return
+	_iz_kalan -= delta
+	if not Ayarlar.oyun_hissi:
+		return
+	_iz_sayaci -= delta
+	if _iz_sayaci > 0.0:
+		return
+	_iz_sayaci = Ayarlar.IZ_ARALIGI
+	var kareler: SpriteFrames = _gorsel.sprite_frames
+	var hayalet := Sprite2D.new()
+	hayalet.texture = kareler.get_frame_texture(_gorsel.animation, _gorsel.frame)
+	hayalet.flip_h = _gorsel.flip_h
+	hayalet.flip_v = _gorsel.flip_v
+	hayalet.global_position = global_position
+	hayalet.modulate = Ayarlar.IZ_RENGI
+	hayalet.z_index = -1
+	get_parent().add_child(hayalet)
+	var t := hayalet.create_tween()
+	t.tween_property(hayalet, "modulate:a", 0.0, 0.28)
+	t.tween_callback(hayalet.queue_free)
+
+
+func _ezil(olcek: Vector2) -> void:
+	if not Ayarlar.oyun_hissi:
+		return
+	if _ezilme != null and _ezilme.is_valid():
+		_ezilme.kill()
+	_gorsel.scale = olcek
+	_ezilme = create_tween()
+	_ezilme.tween_property(_gorsel, "scale", Vector2.ONE, Ayarlar.EZILME_SURESI) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

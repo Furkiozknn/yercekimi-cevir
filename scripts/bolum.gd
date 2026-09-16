@@ -1,30 +1,54 @@
 extends Node2D
 class_name Bolum
 ## ASCII haritayi (Bolumler.BOLUMLER) calisma aninda gecerli bir bolume cevirir:
-## carpisma govdeleri + yer tutucu cizim. Cizim _draw ile tek seferde yapilir,
-## hareketli parcalar kendi Polygon2D'leriyle gelir.
+## carpisma govdeleri + pixel art cizim. Sabit parcalar _draw ile tek seferde
+## cizilir; hareketli parcalar, kristal ve kontrol noktasi kendi dugumleriyle gelir.
 
 signal olum_temasi
 signal kapiya_varildi
+signal kristal_alindi
+signal kontrol_alindi(konum: Vector2)
 
 const A := preload("res://scripts/ayarlar.gd")
 const H: int = A.HUCRE
+
+const T_KARO := preload("res://assets/sprites/karo.png")
+const T_KARO_UST := preload("res://assets/sprites/karo_ust.png")
+const T_DIKEN := preload("res://assets/sprites/diken.png")
+const T_KAPI := preload("res://assets/sprites/kapi.png")
+const T_PLATFORM := preload("res://assets/sprites/platform.png")
+const T_GEZGIN := preload("res://assets/sprites/gezgin.png")
+const T_KRISTAL := preload("res://assets/sprites/kristal.png")
+const T_KONTROL := preload("res://assets/sprites/kontrol.png")
 
 var baslangic: Vector2 = Vector2.ZERO
 var genislik_px: int = 0
 var yukseklik_px: int = 0
 var kapi_sayisi: int = 0
+var kristal_konumu: Vector2 = Vector2.ZERO
+var kontrol_konumu: Vector2 = Vector2.ZERO   ## ZERO = bu bolumde kontrol noktasi yok
 
 var _blok_kutulari: Array[Rect2] = []
-var _ust_kenarlar: Array[Rect2] = []
-var _diken_ucgenleri: Array[PackedVector2Array] = []
+var _ust_hucreler: Array[Vector2] = []
+var _alt_hucreler: Array[Vector2] = []
+var _dikenler: Array = []                     ## [Vector2 konum, bool yukari]
 var _kapi_kutulari: Array[Rect2] = []
 var _hareketliler: Array[Dictionary] = []
+var _kristal: Area2D = null
+var _kontrol: Area2D = null
+var _kontrol_gorsel: Sprite2D = null
+var _zaman: float = 0.0
 
 ## Bolum kurulurken oyuncu hala onceki bolumun konumundadir. Alanlar hemen dinlerse
 ## fizik sunucusu bu bayat ortusmeyi yeni kapiya/dikene sayiyor ve bolum atlaniyordu.
 ## Bu yuzden alanlar ilk fizik karesinden sonra acilir.
 var _alan_gecikmesi: int = 2
+
+
+func _ready() -> void:
+	# Doseme karosu draw_texture_rect(..., tile=true) ile cizilir; tekrar kapaliysa
+	# karodan tek bir gerilmis kopya cikar.
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 
 
 func kur(veri: Dictionary) -> void:
@@ -66,21 +90,21 @@ func kur(veri: Dictionary) -> void:
 					var yukari := ch == "^"
 					var x := c * H
 					var y := r * H
-					if yukari:
-						_diken_ucgenleri.append(PackedVector2Array([
-							Vector2(x, y + H), Vector2(x + H, y + H), Vector2(x + H * 0.5, y + 2)]))
-						_kutu_ekle(dikenler, Rect2(x + 4, y + 8, 8, 8))
-					else:
-						_diken_ucgenleri.append(PackedVector2Array([
-							Vector2(x, y), Vector2(x + H, y), Vector2(x + H * 0.5, y + H - 2)]))
-						_kutu_ekle(dikenler, Rect2(x + 4, y, 8, 8))
+					_dikenler.append([Vector2(x, y), yukari])
+					_kutu_ekle(dikenler, Rect2(x + 4, (y + 8) if yukari else float(y), 8, 8))
 				"S":
 					baslangic = Vector2(c * H + H * 0.5, (r + 1) * H - Ayarlar.GOVDE.y * 0.5 - 1.0)
 				"K":
-					var kk := Rect2(c * H + 2, r * H - 24, 12, 40)
+					# Kapi tam hucre genisliginde ve 3 hucre boyunda: gorsel ile
+					# carpisma ayni, boylece yukaridan gelen oyuncu da kapiyi bulur.
+					var kk := Rect2(c * H, r * H - 32, H, 48)
 					_kapi_kutulari.append(kk)
 					_kutu_ekle(kapi, kk)
 					kapi_sayisi += 1
+				"C":
+					kristal_konumu = Vector2(c * H + H * 0.5, r * H + H * 0.5)
+				"P":
+					kontrol_konumu = Vector2(c * H + H * 0.5, (r + 1) * H - 12.0)
 				"-", "*":
 					var bas2 := c
 					while c < sutun_sayisi and s[c] == ch:
@@ -89,19 +113,24 @@ func kur(veri: Dictionary) -> void:
 					continue
 			c += 1
 
-	# ust kenar vurgusu: ustunde blok olmayan hucre siralari
+	# Yuruyus yuzeyleri: ustunde (ya da altinda) blok olmayan hucreler uyari seritli
+	# karo ile cizilir — cevirme oyununda iki yuzey de yuruyus yuzeyi.
 	for r in satir_sayisi:
 		var s: String = harita[r]
-		var c := 0
-		while c < sutun_sayisi:
-			if s[c] != "#" or (r > 0 and String(harita[r - 1])[c] == "#"):
-				c += 1
+		for c in sutun_sayisi:
+			if s[c] != "#":
 				continue
-			var bas := c
-			while c < sutun_sayisi and s[c] == "#" and (r == 0 or String(harita[r - 1])[c] != "#"):
-				c += 1
-			_ust_kenarlar.append(Rect2(bas * H, r * H, (c - bas) * H, 3))
+			# Haritanin dis kenari (ust satirin ustu, alt satirin alti) gorunmez:
+			# oraya serit cizmek yuruyus yuzeyini yanlis tarafa koyuyor.
+			if r > 0 and String(harita[r - 1])[c] != "#":
+				_ust_hucreler.append(Vector2(c * H, r * H))
+			if r < satir_sayisi - 1 and String(harita[r + 1])[c] != "#":
+				_alt_hucreler.append(Vector2(c * H, r * H))
 
+	if kristal_konumu != Vector2.ZERO:
+		_kristal_ekle()
+	if kontrol_konumu != Vector2.ZERO:
+		_kontrol_ekle()
 	queue_redraw()
 
 
@@ -112,6 +141,40 @@ func _kutu_ekle(ebeveyn: Node, kutu: Rect2) -> void:
 	sekil.shape = dikdortgen
 	sekil.position = kutu.position + kutu.size * 0.5
 	ebeveyn.add_child(sekil)
+
+
+func _alan_kur(ad: String, konum: Vector2, kutu: Vector2, doku: Texture2D, kare_sayisi: int) -> Area2D:
+	var a := Area2D.new()
+	a.name = ad
+	a.monitoring = false
+	a.position = konum
+	var gorsel := Sprite2D.new()
+	gorsel.name = "Gorsel"
+	gorsel.texture = doku
+	gorsel.hframes = kare_sayisi
+	a.add_child(gorsel)
+	_kutu_ekle(a, Rect2(-kutu * 0.5, kutu))
+	add_child(a)
+	return a
+
+
+func _kristal_ekle() -> void:
+	_kristal = _alan_kur("Kristal", kristal_konumu, Vector2(12, 12), T_KRISTAL, 1)
+	_kristal.body_entered.connect(func(govde: Node) -> void:
+		if govde.is_in_group("oyuncu") and _kristal.visible:
+			_kristal.hide()
+			# sinyal islenirken monitoring degistirilemez
+			_kristal.set_deferred("monitoring", false)
+			kristal_alindi.emit())
+
+
+func _kontrol_ekle() -> void:
+	_kontrol = _alan_kur("Kontrol", kontrol_konumu, Vector2(12, 20), T_KONTROL, 2)
+	_kontrol_gorsel = _kontrol.get_node("Gorsel")
+	_kontrol.body_entered.connect(func(govde: Node) -> void:
+		if govde.is_in_group("oyuncu") and _kontrol_gorsel.frame == 0:
+			_kontrol_gorsel.frame = 1
+			kontrol_alindi.emit(kontrol_konumu + Vector2(0.0, 12.0 - Ayarlar.GOVDE.y * 0.5 - 1.0)))
 
 
 func _hareketli_ekle(tip: String, r: int, c1: int, c2: int) -> void:
@@ -131,11 +194,8 @@ func _hareketli_ekle(tip: String, r: int, c1: int, c2: int) -> void:
 		dugum = a
 	dugum.position = Vector2(sol + genislik * 0.5, y)
 	_kutu_ekle(dugum, Rect2(-genislik * 0.5, -yukseklik * 0.5, genislik, yukseklik))
-	var gorsel := Polygon2D.new()
-	gorsel.color = Ayarlar.RENK_PLATFORM if tip == "-" else Ayarlar.RENK_DIKEN
-	gorsel.polygon = PackedVector2Array([
-		Vector2(-genislik * 0.5, -yukseklik * 0.5), Vector2(genislik * 0.5, -yukseklik * 0.5),
-		Vector2(genislik * 0.5, yukseklik * 0.5), Vector2(-genislik * 0.5, yukseklik * 0.5)])
+	var gorsel := Sprite2D.new()
+	gorsel.texture = T_PLATFORM if tip == "-" else T_GEZGIN
 	dugum.add_child(gorsel)
 	add_child(dugum)
 	_hareketliler.append({
@@ -151,7 +211,7 @@ func _physics_process(delta: float) -> void:
 	if _alan_gecikmesi > 0:
 		_alan_gecikmesi -= 1
 		if _alan_gecikmesi == 0:
-			for ad in ["Dikenler", "Kapi"]:
+			for ad in ["Dikenler", "Kapi", "Kristal", "Kontrol"]:
 				var alan: Area2D = get_node_or_null(ad)
 				if alan != null:
 					alan.monitoring = true
@@ -167,6 +227,13 @@ func _physics_process(delta: float) -> void:
 		d.position.x = x
 
 
+func _process(delta: float) -> void:
+	if _kristal == null or not _kristal.visible:
+		return
+	_zaman += delta
+	_kristal.position.y = kristal_konumu.y + sin(_zaman * 3.0) * 1.5
+
+
 func _govde_girdi(govde: Node, olumcul: bool) -> void:
 	if not govde.is_in_group("oyuncu"):
 		return
@@ -177,20 +244,32 @@ func _govde_girdi(govde: Node, olumcul: bool) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(-64, -64, genislik_px + 128, yukseklik_px + 128), Ayarlar.RENK_ARKA)
 	for k in _blok_kutulari:
-		draw_rect(k, Ayarlar.RENK_BLOK)
-	for k in _ust_kenarlar:
-		draw_rect(k, Ayarlar.RENK_BLOK_UST)
-	for u in _diken_ucgenleri:
-		draw_colored_polygon(u, Ayarlar.RENK_DIKEN)
+		draw_texture_rect(T_KARO, k, true)
+	for p in _ust_hucreler:
+		draw_texture_rect(T_KARO_UST, Rect2(p, Vector2(H, H)), false)
+	for p in _alt_hucreler:
+		# dikey ayna: negatif yukseklik
+		draw_texture_rect(T_KARO_UST, Rect2(p.x, p.y + H, H, -H), false)
+	for d in _dikenler:
+		var p: Vector2 = d[0]
+		if d[1]:
+			draw_texture_rect(T_DIKEN, Rect2(p, Vector2(H, H)), false)
+		else:
+			draw_texture_rect(T_DIKEN, Rect2(p.x, p.y + H, H, -H), false)
 	for k in _kapi_kutulari:
-		draw_rect(k, Ayarlar.RENK_KAPI)
-		draw_rect(Rect2(k.position.x + 2, k.position.y + 2, k.size.x - 4, k.size.y - 4),
-			Ayarlar.RENK_KAPI.darkened(0.35))
+		draw_texture_rect(T_KAPI, k, false)
+
+
+## Kristali gizler (onceki oturumda toplandiysa bolum kurulurken cagrilir).
+func kristali_gizle() -> void:
+	if _kristal != null:
+		_kristal.hide()
+		_kristal.monitoring = false
 
 
 ## Bolum basina donunce hareketli parcalar da basa donsun (yeniden deneme adil olsun).
+## Toplanan kristal ve etkinlesen kontrol noktasi geri gelmez.
 func sifirla() -> void:
 	for h in _hareketliler:
 		var d: Node2D = h["dugum"]

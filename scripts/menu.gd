@@ -4,14 +4,28 @@ extends Control
 func _ready() -> void:
 	$Kutu/Basla.pressed.connect(_basla)
 	$Kutu/Sec.pressed.connect(func() -> void:
+		Ses.cal(&"menu")
 		get_tree().change_scene_to_file("res://scenes/bolum_sec.tscn"))
-	$Kutu/Cikis.pressed.connect(func() -> void: get_tree().quit())
+	$Kutu/Ayar.pressed.connect(func() -> void:
+		Ses.cal(&"menu")
+		Ayarlar.donus_sahnesi = "res://scenes/menu.tscn"
+		get_tree().change_scene_to_file("res://scenes/ayarlar_ekrani.tscn"))
+	# Once ses durdurulup motora bir karistirma turu birakilir; yoksa cikista
+	# "resource still in use" hatasi basiyor.
+	$Kutu/Cikis.pressed.connect(func() -> void:
+		Ses.kapat()
+		await get_tree().create_timer(0.12).timeout
+		get_tree().quit())
 	if OS.has_feature("web"):
 		$Kutu/Cikis.hide()
-	$Durum.text = "Açık bölüm: %d / %d" % [Ayarlar.acilan_bolum + 1, Ayarlar.bolum_sayisi()]
+	$Durum.text = "%d / %d kristal      Açık bölüm: %d / %d" % [
+		Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
+		Ayarlar.acilan_bolum + 1, Ayarlar.bolum_sayisi()]
 	$Kutu/Basla.grab_focus()
+	Ses.muzik(&"menu")
 
 
 func _basla() -> void:
+	Ses.cal(&"menu")
 	Ayarlar.secilen_bolum = Ayarlar.acilan_bolum
 	get_tree().change_scene_to_file("res://scenes/oyun.tscn")

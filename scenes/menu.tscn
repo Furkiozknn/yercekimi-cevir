@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/menu.gd" id="1_kod"]
+[ext_resource type="Texture2D" path="res://assets/sprites/arka_1.png" id="2_arka"]
+[ext_resource type="Texture2D" path="res://assets/sprites/kristal.png" id="3_kristal"]
 
 [node name="Menu" type="Control"]
 anchor_right = 1.0
@@ -12,41 +14,67 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 color = Color(0.07, 0.08, 0.13, 1)
 
+[node name="ArkaSol" type="TextureRect" parent="."]
+modulate = Color(1, 1, 1, 0.45)
+offset_right = 320.0
+offset_bottom = 360.0
+texture = ExtResource("2_arka")
+
+[node name="ArkaSag" type="TextureRect" parent="."]
+modulate = Color(1, 1, 1, 0.45)
+offset_left = 320.0
+offset_right = 640.0
+offset_bottom = 360.0
+texture = ExtResource("2_arka")
+flip_h = true
+
 [node name="Baslik" type="Label" parent="."]
+theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 offset_left = 40.0
-offset_top = 44.0
+offset_top = 40.0
 offset_right = 600.0
-offset_bottom = 84.0
+offset_bottom = 80.0
 theme_override_font_sizes/font_size = 30
 theme_override_colors/font_color = Color(0.29, 0.85, 0.45, 1)
 text = "YERÇEKİMİ ÇEVİR"
 horizontal_alignment = 1
 
 [node name="AltBaslik" type="Label" parent="."]
+theme_override_constants/outline_size = 4
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 offset_left = 40.0
-offset_top = 86.0
+offset_top = 82.0
 offset_right = 600.0
-offset_bottom = 104.0
+offset_bottom = 100.0
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.7, 0.74, 0.85, 1)
 text = "Zıplama yok. Tek tuş: yerçekimini çevir."
 horizontal_alignment = 1
 
+[node name="KristalIkon" type="TextureRect" parent="."]
+offset_left = 264.0
+offset_top = 296.0
+offset_right = 276.0
+offset_bottom = 308.0
+texture = ExtResource("3_kristal")
+
 [node name="Durum" type="Label" parent="."]
-offset_left = 40.0
-offset_top = 300.0
+theme_override_constants/outline_size = 4
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+offset_left = 280.0
+offset_top = 295.0
 offset_right = 600.0
-offset_bottom = 318.0
+offset_bottom = 311.0
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.6, 0.64, 0.75, 1)
-horizontal_alignment = 1
 
 [node name="Kutu" type="VBoxContainer" parent="."]
 offset_left = 245.0
-offset_top = 136.0
+offset_top = 118.0
 offset_right = 395.0
-offset_bottom = 280.0
-theme_override_constants/separation = 12
+offset_bottom = 282.0
+theme_override_constants/separation = 10
 
 [node name="Basla" type="Button" parent="Kutu"]
 layout_mode = 2
@@ -55,6 +83,10 @@ text = "Başla"
 [node name="Sec" type="Button" parent="Kutu"]
 layout_mode = 2
 text = "Bölüm Seç"
+
+[node name="Ayar" type="Button" parent="Kutu"]
+layout_mode = 2
+text = "Ayarlar"
 
 [node name="Cikis" type="Button" parent="Kutu"]
 layout_mode = 2

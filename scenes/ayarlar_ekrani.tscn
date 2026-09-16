@@ -1,0 +1,118 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ayarlar_ekrani.gd" id="1_kod"]
+
+[node name="AyarEkrani" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_kod")
+
+[node name="Arka" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.07, 0.08, 0.13, 1)
+
+[node name="Baslik" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 620.0
+offset_bottom = 48.0
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "AYARLAR"
+horizontal_alignment = 1
+
+[node name="Kutu" type="VBoxContainer" parent="."]
+offset_left = 140.0
+offset_top = 70.0
+offset_right = 500.0
+offset_bottom = 280.0
+theme_override_constants/separation = 14
+
+[node name="Izgara" type="GridContainer" parent="Kutu"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 10
+columns = 3
+
+[node name="MuzikYazi" type="Label" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "Müzik"
+vertical_alignment = 1
+
+[node name="Muzik" type="HSlider" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 20)
+max_value = 1.0
+step = 0.05
+
+[node name="MuzikAcik" type="CheckButton" parent="Kutu/Izgara"]
+layout_mode = 2
+toggle_mode = true
+
+[node name="EfektYazi" type="Label" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "Ses efektleri"
+vertical_alignment = 1
+
+[node name="Efekt" type="HSlider" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 20)
+max_value = 1.0
+step = 0.05
+
+[node name="EfektAcik" type="CheckButton" parent="Kutu/Izgara"]
+layout_mode = 2
+toggle_mode = true
+
+[node name="TamEkranYazi" type="Label" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "Tam ekran"
+vertical_alignment = 1
+
+[node name="TamEkranBosluk" type="Control" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 4)
+
+[node name="TamEkran" type="CheckButton" parent="Kutu/Izgara"]
+layout_mode = 2
+toggle_mode = true
+
+[node name="HisYazi" type="Label" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+text = "Oyun hissi"
+vertical_alignment = 1
+
+[node name="HisBosluk" type="Control" parent="Kutu/Izgara"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 4)
+
+[node name="OyunHissi" type="CheckButton" parent="Kutu/Izgara"]
+layout_mode = 2
+toggle_mode = true
+
+[node name="Not" type="Label" parent="Kutu"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.6, 0.64, 0.75, 1)
+text = "Oyun hissi: ekran sarsıntısı, parçacık ve çevirme izi. Rahatsız ederse kapat."
+autowrap_mode = 2
+
+[node name="Geri" type="Button" parent="."]
+offset_left = 270.0
+offset_top = 302.0
+offset_right = 370.0
+offset_bottom = 332.0
+text = "Geri"
