@@ -52,29 +52,40 @@ theme_override_colors/font_color = Color(0.7, 0.74, 0.85, 1)
 text = "Zıplama yok. Tek tuş: yerçekimini çevir."
 horizontal_alignment = 1
 
+[node name="Gunluk" type="Label" parent="."]
+theme_override_constants/outline_size = 4
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+offset_left = 40.0
+offset_top = 302.0
+offset_right = 600.0
+offset_bottom = 318.0
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(1, 0.91, 0.38, 1)
+horizontal_alignment = 1
+
 [node name="KristalIkon" type="TextureRect" parent="."]
 offset_left = 264.0
-offset_top = 296.0
+offset_top = 320.0
 offset_right = 276.0
-offset_bottom = 308.0
+offset_bottom = 332.0
 texture = ExtResource("3_kristal")
 
 [node name="Durum" type="Label" parent="."]
 theme_override_constants/outline_size = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
 offset_left = 280.0
-offset_top = 295.0
+offset_top = 319.0
 offset_right = 600.0
-offset_bottom = 311.0
+offset_bottom = 335.0
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.6, 0.64, 0.75, 1)
 
 [node name="Kutu" type="VBoxContainer" parent="."]
 offset_left = 245.0
-offset_top = 118.0
+offset_top = 104.0
 offset_right = 395.0
-offset_bottom = 282.0
-theme_override_constants/separation = 10
+offset_bottom = 300.0
+theme_override_constants/separation = 8
 
 [node name="Basla" type="Button" parent="Kutu"]
 layout_mode = 2
@@ -83,6 +94,10 @@ text = "Başla"
 [node name="Sec" type="Button" parent="Kutu"]
 layout_mode = 2
 text = "Bölüm Seç"
+
+[node name="Gunluk" type="Button" parent="Kutu"]
+layout_mode = 2
+text = "Günün Bölümü"
 
 [node name="Ayar" type="Button" parent="Kutu"]
 layout_mode = 2

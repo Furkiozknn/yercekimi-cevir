@@ -3,9 +3,12 @@ extends Control
 
 func _ready() -> void:
 	Ayarlar.zaman_sifirla()
+	Ayarlar.gunluk_mod = false          # menuye donen her yol gunluk modu kapatir
 	Ayarlar.dokunmatik_degisti.connect(_alt_basligi_yaz)
 	_alt_basligi_yaz()
 	$Kutu/Basla.pressed.connect(_basla)
+	$Kutu/Gunluk.pressed.connect(_gunluk)
+	$Gunluk.text = "Günün bölümü: %s · en iyi %s" % [Ayarlar.gunluk_baslik(), Ayarlar.gunluk_en_iyi_metin()]
 	$Kutu/Sec.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
 		get_tree().change_scene_to_file("res://scenes/bolum_sec.tscn"))
@@ -37,4 +40,12 @@ func _alt_basligi_yaz() -> void:
 func _basla() -> void:
 	Ses.cal(&"menu")
 	Ayarlar.secilen_bolum = Ayarlar.acilan_bolum
+	get_tree().change_scene_to_file("res://scenes/oyun.tscn")
+
+
+## Gunun bolumu: tarihten secilen bolum + degistirici, ayri kayit yuvasi.
+func _gunluk() -> void:
+	Ses.cal(&"menu")
+	Ayarlar.gunluk_mod = true
+	Ayarlar.secilen_bolum = Ayarlar.gunluk_bolum()
 	get_tree().change_scene_to_file("res://scenes/oyun.tscn")

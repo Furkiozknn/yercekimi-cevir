@@ -40,6 +40,11 @@ var _altin_yol: PackedVector2Array = PackedVector2Array()   ## botun olculmus al
 var _olum_yerleri: Array[Vector2] = []
 var _bekleme: float = TAMAM_BEKLEME   ## bu bolum bitisinde beklenecek sure
 
+# Gunluk bolum (Ayarlar.gunluk_mod): kristal bu yuklemede alindi mi?
+# Ana oyunda kristal Ayarlar'a yazilir; gunluk modda YAZILMAZ, yalniz
+# "kristal zorunlu" degistiricisinin kapisini acar.
+var _kristal_alindi: bool = false
+
 @onready var _dunya: Node2D = $Dunya
 @onready var _oyuncu: CharacterBody2D = $Dunya/Oyuncu
 @onready var _kamera: Camera2D = $Dunya/Kamera
@@ -149,8 +154,9 @@ func bolum_yukle(i: int) -> void:
 	_bolum.kapiya_varildi.connect(_kapi)
 	_bolum.kristal_alindi.connect(_kristal)
 	_bolum.kontrol_alindi.connect(_kontrol)
-	if Ayarlar.kristal_var(bolum_i):
-		_bolum.kristali_gizle()
+	_kristal_alindi = false
+	if Ayarlar.kristal_var(bolum_i) and not Ayarlar.gunluk_mod:
+		_bolum.kristali_gizle()      # gunluk modda kristal her gun yeniden orada
 
 	_kamera.limit_left = 0
 	_kamera.limit_right = maxi(_bolum.genislik_px, Ayarlar.ODA_GENISLIGI)
@@ -172,7 +178,13 @@ func bolum_yukle(i: int) -> void:
 	_hayalet.visible = false
 	_altin_yol = Ayarlar.altin_hayalet_yolu(bolum_i)
 	_altin.visible = false
+	if Ayarlar.gunluk_mod:
+		# Hayaletler normal baslangicin kaydi; ters baslangicta yalan soylerler.
+		_hayalet_yol = PackedVector2Array()
+		_altin_yol = PackedVector2Array()
 	_ad.text = String(veri["ad"])
+	if Ayarlar.gunluk_mod:
+		_ad.text += "   GÜNÜN BÖLÜMÜ · " + Ayarlar.gunluk_degistirici_adi()
 	_ipucu.text = Ayarlar.kontrol_metni(String(veri["ipucu"]))
 	_yardim_rozet.visible = Ayarlar.yardim_acik
 	$Arayuz/YardimArka.visible = Ayarlar.yardim_acik
@@ -199,16 +211,28 @@ func _hayalet_rengi() -> Color:
 
 func yeniden_basla() -> void:
 	_bolum.sifirla()
-	_oyuncu.hazirla(_dogus)
+	var yon := _baslangic_yonu()
+	_oyuncu.hazirla(_dogus, yon)
 	_kamera.reset_smoothing()
 	_mesaj.text = ""
 	_durum = OYNA
 	_zaman = 0.0
-	_arka_ton(1.0, true)
+	_arka_ton(yon, true)
 	_kamera_guncelle(true)
 
 
+## Gunluk "ters baslangic": yalniz bolum basinda ters dogarsin; kontrol
+## noktasindan dogus normaldir (nokta zeminde duruyor).
+func _baslangic_yonu() -> float:
+	if Ayarlar.gunluk_mod and Ayarlar.gunluk_degistirici() == 0 and _dogus == _bolum.baslangic:
+		return -1.0
+	return 1.0
+
+
 func _hedef_guncelle() -> void:
+	if Ayarlar.gunluk_mod:
+		_hedef.text = "Günün bölümü · en iyi %s · ana ilerlemeye yazmaz" % Ayarlar.gunluk_en_iyi_metin()
+		return
 	var az := Ayarlar.en_az_al(bolum_i)
 	var e := Ayarlar.esik(bolum_i)
 	_hedef.text = "● %.2f ● %.2f ● %.2f sn · en az ⟳ %d · en iyi %s%s" % [
@@ -217,6 +241,11 @@ func _hedef_guncelle() -> void:
 
 
 func _kristal_guncelle() -> void:
+	if Ayarlar.gunluk_mod:
+		_kristal_ikon.modulate.a = 1.0 if _kristal_alindi else 0.28
+		_kristal_yazi.text = ("kristal alındı" if _kristal_alindi else
+			("kristal ZORUNLU — kapı onsuz açılmaz" if Ayarlar.gunluk_degistirici() == 1 else "kristal"))
+		return
 	var var_mi := Ayarlar.kristal_var(bolum_i)
 	_kristal_ikon.modulate.a = 1.0 if var_mi else 0.28
 	_kristal_yazi.text = "%d / %d kristal" % [Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi()]
@@ -455,7 +484,9 @@ func _diken_temasi() -> void:
 
 
 func _kristal() -> void:
-	Ayarlar.kristal_topla(bolum_i)
+	_kristal_alindi = true
+	if not Ayarlar.gunluk_mod:
+		Ayarlar.kristal_topla(bolum_i)
 	Ses.cal(&"kristal")
 	_parcacik(_toplama, _bolum.kristal_konumu)
 	_kristal_guncelle()
@@ -473,15 +504,51 @@ func _kontrol(konum: Vector2) -> void:
 func _kapi() -> void:
 	if _durum != OYNA:
 		return
+	if Ayarlar.gunluk_mod and Ayarlar.gunluk_degistirici() == 1 and not _kristal_alindi:
+		# Kristal zorunlu: kapi kapali. Oyuncu kapidan cikip yeniden girince
+		# body_entered yeniden tetiklenir, yani mesaj gerektiginde tekrar cikar.
+		_mesaj.text = "KAPI KAPALI — ÖNCE KRİSTALİ AL"
+		_mesaj.add_theme_color_override("font_color", Ayarlar.RENK_METIN)
+		Ses.cal(&"menu")
+		get_tree().create_timer(1.2).timeout.connect(func() -> void:
+			if _durum == OYNA and _mesaj.text.begins_with("KAPI KAPALI"):
+				_mesaj.text = "")
+		return
 	_durum = TAMAM
 	_zaman = 0.0
 	_inis.visible = false
 	_hayalet.visible = false
 	_altin.visible = false
 	toplam_sure += sure
+	Ses.cal(&"bolum_sonu")
+	if Ayarlar.gunluk_mod:
+		_gunluk_bitti()
+	else:
+		_ana_bitti()
+	_hedef_guncelle()
+	_olum_haritasi_goster()
+	_bekleme = TAMAM_HARITA if _olum_haritasi.visible else TAMAM_BEKLEME
+	_oyuncu.set_physics_process(false)
+
+
+## Gunun bolumu bitti: AYRI kayit yuvasi, madalya/hayalet/acilan bolum yok.
+func _gunluk_bitti() -> void:
+	var sonuc: Dictionary = Ayarlar.gunluk_bitti(sure)
+	if bool(sonuc["rekor"]):
+		Ses.cal(&"madalya")
+	if bool(sonuc["yardim"]):
+		_mesaj.text = ("GÜNÜN BÖLÜMÜ TAMAM — %.2f sn · %d çevirme\n"
+			+ "Yardım modu açık: süre kaydı tutulmuyor.") % [sure, cevirme]
+	else:
+		_mesaj.text = "GÜNÜN BÖLÜMÜ TAMAM — %.2f sn · %d çevirme%s" % [
+			sure, cevirme, "\nGÜNÜN REKORU!" if bool(sonuc["rekor"]) else ""]
+	_mesaj.add_theme_color_override("font_color",
+		Ayarlar.MADALYA_RENK[3] if bool(sonuc["rekor"]) else Ayarlar.RENK_METIN)
+
+
+func _ana_bitti() -> void:
 	var sonuc: Dictionary = Ayarlar.bolum_bitti(bolum_i, sure, cevirme)
 	var m: int = sonuc["madalya"]
-	Ses.cal(&"bolum_sonu")
 	if m > 0:
 		Ses.cal(&"madalya")
 	if bool(sonuc["rekor"]):
@@ -498,10 +565,6 @@ func _kapi() -> void:
 			ek += "  EN AZ ÇEVİRME: %d" % cevirme
 		_mesaj.text = "BÖLÜM TAMAM — %.2f sn%s\n%s madalya" % [sure, ek, Ayarlar.MADALYA_AD[m]]
 		_mesaj.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[m])
-	_hedef_guncelle()
-	_olum_haritasi_goster()
-	_bekleme = TAMAM_HARITA if _olum_haritasi.visible else TAMAM_BEKLEME
-	_oyuncu.set_physics_process(false)
 
 
 ## Olum haritasi: bolumun kucultulmus plani ve oldugun her nokta X ile.
@@ -555,6 +618,9 @@ func _olum_haritasi_goster() -> void:
 
 func _sonraki() -> void:
 	_olum_haritasi.visible = false
+	if Ayarlar.gunluk_mod:
+		_menuye()                    # gunun bolumu tek bolumdur, zincir yok
+		return
 	if bolum_i + 1 < Ayarlar.bolum_sayisi():
 		_mesaj.add_theme_color_override("font_color", Ayarlar.RENK_METIN)
 		_karart(true)
@@ -591,7 +657,7 @@ func _unhandled_input(olay: InputEvent) -> void:
 		else:
 			get_tree().paused = true
 			_duraklat.visible = true
-			$Arayuz/Duraklat/Kutu/Atla.visible = Ayarlar.yardim_acik
+			$Arayuz/Duraklat/Kutu/Atla.visible = Ayarlar.yardim_acik and not Ayarlar.gunluk_mod
 			$Arayuz/Duraklat/Kutu/Devam.grab_focus()
 			Ses.cal(&"menu")
 
@@ -616,7 +682,7 @@ func _atla() -> void:
 	Ses.cal(&"menu")
 	get_tree().paused = false
 	_duraklat.visible = false
-	if bolum_i + 1 >= Ayarlar.bolum_sayisi():
+	if bolum_i + 1 >= Ayarlar.bolum_sayisi() or Ayarlar.gunluk_mod:
 		_menuye()
 		return
 	Ayarlar.bolum_ac(bolum_i)

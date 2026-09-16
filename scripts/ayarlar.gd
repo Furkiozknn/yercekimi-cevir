@@ -102,9 +102,12 @@ var inis_gostergesi: bool = true    ## cevirme tusunu basili tutunca inis noktas
 ## Klavye terimlerini dokunma karsiligiyla degistiren tablo. Bolum ipuclari
 ## uretilen bolumler.gd'de duruyor; orayi elle duzenlemek yerine metni burada
 ## ceviriyoruz, boylece menu yazisi da ayni tablodan gecer.
+## {h} = hareket alanlarinin tarafi, {c} = cevirme alaninin tarafi: solak
+## ayari alanlari yer degistirdiginde metin de degisir (v0.4'te "Sol alttaki"
+## sabitti ve solak modda yanlis tarafi soyluyordu).
 const DOKUNMA_METNI: Array = [
-	["A / D ile yürü", "Sol alttaki iki alanla yürü"],
-	["BOŞLUK yerçekimini çevirir", "Sağ yarıya dokunmak yerçekimini çevirir"],
+	["A / D ile yürü", "{h} alttaki iki alanla yürü"],
+	["BOŞLUK yerçekimini çevirir", "{c} yarıya dokunmak yerçekimini çevirir"],
 	["Tek tuş", "Tek dokunuş"],
 ]
 
@@ -123,6 +126,18 @@ var titresim: bool = true
 var yardim_acik: bool = false
 var yardim_hiz: float = 1.0         ## 0.5 - 1.0
 var yardim_olumsuz: bool = false    ## diken oldurmez, geri iter
+
+# --- Gunluk bolum ---
+## Tarihten secilen bolum + kucuk degistirici; herkes ayni gun ayni bolumu
+## oynar. AYRI kayit yuvasi: ana ilerlemeye (acilan bolum, en iyi, madalya,
+## kristal, en az cevirme, hayalet) hic dokunmaz. Gunun kaydi yalniz o gun
+## gecerlidir, tarih degisince sifirlanir.
+const GUNLUK_DEGISTIRICI: Array = ["ters başlangıç", "kristal zorunlu"]
+var gunluk_mod: bool = false          ## oturum: Oyun sahnesi gunun bolumu olarak acildi
+var gunluk_tarih: int = 0             ## kayittaki gun (yyyymmdd)
+var gunluk_en_iyi: float = 0.0        ## o gunun en iyi suresi, 0 = henuz bitmedi
+var gunluk_bitis: int = 0             ## o gun kac kez bitirildi
+var tarih_zorla: int = 0              ## testler ve ekran araci icin; 0 = sistem tarihi
 
 ## Dokunmatik ilk kez algilandiginda: arayuz metinleri ve dokunma alanlari
 ## icin. Sahneler bagli kalir, cunku dokunus menu acildiktan sonra gelebilir.
@@ -156,8 +171,13 @@ func kontrol_metni(m: String) -> String:
 	if not dokunmatik_mi():
 		return m
 	for c in DOKUNMA_METNI:
-		m = m.replace(String(c[0]), String(c[1]))
+		m = m.replace(String(c[0]), dokunma_karsiligi(c))
 	return m
+
+
+## Tablodaki bir satirin o anki solak ayarina gore dolu dokunma metni.
+func dokunma_karsiligi(c: Array) -> String:
+	return String(c[1]).format({"h": "Sağ" if solak else "Sol", "c": "Sol" if solak else "Sağ"})
 
 
 func bolum_sayisi() -> int:
@@ -267,6 +287,74 @@ func en_iyi_metin(i: int) -> String:
 	return "—"
 
 
+# --- Gunluk bolum --------------------------------------------------------------
+
+func bugun() -> int:
+	if tarih_zorla > 0:
+		return tarih_zorla
+	var t := Time.get_date_dict_from_system()
+	return int(t["year"]) * 10000 + int(t["month"]) * 100 + int(t["day"])
+
+
+## 32 bit tam sayi karistirici (hash prospector "lowbias32" ailesi): ardisik
+## gunler ardisik bolum vermesin. Yalniz tam sayi islemi, yani web ve masaustu
+## ayni gun ayni bolumu secer. Knuth carpimsal karma denendi: ardisik gunler
+## bolumleri birer birer GERIYE sayiyordu (adim mod 20 = 19).
+func _gunluk_karma(tarih: int) -> int:
+	var h: int = tarih & 0xFFFFFFFF
+	h = ((h ^ (h >> 16)) * 0x45d9f3b) & 0xFFFFFFFF
+	h = ((h ^ (h >> 16)) * 0x45d9f3b) & 0xFFFFFFFF
+	return h ^ (h >> 16)
+
+
+## Gunun bolumu (indeks). tarih = 0 -> bugun. Acik olma sarti YOK: gunluk bolum
+## ayri bir moddur, ana ilerlemeden bagimsiz oynanir.
+func gunluk_bolum(tarih: int = 0) -> int:
+	return _gunluk_karma(tarih if tarih > 0 else bugun()) % bolum_sayisi()
+
+
+## 0 = ters baslangic (yercekimi ters, tavandan baslarsin)
+## 1 = kristal zorunlu (kapi kristal alinmadan acilmaz)
+func gunluk_degistirici(tarih: int = 0) -> int:
+	return (_gunluk_karma(tarih if tarih > 0 else bugun()) / bolum_sayisi()) % GUNLUK_DEGISTIRICI.size()
+
+
+func gunluk_degistirici_adi(tarih: int = 0) -> String:
+	return String(GUNLUK_DEGISTIRICI[gunluk_degistirici(tarih)])
+
+
+## Tarih degistiyse gunun kaydi sifirlanir (dun kazanilan sure bugune sayilmaz).
+func _gunluk_tazele() -> void:
+	if gunluk_tarih != bugun():
+		gunluk_tarih = bugun()
+		gunluk_en_iyi = 0.0
+		gunluk_bitis = 0
+
+
+## Gunun bolumu bitti. Ana ilerlemeye YAZMAZ. Yardim modunda sure kaydedilmez.
+## {"rekor": bool, "yardim": bool}
+func gunluk_bitti(sure: float) -> Dictionary:
+	_gunluk_tazele()
+	var rekor := false
+	if not yardim_acik:
+		gunluk_bitis += 1
+		rekor = gunluk_en_iyi <= 0.0 or sure < gunluk_en_iyi
+		if rekor:
+			gunluk_en_iyi = sure
+		kaydet()
+	return {"rekor": rekor, "yardim": yardim_acik}
+
+
+func gunluk_en_iyi_metin() -> String:
+	_gunluk_tazele()
+	return ("%.2f sn" % gunluk_en_iyi) if gunluk_en_iyi > 0.0 else "—"
+
+
+## Menu ve HUD icin: "7 — Üç Engel · ters başlangıç"
+func gunluk_baslik() -> String:
+	return "%s · %s" % [String(bolum(gunluk_bolum())["ad"]), gunluk_degistirici_adi()]
+
+
 # --- Ayarlarin uygulanmasi ---------------------------------------------------
 
 ## Ses duzeyi oynaticiya degil AudioServer veriyoluna yazilir: web'de Sample
@@ -369,6 +457,9 @@ func yukle() -> void:
 	yardim_acik = bool(cfg.get_value("yardim", "acik", yardim_acik))
 	yardim_hiz = clampf(float(cfg.get_value("yardim", "hiz", yardim_hiz)), YARDIM_EN_YAVAS, 1.0)
 	yardim_olumsuz = bool(cfg.get_value("yardim", "olumsuz", yardim_olumsuz))
+	gunluk_tarih = int(cfg.get_value("gunluk", "tarih", 0))
+	gunluk_en_iyi = maxf(0.0, float(cfg.get_value("gunluk", "en_iyi", 0.0)))
+	gunluk_bitis = int(cfg.get_value("gunluk", "bitis", 0))
 
 
 func kaydet() -> void:
@@ -398,6 +489,9 @@ func kaydet() -> void:
 	cfg.set_value("yardim", "acik", yardim_acik)
 	cfg.set_value("yardim", "hiz", yardim_hiz)
 	cfg.set_value("yardim", "olumsuz", yardim_olumsuz)
+	cfg.set_value("gunluk", "tarih", gunluk_tarih)
+	cfg.set_value("gunluk", "en_iyi", gunluk_en_iyi)
+	cfg.set_value("gunluk", "bitis", gunluk_bitis)
 	var hata := cfg.save(KAYIT_YOLU)
 	if hata != OK:
 		push_warning("Kayit yazilamadi: %d" % hata)
@@ -414,3 +508,7 @@ func sifirla() -> void:
 	madalya.clear()
 	kristal.clear()
 	en_az.clear()
+	gunluk_tarih = 0
+	gunluk_en_iyi = 0.0
+	gunluk_bitis = 0
+	gunluk_mod = false

@@ -30,21 +30,22 @@ func _ready() -> void:
 	up_direction = Vector2(0.0, -yercekimi_yonu)
 
 
-## Bolum basina (ya da kontrol noktasina) dondurur.
-func hazirla(konum: Vector2) -> void:
+## Bolum basina (ya da kontrol noktasina) dondurur. yon = -1: ters yercekimiyle
+## dogar, tavana duser (gunluk bolumun "ters baslangic" degistiricisi).
+func hazirla(konum: Vector2, yon: float = 1.0) -> void:
 	position = konum
 	velocity = Vector2.ZERO
-	yercekimi_yonu = 1.0
-	up_direction = Vector2.UP
+	yercekimi_yonu = yon
+	up_direction = Vector2(0.0, -yon)
 	_tampon = 0.0
 	_kojot = 0.0
 	_bakis = 1.0
 	_iz_kalan = 0.0
 	_onceki_yerde = true
 	yasiyor = true
-	_gorsel.flip_v = false
+	_gorsel.flip_v = yon < 0.0
 	_gorsel.scale = Vector2.ONE
-	_ok.scale.y = 1.0
+	_ok.scale.y = yon
 	visible = true
 	set_physics_process(true)
 
