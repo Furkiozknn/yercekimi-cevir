@@ -48,6 +48,12 @@ func _ready() -> void:
 	await _simge_testi()
 	print("— Dokunmatik metinler —")
 	await _dokunma_metni_testi()
+	print("— Olculmus esikler (rota_verisi) —")
+	_olcum_testi()
+	print("— Altin hayalet —")
+	await _altin_hayalet_testi()
+	print("— Hareketli parcalar ve inis gostergesi —")
+	await _hareketli_inis_testi()
 	print("— Ayarlarin kaydi —")
 	_ayar_kayit_testi()
 	print("— Kapi, madalya ve ilerleme —")
@@ -123,7 +129,9 @@ func _bolum_testi() -> void:
 
 func _madalya_testi() -> void:
 	for i in Ayarlar.bolum_sayisi():
-		var v := Ayarlar.bolum(i)
+		# Esikler bolum verisinden DEGIL olculmus rota_verisi.gd'den gelir
+		# (bkz. Ayarlar.esik). Test de oradan okumali, yoksa iki kaynak olur.
+		var v := Ayarlar.esik(i)
 		var a: float = v["altin"]
 		var g: float = v["gumus"]
 		var br: float = v["bronz"]
@@ -721,6 +729,173 @@ func _dokunma_metni_testi() -> void:
 	Ayarlar.dokunmatik_algilandi = yedek
 
 
+## Esikler TEK YERDEN: tools/bot.gd'nin urettigi scripts/rota_verisi.gd.
+func _olcum_testi() -> void:
+	_dogrula(RotaVerisi.VERI.size() == Ayarlar.bolum_sayisi(),
+		"rota verisi 20 bolum iceriyor (%d)" % RotaVerisi.VERI.size())
+	var olculen := 0
+	for i in Ayarlar.bolum_sayisi():
+		var e := Ayarlar.esik(i)
+		var v: Dictionary = RotaVerisi.VERI[i]
+		var ad := "bolum %d olcum" % (i + 1)
+		# Esik gercekten URETILEN dosyadan mi geliyor, yoksa geometri yedeginden mi?
+		_dogrula(is_equal_approx(float(e["altin"]), float(v["altin"])),
+			ad + ": esik uretilen dosyadan geliyor")
+		_dogrula(float(e["altin"]) >= float(v["sure"]),
+			ad + ": altin esigi botun kosusundan dusuk degil (%.2f >= %.2f)" % [
+				float(e["altin"]), float(v["sure"])])
+		_dogrula(float(e["altin"]) < float(e["gumus"]) and float(e["gumus"]) < float(e["bronz"]),
+			ad + ": altin < gumus < bronz")
+		# Olculen en az cevirme, geometri hedefinden DAHA COK olamaz: geometri
+		# hedefi bilerek comert tarafta hatalidir, olcum onu ancak dusurur.
+		_dogrula(Ayarlar.en_az_hedef(i) <= int(Ayarlar.bolum(i).get("cevirme", 0)),
+			ad + ": olculen cevirme hedefi geometriyi asmiyor (%d <= %d)" % [
+				Ayarlar.en_az_hedef(i), int(Ayarlar.bolum(i).get("cevirme", 0))])
+		if not bool(v["tahmin"]):
+			olculen += 1
+			_dogrula(int(v["biten"]) >= 1 and int(v["kosu"]) >= 5,
+				ad + ": en az 5 kosudan en az 1'i bitti (%d/%d)" % [int(v["biten"]), int(v["kosu"])])
+	_dogrula(olculen == Ayarlar.bolum_sayisi(),
+		"%d bolumun %d'i gercekten olculdu (tahmin degil)" % [Ayarlar.bolum_sayisi(), olculen])
+	# Veri yoksa oyun yine calismali: sinir disi indis geometri yedegine duser.
+	var yedek := Ayarlar.esik(9999)
+	_dogrula(bool(yedek["tahmin"]), "veri disi indis geometri yedegine duser")
+
+
+## Altin hayalet: botun olculmus kosusu ayri bir hedef olarak kosar ve
+## oyuncunun kendi hayaletiyle KARISMAZ.
+func _altin_hayalet_testi() -> void:
+	Ayarlar.sifirla()
+	var bolum := 2
+	var yol := AltinHayalet.yol(bolum)
+	_dogrula(yol.size() > 10, "altin hayalet yolu yuklendi (%d nokta)" % yol.size())
+	_dogrula(yol[0].x < yol[yol.size() - 1].x, "altin hayalet soldan saga kosuyor")
+	Ayarlar.altin_hayalet = true
+	_dogrula(Ayarlar.altin_hayalet_yolu(bolum).size() == yol.size(), "ayar acikken hayalet geliyor")
+	Ayarlar.altin_hayalet = false
+	_dogrula(Ayarlar.altin_hayalet_yolu(bolum).is_empty(), "ayar kapaliyken hayalet GELMIYOR")
+	Ayarlar.altin_hayalet = true
+
+	# Oyuncunun kendi hayaleti de ALTIN madalyali olsun: renk tek basina
+	# ayirt etmeye yetmemeli, etiket yetmeli.
+	var kendi := PackedVector2Array()
+	for i in 120:
+		kendi.append(Vector2(56.0 + i * 1.5, 328.0))
+	Ayarlar.hayalet_kaydet(bolum, kendi)
+	Ayarlar.madalya[bolum] = 3
+	Ayarlar.secilen_bolum = bolum
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var h: Sprite2D = oyun.get_node("Dunya/Hayalet")
+	var a: Sprite2D = oyun.get_node("Dunya/AltinHayalet")
+	for i in 30:
+		await get_tree().physics_frame
+	_dogrula(h.visible and a.visible, "iki hayalet de ekranda")
+	_dogrula(h.global_position != a.global_position, "iki hayalet ayri yerde")
+	var eh: Label = h.get_node("Ad")
+	var ea: Label = a.get_node("Ad")
+	_dogrula(eh.text != ea.text, "hayalet etiketleri farkli (%s / %s)" % [eh.text, ea.text])
+	_dogrula(eh.visible and ea.visible, "etiketler gorunur")
+	_dogrula(a.modulate != h.modulate,
+		"altin madalyali oyuncunun hayaleti bile altin hayaletten ayri renkte")
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.sifirla()
+
+
+## Inis gostergesi hareketli platformu goruyor mu? (v0.3'te gormuyordu)
+func _hareketli_inis_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 7           # 8 — Asansor: 10-20 sutunlari delik, ustunde platform
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	var b: Bolum = oyun.get_node("Dunya/Bolum")
+	o.girdi_acik = false
+	var plat: Node2D = null
+	for c in b.get_children():
+		if c is AnimatableBody2D:
+			plat = c
+	_dogrula(plat != null, "8. bolumde hareketli platform var")
+
+	# --- zaman farkindaligi: ayni kutu, ileri sarilmis zamanda bos olmali ---
+	var kutu := Rect2(plat.position - Vector2(6, 6), Vector2(12, 12))
+	_dogrula(b.hareketli_kesisiyor(kutu, true, 0.0), "platform su an bu kutuda")
+	var bosaldi := false
+	var t := 0.0
+	while t < 5.0:
+		if not b.hareketli_kesisiyor(kutu, true, t):
+			bosaldi = true
+			break
+		t += 0.1
+	_dogrula(bosaldi, "ileri sarilan zamanda platform kutudan cikiyor (t=%.1f sn)" % t)
+
+	# --- inis tahmini: tavandan cevirince platformun UZERINE inmeli ---
+	# Delik oldugu icin platform sayilmazsa tahmin ya bolum disina duser ya da
+	# haritanin alt sinirini gosterir; ikisi de y > 300 demektir.
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(plat.position.x, float(Ayarlar.HUCRE) + Ayarlar.GOVDE.y * 0.5)
+	for i in 12:
+		await get_tree().physics_frame
+	o.position.x = plat.position.x
+	_dogrula(o.is_on_floor(), "oyuncu tavana yapisti")
+	var t1: Dictionary = oyun._inis_tahmini()
+	_dogrula(bool(t1["var"]), "platform ustunde inis noktasi bulundu")
+	_dogrula(float(t1["konum"].y) < 260.0,
+		"inis noktasi PLATFORMDA, delikten asagida degil (y=%.0f)" % float(t1["konum"].y))
+
+	# Kontrol: PLATFORMSUZ bir delik ustunde ayni tahmin yuksek bir nokta
+	# bulmamali — yoksa test platformu degil "delikte bir sey var" sanisini
+	# olcuyor olurdu. (Platformu kenara itmek ise ise yaramaz: _ileri_x
+	# konumu kendi araligina geri katliyor.)
+	oyun.bolum_yukle(1)                 # 2 — Cevir: 15-26 delik, platform YOK
+	await get_tree().physics_frame
+	var b2: Bolum = oyun.get_node("Dunya/Bolum")
+	var delik := String(b2.harita[b2.harita.size() - 1]).find(".")
+	_dogrula(delik > 0, "2. bolumde platformsuz delik var (sutun %d)" % delik)
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(delik * Ayarlar.HUCRE + 8.0, float(Ayarlar.HUCRE) + Ayarlar.GOVDE.y * 0.5)
+	for i in 12:
+		await get_tree().physics_frame
+	o.position.x = delik * Ayarlar.HUCRE + 8.0
+	var t2: Dictionary = oyun._inis_tahmini()
+	_dogrula(not bool(t2["var"]) or float(t2["konum"].y) > 300.0,
+		"platformsuz delikte inis noktasi yukarida DEGIL (y=%.0f)" % float(t2["konum"].y))
+
+	# --- govde kutusuyla diken sorgusu ---
+	var d := Bolum.new()
+	add_child(d)
+	d.kur(Bolumler.BOLUMLER[3])         # 4 — Diken: 14-22 sutunlarinda zemin dikeni
+	var satir: String = d.harita[d.harita.size() - 2]
+	var sutun := satir.find("^")
+	_dogrula(sutun > 0, "4. bolumde zemin dikeni var (sutun %d)" % sutun)
+	# Oyuncu o sutunda zeminde dururken: merkez y = zemin ustu - govde/2
+	var zemin_ust := float(d.harita.size() - 1) * float(Ayarlar.HUCRE)
+	var merkez := Vector2(sutun * Ayarlar.HUCRE + 8.0, zemin_ust - Ayarlar.GOVDE.y * 0.5)
+	var uzerinde := Rect2(merkez - Ayarlar.GOVDE * 0.5, Ayarlar.GOVDE)
+	_dogrula(d.olumcul_kutu(uzerinde), "dikenin uzerindeki govde kutusu olumcul")
+	var yukarida := Rect2(merkez - Ayarlar.GOVDE * 0.5 - Vector2(0.0, 24.0), Ayarlar.GOVDE)
+	_dogrula(not d.olumcul_kutu(yukarida), "dikenin 24 px ustundeki govde kutusu olumcul DEGIL")
+	# Asil bulgu: inis tahmini tek bir "ayak" noktasi ornekliyordu ve cevirme
+	# sonrasi o nokta BAS oluyor (govde yaricapi kadar yukarida). Ayni yerde
+	# bas noktasi tertemiz, govde ise dikenin icinde.
+	var bas := merkez - Vector2(0.0, Ayarlar.GOVDE.y * 0.5)
+	_dogrula(not d.olumcul_mu(bas),
+		"cevirme sonrasi orneklenen bas noktasi ayni yerde TEMIZ diyor")
+	_dogrula(d.olumcul_kutu(uzerinde) and not d.olumcul_mu(bas),
+		"govde sorgusu nokta sorgusunun kacirdigi carpismayi yakaliyor")
+	d.queue_free()
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.sifirla()
+
+
 func _ayar_kayit_testi() -> void:
 	var yedek := {
 		"kontrast": Ayarlar.yuksek_kontrast, "ok": Ayarlar.yercekimi_oku,
@@ -729,6 +904,8 @@ func _ayar_kayit_testi() -> void:
 		"yardim": Ayarlar.yardim_acik, "hiz": Ayarlar.yardim_hiz,
 		"olumsuz": Ayarlar.yardim_olumsuz,
 	}
+	yedek["altin_h"] = Ayarlar.altin_hayalet
+	Ayarlar.altin_hayalet = false
 	Ayarlar.yuksek_kontrast = true
 	Ayarlar.yercekimi_oku = false
 	Ayarlar.inis_gostergesi = false
@@ -744,6 +921,7 @@ func _ayar_kayit_testi() -> void:
 	Ayarlar.yardim_hiz = 1.0
 	Ayarlar.solak = false
 	Ayarlar.yukle()
+	_dogrula(not Ayarlar.altin_hayalet, "altin hayalet ayari kaydedildi")
 	_dogrula(Ayarlar.yuksek_kontrast, "yuksek kontrast kaydedildi")
 	_dogrula(not Ayarlar.yercekimi_oku, "yercekimi oku kaydedildi")
 	_dogrula(not Ayarlar.inis_gostergesi, "inis gostergesi kaydedildi")
@@ -754,6 +932,7 @@ func _ayar_kayit_testi() -> void:
 	_dogrula(is_equal_approx(Ayarlar.yardim_hiz, 0.6), "yardim hizi kaydedildi (%.2f)" % Ayarlar.yardim_hiz)
 	_dogrula(Ayarlar.yardim_olumsuz, "olumsuzluk kaydedildi")
 	# Eski hale dondur
+	Ayarlar.altin_hayalet = bool(yedek["altin_h"])
 	Ayarlar.yuksek_kontrast = yedek["kontrast"]
 	Ayarlar.yercekimi_oku = yedek["ok"]
 	Ayarlar.inis_gostergesi = yedek["inis"]

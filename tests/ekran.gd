@@ -8,6 +8,8 @@ extends Node
 ##     <mod> = -2  : yayin paketi (yayin/ altina 4 ekran goruntusu + kapak 630x500)
 ##     <mod> = -3  : tur 2 ozellikleri (ok, inis gostergesi, hayalet, olum
 ##                   haritasi, yuksek kontrast, yardim modu, oda kamerasi)
+##     <mod> = -4  : tur 3 ozellikleri (altin hayalet, platformlu inis gostergesi)
+##     <mod> = -5  : tanitim kare dizisi (3 sn, 10 kare/sn) + GIF icin ham veri
 ##
 ## Yakalanan kareler 1280x720 (pencere boyutu). Kapak bu kareden 630x500
 ## kirpilarak uretilir — itch.io kapak olcusu.
@@ -38,6 +40,10 @@ func _ready() -> void:
 		await _yayin_cek()
 	elif mod == -3:
 		await _ozellik_cek()
+	elif mod == -4:
+		await _tur3_cek()
+	elif mod == -5:
+		await _tanitim_cek()
 	else:
 		await _oynanis_cek(mod)
 	get_tree().quit(0)
@@ -149,6 +155,7 @@ func _yayin_cek() -> void:
 	add_child(yazi)
 	await _bekle(0.3)
 	await _cek("kapak-630x500", KAPAK_ALANI)
+	await _kapak_kucult()
 	yazi.queue_free()
 	_oyun.queue_free()
 	await _bekle(0.3)
@@ -164,6 +171,30 @@ func _yayin_cek() -> void:
 	await _bekle(0.9)
 	await _cek("tavan")
 	Input.action_release("move_right")
+
+
+## itch kapagi listede kuculuyor: sayfa 630x500, tarama listesi ~315x250,
+## en kucuk kapsul 120x45. Kapak o boyutta da bir sey anlatmali, bu yuzden
+## kucultmeler burada UYGULANIYOR ve gozle denetleniyor (2. turda bu makinede
+## olcekleyici yok diye atlanmisti; Image.resize zaten motorun icinde).
+##
+## 120x45 iki kez yaziliyor: Lanczos "iyi" olceklemeyi, bilinear ise
+## tarayicinin buyuk kucultmelerde yaptigi daha kaba isi temsil ediyor.
+## Karari KOTU olan belirler.
+func _kapak_kucult() -> void:
+	var kaynak := "%s/%02d-kapak-630x500.png" % [_klasor, _sira]
+	var g := Image.load_from_file(kaynak)
+	if g == null:
+		printerr("kapak okunamadi: %s" % kaynak)
+		return
+	for ol in [[315, 250, Image.INTERPOLATE_LANCZOS, ""],
+			[120, 45, Image.INTERPOLATE_LANCZOS, ""],
+			[120, 45, Image.INTERPOLATE_BILINEAR, "-bilinear"]]:
+		var k := g.duplicate() as Image
+		k.resize(int(ol[0]), int(ol[1]), int(ol[2]))
+		_sira += 1
+		var yol := "%s/%02d-kapak-%dx%d%s.png" % [_klasor, _sira, int(ol[0]), int(ol[1]), String(ol[3])]
+		print("ekran: %s  %dx%d  -> %d" % [yol, int(ol[0]), int(ol[1]), k.save_png(yol)])
 
 
 ## mod -3: tur 2'de eklenen her seyin gozle denetlenmesi.
@@ -256,6 +287,91 @@ func _ozellik_cek() -> void:
 	Ayarlar.yardim_acik = yedek[1]
 	Ayarlar.yardim_olumsuz = yedek[2]
 	Ayarlar.zaman_sifirla()
+
+
+## mod -4: tur 3'te eklenenler.
+func _tur3_cek() -> void:
+	_sahte_ilerleme()
+	Ayarlar.altin_hayalet = true
+
+	# 1) Altin hayalet + kendi hayaletin YAN YANA. Kendi hayaletin altin
+	#    madalyali (yani o da altin renkte) — etiketler ayirt ediyor mu?
+	var bolum := 2
+	var altin := AltinHayalet.yol(bolum)
+	if altin.is_empty():
+		push_warning("altin hayalet kaydi yok: once tools/bot.tscn calistir")
+	var seninki := PackedVector2Array()
+	for i in maxi(altin.size(), 120):
+		var p: Vector2 = altin[mini(i, altin.size() - 1)] if not altin.is_empty() else Vector2(56.0 + i * 1.6, 328.0)
+		seninki.append(p + Vector2(-26.0, 0.0))
+	Ayarlar.madalya[bolum] = 3
+	Ayarlar.hayalet_kaydet(bolum, seninki)
+	await _oyunu_ac(bolum)
+	Input.action_press("move_right")
+	await _bekle(1.3)
+	await _cek("altin-hayalet")
+	Input.action_release("move_right")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 2) Inis gostergesi hareketli platformu goruyor mu? 8 — Asansor:
+	#    10-20 sutunlari arasi zemin delik, platform o deligin uzerinde
+	#    gidip geliyor. Tavandan cevirince gosterge PLATFORMU isaretlemeli.
+	await _oyunu_ac(7)
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	var b: Bolum = _oyun.get_node("Dunya/Bolum")
+	var plat: Node2D = null
+	for c in b.get_children():
+		if c is AnimatableBody2D:
+			plat = c
+	if plat != null:
+		o.yercekimi_yonu = -1.0
+		o.up_direction = Vector2.DOWN
+		o.position = Vector2(plat.position.x, 16.0 + Ayarlar.GOVDE.y * 0.5)
+		await _bekle(0.5)
+	Input.action_press("cevir")
+	await _bekle(0.4)
+	await _cek("inis-platform")
+	Input.action_release("cevir")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+
+## mod -5: tanitim. Cevirme ani + inis gostergesi, tam 3 saniye.
+## 60 Hz'de her 6. kare yakalanir -> 30 kare, 10 kare/sn.
+## Cikti: <klasor>/kare_NN.png (640x360) ve <klasor>/kareler.raw
+## (320x180 RGB8, hepsi arka arkaya) — tools/gif_yap.py bunu GIF'e ceviriyor.
+func _tanitim_cek() -> void:
+	const KARE: int = 30
+	const ARALIK: int = 6
+	Ayarlar.inis_gostergesi = true
+	Ayarlar.altin_hayalet = false
+	await _oyunu_ac(2)                        # 3 — Tavan Yolu
+	_oyun.get_node("Arayuz/Ipucu").visible = false
+	var ham := PackedByteArray()
+	Input.action_press("move_right")
+	for k in KARE:
+		# 12. karede cevirme tusu BASILI tutulur (inis gostergesi cikar),
+		# 17. karede birakilir (cevirme gerceklesir).
+		if k == 12:
+			Input.action_press("cevir")
+		if k == 17:
+			Input.action_release("cevir")
+		for f in ARALIK:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		var g := get_viewport().get_texture().get_image()
+		g.resize(640, 360, Image.INTERPOLATE_NEAREST)
+		g.save_png("%s/kare_%02d.png" % [_klasor, k])
+		var kucuk := g.duplicate() as Image
+		kucuk.resize(320, 180, Image.INTERPOLATE_NEAREST)
+		kucuk.convert(Image.FORMAT_RGB8)
+		ham.append_array(kucuk.get_data())
+	Input.action_release("move_right")
+	var f := FileAccess.open("%s/kareler.raw" % _klasor, FileAccess.WRITE)
+	f.store_buffer(ham)
+	f.close()
+	print("tanitim: %d kare, ham %d bayt (320x180 RGB8)" % [KARE, ham.size()])
 
 
 ## Kapak yazisi. Kirpma alani (325,110)-(955,610) mantiksal koordinatta
