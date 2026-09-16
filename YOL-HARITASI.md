@@ -34,11 +34,59 @@
       (1280×720), kapak (630×500), butler komutları (çalıştırılmadı)
 - [x] Testler 97 → 362 doğrulama; Windows + Web dışa aktarımı temiz
 
+## Tur 2 — rakip analizi iyileştirmeleri v0.3 (2026-09-16)
+
+Kaynak: `oyun-terminalleri/tasarim/yercekimi-cevir-rakip-analizi.md`.
+
+### Affetme (türün "haksız ölüm" şikâyeti)
+
+- [x] **Kojot çevirme** 0,08 sn — yüzeyden ayrıldıktan sonra da çevirebilirsin.
+      Mevcut 0,10 sn giriş tamponu korundu; ikisi birlikte çalışıyor
+- [x] **Öldürücü isabet kutuları görselden 3 px küçük.** Gezen dikenin kutusu
+      görseliyle **birebir aynıydı** — asıl hata oradaydı, sabit dikende zaten pay vardı
+- [x] **Yeniden deneme 0,30 → 0,18 sn**, sahne yeniden yüklenmiyor, hareketli
+      platformlar dahil her şey sıfırlanıyor (testle ölçülüyor)
+- [x] **Oda tabanlı kamera**: 640 px'lik odalar arasında atlıyor, oda içinde
+      kıpırdamıyor; bir odadaki tehlikenin tamamı hep ekranda
+
+### Erişilebilirlik
+
+- [x] **Yardım modu**: oyun hızı %50–100, dikenler öldürmek yerine itiyor,
+      duraklatmadan bölüm atlama. Açıkken süre/madalya/çevirme kaydı yok,
+      kristal sayılıyor. Metin suçlayıcı değil
+- [x] **Yüksek kontrast** seçeneği: tehlike parlıyor, zemin ve arka plan geri çekiliyor
+- [x] **Yerçekimi yönü oku** oyuncunun yanında (durum renkten değil biçimden okunuyor)
+- [x] **İniş göstergesi**: çevirme tuşu basılı tutulunca karşı yüzeydeki iniş
+      noktası; yolda diken varsa kırmızı
+- [x] Diken dış çizgisi: zaten vardı (`diken.png` ve `gezgin.png` siyah konturlu)
+
+### Mobil
+
+- [x] **Görünmez geniş alanlar**: sol yarı hareket (sol çeyrek sol, sağ çeyrek sağ),
+      sağ yarı çevirme. Düğme görselleri kalktı, yalnız soluk ipucu harfi kaldı
+- [x] **Solak seçeneği** (tarafları değiştirir), **düğme opaklığı**, **titreşim**
+
+### Farklılaştıranlar
+
+- [x] **Hayalet yarış**: bölümün en iyi koşusu yarı saydam koşuyor, rengi o koşunun
+      madalyası. `user://hayalet_<bolum>.dat`
+- [x] **Ölüm haritası**: bölüm bitince bölümün küçültülmüş planı + her ölüm X ile
+- [x] **"En az çevirme" ikinci hedefi**: hedef bölüm geometrisinden hesaplanıyor,
+      rekor kaydediliyor, Bölüm Seç ve bitiş ekranında görünüyor
+
+### Diğer
+
+- [x] Kapak görseli yeniden çizildi (2x yakınlaştırma, aydınlatılmış arka plan,
+      dolu koyu şerit, parlak başlık + camgöbeği alt satır)
+- [x] Ayarlar ekranı iki sütuna ayrıldı (13 ayar tek ekrana sığıyor)
+- [x] Testler 362 → **464 doğrulama**; ekran aracına özellik denetim modu (`-3`)
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
 
-- [ ] **20 bölümü elle baştan sona oyna.** Zorluk eğrisi hâlâ hesapla dengelendi;
+- [ ] **20 bölümü elle baştan sona oyna.** 2. turda affetme ve kamera düzeldi ama
+      zorluk eğrisi hâlâ hesapla dengelendi;
       bot ölçümü insanı temsil etmiyor. Özellikle 16 (Kılçık) ve 19 (Fırtına)
       şüpheli — bant aralığı 3 hücre, çevirme geçişi ~7 hücre sürüyor.
 - [ ] **Madalya sürelerini gerçek koşuyla doğrula.** Altın = temel × 1,15 + bant × 0,45
@@ -49,21 +97,28 @@
 
 ### Oynanış
 
-- [ ] Hayalet (ghost) tekrarı — en iyi koşunu bölümde göster
 - [ ] Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform, dikey kaydırmalı bölüm
 - [ ] Bölüm başı tabelası / en iyi süre listesi ekranı
+- [ ] **Hedef hayaleti.** Şu an tek hayalet var (senin en iyi koşun). Gerçek bir
+      altın koşu kaydedilirse "altın hayalet" ayrı bir yarış hedefi olabilir —
+      madalya süreleri formülden geldiği için elde böyle bir koşu yok
+- [ ] **İniş göstergesi hareketli platformları saymıyor** (sabit harita üzerinden
+      hesaplıyor). Platformlu bölümlerde tahmin zeminin kendisini gösteriyor
+- [ ] **"En az çevirme" hedefi cömert.** Gezen dikenler tehlike sayıldığı için
+      hedef gerçek en iyiden yüksek olabilir; gerçek koşularla karşılaştır
 
 ### Görsel ve ses
 
-- [ ] Kapak görselini elden geçir: şu an gerçek oyundan kırpma, 120×45'te yeterince
-      parlak/kontrastlı değil (rakip Steam/itch kapsülleriyle karşılaştır)
+- [ ] Kapağı itch'in **120×45** küçük kapsülünde gerçekten gör. 2. turda yeniden
+      çizildi ama bu makinede görüntü ölçekleyici yok, o boyutta denenmedi
 - [ ] Kapı ve kristal için 2–4 kareli parıldama animasyonu (şu an tek kare)
 - [ ] Yürüme çevriminde kol sallanması (şu an yalnız bacaklar değişiyor)
 - [ ] Müziği bölüm grubuna göre değiştir (1–7 sakin, 8–14 gergin, 15–20 hızlı)
 
 ### Mobil
 
-- [ ] Dokunmatik düğme yerleşimini gerçek telefonda dene (şu an yalnız kodla ayarlı)
+- [ ] Geniş dokunma alanlarını **gerçek telefonda** dene: sol/sağ çeyrek ayrımı
+      parmakla ayırt edilebiliyor mu, titreşim rahatsız ediyor mu
 - [ ] Android dışa aktarımı + dokunmatik hedef boyutlarını büyüt
 - [ ] Dikey en-boy oranında test
 
