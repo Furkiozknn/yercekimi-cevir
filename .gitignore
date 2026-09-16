@@ -19,3 +19,6 @@ desktop.ini
 # Editor
 .vscode/
 *.tmp
+
+# rFXGen ham ciktilari (tools/uret_ses.py yeniden uretir)
+assets/audio/ham/
