@@ -31,6 +31,9 @@ const HAYALET_ARALIGI: int = 2       ## kac fizik karesinde bir konum kaydedilir
 const HAYALET_EN_FAZLA: int = 3600   ## ~2 dakika; daha uzun kosu kaydedilmez
 const HAYALET_YOLU: String = "user://hayalet_%d.dat"
 const HAYALET_RENGI: Color = Color(0.75, 0.80, 0.90, 0.40)
+## Altin hayalet AYRI bir hedeftir (botun olculmus en iyi kosusu), oyuncunun
+## kendi hayaletiyle karismamali: hem daha parlak/dolgun hem de etiketli.
+const ALTIN_HAYALET_RENGI: Color = Color(1.00, 0.88, 0.30, 0.58)
 
 # --- Yardim modu ---
 const YARDIM_EN_YAVAS: float = 0.5   ## oyun hizi alt siniri (%50)
@@ -65,6 +68,7 @@ const MADALYA_RENK: Array = [
 
 const KAYIT_YOLU: String = "user://kayit.cfg"
 const LISTE := preload("res://scripts/bolumler.gd")
+const ROTA := preload("res://scripts/rota_verisi.gd")
 const SIMGELER := preload("res://scripts/simgeler.gd")
 
 # --- Oturum durumu ---
@@ -85,6 +89,9 @@ var muzik_acik: bool = true
 var efekt_acik: bool = true
 var tam_ekran: bool = false
 var oyun_hissi: bool = true      ## sarsinti / parcacik / iz
+
+# --- Yaris (kaydedilir) ---
+var altin_hayalet: bool = true      ## botun olculmus altin kosusu ayrica kossun
 
 # --- Okunurluk / erisilebilirlik (kaydedilir) ---
 var yuksek_kontrast: bool = false   ## tehlikeler parlar, arka plan ve zemin koyulasir
@@ -165,9 +172,21 @@ func acik_mi(i: int) -> bool:
 	return i >= 0 and i <= acilan_bolum and i < bolum_sayisi()
 
 
+## Madalya esikleri ve en az cevirme hedefi TEK YERDEN gelir: tools/bot.gd'nin
+## urettigi scripts/rota_verisi.gd. Dosya bossa (olcum yapilmamis) bolum
+## verisindeki geometri yedegine duser — oyun yine calisir.
+func esik(i: int) -> Dictionary:
+	if i >= 0 and i < ROTA.VERI.size():
+		return ROTA.VERI[i]
+	var v := bolum(i)
+	return {"sure": float(v["altin"]), "altin": float(v["altin"]),
+		"gumus": float(v["gumus"]), "bronz": float(v["bronz"]),
+		"cevirme": int(v.get("cevirme", 0)), "tahmin": true, "biten": 0, "kosu": 0}
+
+
 ## Sureden madalya: 3 altin, 2 gumus, 1 bronz, 0 yok.
 func madalya_hesapla(i: int, sure: float) -> int:
-	var v := bolum(i)
+	var v := esik(i)
 	if sure <= float(v["altin"]):
 		return 3
 	if sure <= float(v["gumus"]):
@@ -196,9 +215,10 @@ func kristal_sayisi() -> int:
 	return kristal.size()
 
 
-## Ikinci hedef: bolumu bitirmek icin gereken en az cevirme (bolum verisinden).
+## Ikinci hedef: bolumu bitirmek icin gereken en az cevirme.
+## Olcum varsa botun GERCEKTEN bitirdigi en az cevirme, yoksa geometri tahmini.
 func en_az_hedef(i: int) -> int:
-	return int(bolum(i).get("cevirme", 0))
+	return int(esik(i).get("cevirme", 0))
 
 
 ## Oyuncunun o bolumde yaptigi en az cevirme; -1 = henuz bitirmedi.
@@ -274,6 +294,13 @@ func zaman_sifirla() -> void:
 	Engine.time_scale = 1.0
 
 
+## Botun olculmus altin kosusu. Olcum yoksa (tahmin bolumu) bos doner.
+func altin_hayalet_yolu(i: int) -> PackedVector2Array:
+	if not altin_hayalet:
+		return PackedVector2Array()
+	return AltinHayalet.yol(i)
+
+
 ## Hayalet = en iyi kosunun konum dizisi. Yardim modunda kaydedilmez.
 func hayalet_kaydet(i: int, yol: PackedVector2Array) -> void:
 	if yardim_acik or yol.size() < 2 or yol.size() > HAYALET_EN_FAZLA:
@@ -332,6 +359,7 @@ func yukle() -> void:
 	efekt_acik = bool(cfg.get_value("ayar", "efekt_acik", efekt_acik))
 	tam_ekran = bool(cfg.get_value("ayar", "tam_ekran", tam_ekran))
 	oyun_hissi = bool(cfg.get_value("ayar", "oyun_hissi", oyun_hissi))
+	altin_hayalet = bool(cfg.get_value("ayar", "altin_hayalet", altin_hayalet))
 	yuksek_kontrast = bool(cfg.get_value("ayar", "yuksek_kontrast", yuksek_kontrast))
 	yercekimi_oku = bool(cfg.get_value("ayar", "yercekimi_oku", yercekimi_oku))
 	inis_gostergesi = bool(cfg.get_value("ayar", "inis_gostergesi", inis_gostergesi))
@@ -360,6 +388,7 @@ func kaydet() -> void:
 	cfg.set_value("ayar", "efekt_acik", efekt_acik)
 	cfg.set_value("ayar", "tam_ekran", tam_ekran)
 	cfg.set_value("ayar", "oyun_hissi", oyun_hissi)
+	cfg.set_value("ayar", "altin_hayalet", altin_hayalet)
 	cfg.set_value("ayar", "yuksek_kontrast", yuksek_kontrast)
 	cfg.set_value("ayar", "yercekimi_oku", yercekimi_oku)
 	cfg.set_value("ayar", "inis_gostergesi", inis_gostergesi)
