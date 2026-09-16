@@ -286,6 +286,24 @@ def uret_gezgin():
     return t.yaz("gezgin.png")
 
 
+def uret_inis():
+    """20x5 inis gostergesi: cevirme tusunu basili tutunca karsi yuzeyde nerede
+    duracagini gosteren ayrac. Iki ucta dolu beyaz direk, ortada kesik cizgi,
+    hepsi siyah dis cizgili — 640x360'ta uzaktan da secilsin diye. Rengi kodda
+    ayarlanir: mavi = temiz inis, kirmizi = yolda diken var."""
+    s, b = rgb("siyah"), rgb("beyaz")
+    t = Tuval(20, 5)
+    t.kutu(0, 0, 20, 5, s)                 # once tum sekli siyah: dis cizgi
+    t.kutu(2, 1, 16, 3, SEFFAF)            # ortayi bosalt
+    t.kutu(1, 1, 2, 3, b)                  # sol direk
+    t.kutu(17, 1, 2, 3, b)                 # sag direk
+    for x in range(5, 16, 4):              # ortada kesik cizgi
+        t.kutu(x, 1, 2, 1, s)
+        t.kutu(x, 2, 2, 1, b)
+        t.kutu(x, 3, 2, 1, s)
+    return t.yaz("inis.png")
+
+
 def uret_platform():
     """48x10 hareketli platform: mor metal kiris + calisan isiklar."""
     t = Tuval(48, 10)
@@ -476,7 +494,7 @@ def onizleme(olcek=4):
 def main():
     os.makedirs(CIKTI, exist_ok=True)
     isler = [uret_oyuncu, uret_karo, uret_karo_ust, uret_diken, uret_gezgin,
-             uret_platform, uret_kapi, uret_kristal, uret_kontrol, uret_madalya,
+             uret_platform, uret_inis, uret_kapi, uret_kristal, uret_kontrol, uret_madalya,
              uret_arka_0, uret_arka_1, uret_arka_2]
     for is_ in isler:
         yol = is_()
