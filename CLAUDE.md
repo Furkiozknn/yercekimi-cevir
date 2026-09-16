@@ -18,13 +18,15 @@ Arayüz ve tüm belgeler **Türkçe**.
 | Taban çözünürlük | 640×360, pencere 1280×720, stretch `canvas_items` / `keep` | 16×16 ızgara tam oturuyor (22 satır = 352 px) |
 | Dosya kodlaması | **BOM'suz UTF-8, LF** | `.gitattributes` zorluyor |
 | Ses düzeyi | `AudioServer.set_bus_volume_db()` — oynatıcıda **değil** | web'de Sample yolunda `volume_db` sessizce yok sayılıyor |
+| Kamera | **Oda tabanlı**, oyuncunun çocuğu değil (`Dunya/Kamera`) | tehlike ekran dışında kalmasın; izleyen kamera bunu garanti etmiyor |
+| İsabet kutusu | Öldüren şeyde görselden `DIKEN_PAY` (3 px) küçük, **basılan** yüzeyde birebir | küçük kutu affeder, küçük platform yalan söyler |
 | Web ses yolu | `audio/general/default_playback_type.web=2` (Stream) | Sample yolunda perde/döngü de bozuluyor (Godot #95850) |
 | WAV | 16 bit, 22050 Hz, mono | 8 bit WAV'lar içe aktarımda hata basıyor |
 
 ## Klasör yapısı
 
 ```
-scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar) · ses.gd (autoload)
+scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet) · ses.gd (autoload)
              bolum.gd (ASCII harita -> sahne) · oyuncu.gd · oyun.gd · menu.gd
              bolum_sec.gd · ayarlar_ekrani.gd · bolumler.gd (ÜRETİLİR, elle düzenleme)
 scenes/      menu · bolum_sec · ayarlar_ekrani · oyun · oyuncu
@@ -38,7 +40,18 @@ build/       dışa aktarma çıktısı — `.gdignore` var, SİLME
 ```
 
 **Denge sabitleri tek yerde:** `scripts/ayarlar.gd`. Hız, yerçekimi, çevirme
-tamponu, iz/sarsıntı/ezilme değerleri, madalya renkleri hep orada.
+tamponu ve kojotu, ölüm bekleme süresi, diken payı, oda ölçüsü, hayalet aralığı,
+iz/sarsıntı/ezilme değerleri, madalya renkleri hep orada.
+
+**Kullanıcı ayarları da orada** ve hepsi `user://kayit.cfg` içinde saklanıyor:
+ses, tam ekran, oyun hissi, yüksek kontrast, yerçekimi oku, iniş göstergesi,
+solak dokunmatik, düğme opaklığı, titreşim, yardım modu (açık/hız/ölümsüzlük).
+Yeni bir ayar eklerken **üç yeri** birden güncelle: `var`, `yukle()`, `kaydet()` —
+ve `tests/testler.gd` içindeki `_ayar_kayit_testi` bunu doğruluyor.
+
+**Hayalet kayıtları** `user://hayalet_<bolum>.dat` (PackedVector2Array).
+`Ayarlar.sifirla()` bunları da siler; silmezse önceki koşudan kalan kayıt
+testleri ve yeni oyuncunun ilk koşusunu kirletiyor.
 
 ## Üretilen varlıklar — elle düzenleme
 
@@ -61,6 +74,7 @@ godot --headless --path . --import                      # 0 hata vermeli
 godot --headless --path . res://tests/testler.tscn      # çıkış kodu 0 = geçti
 godot --path . res://tests/ekran.tscn -- -2 <klasör>    # yayın paketi görselleri
 godot --path . res://tests/ekran.tscn -- -1 <klasör>    # menü / bölüm seç / ayarlar
+godot --path . res://tests/ekran.tscn -- -3 <klasör>    # tur 2 özellik denetim kareleri
 godot --headless --path . --export-release "Windows Masaustu"
 godot --headless --path . --export-release "Web (HTML5)"
 ```
@@ -102,3 +116,13 @@ kararı Furki verir.
    bu uyarıyı basar; gerçek çıkış yolu ve test paketi temizdir.
 6. **Arka planda yatay çizgi yapma.** İlk turda arka plandaki uyarı şeridi
    platform sanılıyordu; arka plan artık yalnız dikey öğeler içeriyor.
+7. **Heredoc ters bölüyü yutuyor.** Bu makinede `bash <<'PY'` ile Python yamaları
+   yazarken `\t` / `\n` kaçışları sessizce bozulabiliyor — yama uygulanmış
+   görünür ama hiçbir şey değişmez. Yamayı **dosyaya yaz, öyle çalıştır** ve her
+   `replace` için `assert s.count(a) == 1` koy.
+8. **`Ayarlar` autoload'una `const` içinden erişilemez.** `const ODA := Ayarlar.X`
+   derlenmez; `const A := preload("res://scripts/ayarlar.gd")` üzerinden git
+   (`bolum.gd` ve `oyun.gd` böyle yapıyor).
+9. **Bölüm bitiş beklemesi ölüm haritasına bağlı.** Ölüm yoksa 1,0 sn, varsa
+   2,4 sn. Testler bu süreye göre bekliyor; sabiti değiştirirsen `_kapiya_dokun`
+   beklemesini de değiştir.

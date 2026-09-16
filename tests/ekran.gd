@@ -14,7 +14,9 @@ extends Node
 
 const OYUN := preload("res://scenes/oyun.tscn")
 ## Kapak, 1280x720 karesinin oyuncuyu ve zemini iceren bolgesinden kirpilir.
-const KAPAK_ALANI := Rect2i(120, 220, 630, 500)
+## Kamera 2x yakinlastirilarak cekilir: itch kapsulu listede 120x45'e kadar
+## kuculuyor ve 1. turdaki genis kare orada tanimsiz bir koyu lekeye donuyordu.
+const KAPAK_ALANI := Rect2i(325, 110, 630, 500)
 
 var _klasor: String = "user://ekran"
 var _sira: int = 0
@@ -128,13 +130,25 @@ func _yayin_cek() -> void:
 	await _bekle(0.9)
 	await _cek("oynanis")
 
-	# kapak: HUD kapatilir, buyuk baslik konur, 630x500 kirpilir
+	# Kapak: HUD kapanir, kamera 2x yakinlasir, arka plan aydinlanir, buyuk
+	# baslik konur, 630x500 kirpilir. Hepsi yalniz bu kare icin — oyunun
+	# calisma ayarlari degismez.
+	Input.action_release("move_right")
 	_oyun.get_node("Arayuz").visible = false
+	var kam: Camera2D = _oyun.get_node("Dunya/Kamera")
+	var oyuncu: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	kam.zoom = Vector2(2.0, 2.0)
+	kam.limit_left = -10000
+	kam.limit_right = 10000
+	kam.limit_top = -10000
+	kam.limit_bottom = 10000
+	kam.position = Vector2(oyuncu.position.x + 34.0, oyuncu.position.y - 30.0)
+	for kat in ["Kat0", "Kat1", "Kat2"]:
+		_oyun.get_node("Arka/" + kat).modulate = Color(1.9, 1.9, 2.2)
 	var yazi := _kapak_yazisi()
 	add_child(yazi)
-	await _bekle(0.25)
+	await _bekle(0.3)
 	await _cek("kapak-630x500", KAPAK_ALANI)
-	Input.action_release("move_right")
 	yazi.queue_free()
 	_oyun.queue_free()
 	await _bekle(0.3)
@@ -244,27 +258,50 @@ func _ozellik_cek() -> void:
 	Ayarlar.zaman_sifirla()
 
 
+## Kapak yazisi. Kirpma alani (325,110)-(955,610) mantiksal koordinatta
+## x 162..477, y 55..305'e denk gelir; her sey bu dikdortgene sigar.
+## 120x45'e kuculdugunde ayakta kalan iki sey: dolu koyu serit ve uzerindeki
+## yuksek kontrastli iki satir.
 func _kapak_yazisi() -> CanvasLayer:
 	var kat := CanvasLayer.new()
 	kat.layer = 15
-	var golge := ColorRect.new()
-	golge.color = Color(0.02, 0.02, 0.05, 0.45)
-	# Kirpma alani mantiksal x 60..375'e denk geliyor; yazi buraya sigmali.
-	golge.offset_left = 66.0
-	golge.offset_top = 123.0
-	golge.offset_right = 370.0
-	golge.offset_bottom = 207.0
-	kat.add_child(golge)
+	var serit := ColorRect.new()
+	serit.color = Color(0.04, 0.04, 0.08, 0.92)
+	serit.offset_left = 162.0
+	serit.offset_top = 92.0
+	serit.offset_right = 478.0
+	serit.offset_bottom = 200.0
+	kat.add_child(serit)
+	var cizgi := ColorRect.new()          # ustte ince camgobegi kenar: kucukken bile secilir
+	cizgi.color = Color(0.17, 0.91, 0.96, 1.0)
+	cizgi.offset_left = 162.0
+	cizgi.offset_top = 87.0
+	cizgi.offset_right = 478.0
+	cizgi.offset_bottom = 92.0
+	kat.add_child(cizgi)
 	var baslik := Label.new()
 	baslik.text = "YERÇEKİMİ\nÇEVİR"
 	baslik.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	baslik.offset_left = 66.0
-	baslik.offset_top = 125.0
-	baslik.offset_right = 370.0
-	baslik.offset_bottom = 205.0
-	baslik.add_theme_font_size_override("font_size", 32)
-	baslik.add_theme_color_override("font_color", Color(0.39, 0.78, 0.30))
-	baslik.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-	baslik.add_theme_constant_override("outline_size", 8)
+	baslik.offset_left = 162.0
+	baslik.offset_top = 95.0
+	baslik.offset_right = 478.0
+	baslik.offset_bottom = 175.0
+	baslik.add_theme_font_size_override("font_size", 34)
+	baslik.add_theme_color_override("font_color", Color(0.99, 0.91, 0.38))
+	baslik.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+	baslik.add_theme_constant_override("outline_size", 10)
+	baslik.add_theme_constant_override("line_spacing", -4)
 	kat.add_child(baslik)
+	var alt := Label.new()
+	alt.text = "TEK TUŞ · 20 BÖLÜM"
+	alt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	alt.offset_left = 162.0
+	alt.offset_top = 178.0
+	alt.offset_right = 478.0
+	alt.offset_bottom = 196.0
+	alt.add_theme_font_size_override("font_size", 13)
+	alt.add_theme_color_override("font_color", Color(0.17, 0.91, 0.96))
+	alt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 1.0))
+	alt.add_theme_constant_override("outline_size", 6)
+	kat.add_child(alt)
 	return kat
