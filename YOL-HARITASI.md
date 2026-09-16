@@ -135,8 +135,10 @@ Bulutta Chromium'da açılan v0.3 web yapısından çıkan iki hata.
 
 - [ ] Geniş dokunma alanlarını **gerçek telefonda** dene: sol/sağ çeyrek ayrımı
       parmakla ayırt edilebiliyor mu, titreşim rahatsız ediyor mu
-- [ ] Dokunmatik ipucu metinleri gerçek telefonda okunuyor mu ("Sol alttaki iki
-      alanla yürü" alanların yerini doğru tarif ediyor mu, solak modda da)
+- [ ] **Solak modda dokunma ipucu yanlış tarafı söylüyor.** Alanlar yer
+      değiştiriyor ama "Sol alttaki iki alanla yürü" metni değişmiyor
+      (v0.3.1, bilinen). Metin de solağa göre yazılmalı; gerçek telefonda
+      tarifin anlaşılır olup olmadığıyla birlikte denenmeli
 - [ ] Android dışa aktarımı + dokunmatik hedef boyutlarını büyüt
 - [ ] Dikey en-boy oranında test
 
