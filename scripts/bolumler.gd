@@ -12,6 +12,7 @@ class_name Bolumler
 ## Ard arda gelen - / * isaretleri o parcanin gidip geldigi araligi belirler.
 ##
 ## "altin"/"gumus"/"bronz": madalya hedef sureleri (saniye).
+## "cevirme": ikinci hedef — bolumu bitirmek icin gereken en az cevirme sayisi.
 
 const BOLUMLER: Array[Dictionary] = [
 	{
@@ -20,6 +21,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 4.9,
 		"gumus": 7.1,
 		"bronz": 10.3,
+		"cevirme": 0,
 		"harita": [
 			"########################################",
 			"#......................................#",
@@ -51,6 +53,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.3,
 		"gumus": 7.7,
 		"bronz": 11.1,
+		"cevirme": 2,
 		"harita": [
 			"########################################",
 			"#..................C...................#",
@@ -82,6 +85,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.3,
 		"gumus": 7.7,
 		"bronz": 11.1,
+		"cevirme": 2,
 		"harita": [
 			"########################################",
 			"#..................C...................#",
@@ -113,6 +117,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.3,
 		"gumus": 7.7,
 		"bronz": 11.1,
+		"cevirme": 2,
 		"harita": [
 			"########################################",
 			"#..................C...................#",
@@ -144,6 +149,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.3,
 		"gumus": 7.7,
 		"bronz": 11.1,
+		"cevirme": 0,
 		"harita": [
 			"########################################",
 			"#............vvvvvvvvvv........C.......#",
@@ -175,6 +181,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 6.2,
 		"gumus": 9.0,
 		"bronz": 13.0,
+		"cevirme": 4,
 		"harita": [
 			"########################################",
 			"#........C........vvvvvvv..............#",
@@ -206,6 +213,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 6.2,
 		"gumus": 9.0,
 		"bronz": 13.0,
+		"cevirme": 4,
 		"harita": [
 			"########################################",
 			"#.......C........vvvvvv................#",
@@ -237,6 +245,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.8,
 		"gumus": 8.4,
 		"bronz": 12.2,
+		"cevirme": 2,
 		"harita": [
 			"########################################",
 			"#...............C........vvvvvvv.......#",
@@ -268,6 +277,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 6.2,
 		"gumus": 9.0,
 		"bronz": 13.0,
+		"cevirme": 4,
 		"harita": [
 			"########################################",
 			"#..........C........vvvvvv.............#",
@@ -299,6 +309,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 6.7,
 		"gumus": 9.7,
 		"bronz": 14.1,
+		"cevirme": 4,
 		"harita": [
 			"########################################",
 			"#.....C........vvvvv.........vvvvv.....#",
@@ -330,6 +341,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.8,
 		"gumus": 8.4,
 		"bronz": 12.2,
+		"cevirme": 4,
 		"harita": [
 			"########################################",
 			"#...........C........vvvvvv............#",
@@ -361,6 +373,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 5.8,
 		"gumus": 8.4,
 		"bronz": 12.2,
+		"cevirme": 2,
 		"harita": [
 			"########################################",
 			"#.......vvvvvv........C................#",
@@ -392,6 +405,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.1,
 		"gumus": 16.1,
 		"bronz": 23.3,
+		"cevirme": 6,
 		"harita": [
 			"################################################################",
 			"#......C........vvvvvv..............vvvvvv............vvvv.....#",
@@ -423,6 +437,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.1,
 		"gumus": 16.1,
 		"bronz": 23.3,
+		"cevirme": 6,
 		"harita": [
 			"################################################################",
 			"#......C........vvvvv............vvvvvv.............vvvvv......#",
@@ -454,6 +469,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.5,
 		"gumus": 16.7,
 		"bronz": 24.2,
+		"cevirme": 8,
 		"harita": [
 			"################################################################",
 			"#.....C........vvvvv...........vvvvv............vvvvv..........#",
@@ -485,6 +501,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 12.0,
 		"gumus": 17.4,
 		"bronz": 25.2,
+		"cevirme": 8,
 		"harita": [
 			"################################################################",
 			"#......vvvv..........vvvv..........vvvv..........vvvv..........#",
@@ -516,6 +533,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.1,
 		"gumus": 16.1,
 		"bronz": 23.3,
+		"cevirme": 6,
 		"harita": [
 			"################################################################",
 			"#.........C........vvvvvv..............vvvvvv............v.....#",
@@ -547,6 +565,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.1,
 		"gumus": 16.1,
 		"bronz": 23.3,
+		"cevirme": 6,
 		"harita": [
 			"################################################################",
 			"#.......C........vvvvvv............vvvvvv.............vvvv.....#",
@@ -578,6 +597,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.1,
 		"gumus": 16.1,
 		"bronz": 23.3,
+		"cevirme": 6,
 		"harita": [
 			"################################################################",
 			"#.......C........vvvvvv...........vvvvvv.............vvvvv.....#",
@@ -609,6 +629,7 @@ const BOLUMLER: Array[Dictionary] = [
 		"altin": 11.5,
 		"gumus": 16.7,
 		"bronz": 24.2,
+		"cevirme": 8,
 		"harita": [
 			"################################################################",
 			"#....C........vvvv............vvvvv...........vvvvv............#",

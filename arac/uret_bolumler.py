@@ -147,6 +147,35 @@ def kontrol_sec(d, g, w, kapi):
     return min(adaylar, key=lambda c: abs(c - orta))
 
 
+def en_az_cevirme(d, kapi):
+    """Bolumu bitirmek icin gereken EN AZ cevirme sayisi (ikinci hedef).
+
+    Her sutun icin zorunlu yuzeyi cikar: zemin tehlikeliyse tavanda olmak
+    zorunlusun, tavan tehlikeliyse zeminde. Oyuncu zeminde baslar ve kapiya
+    zeminden varir. Zorunlu yuzey dizisindeki degisim sayisi = cevirme sayisi.
+
+    Hareketli platformlar hesaba KATILMAZ, gezen dikenler tehlike SAYILIR:
+    ikisi de hedefi yukari yuvarlar, yani hedef her zaman ulasilabilir kalir
+    (fazla dusuk bir hedef imkansiz olurdu)."""
+    zorunlu = {}
+    for tip, c1, c2 in d["bands"]:
+        for c in range(c1, c2 + 1):
+            zorunlu[c] = "tavan" if tip in ("gap", "spike") else "zemin"
+    for tip, r, c1, c2 in d["hrk"]:
+        if tip != "spike":
+            continue
+        yuzey = "zemin" if r <= 2 else "tavan"
+        for c in range(c1, c2 + 1):
+            zorunlu.setdefault(c, yuzey)
+    dizi = ["zemin"]
+    for c in sorted(zorunlu):
+        if zorunlu[c] != dizi[-1]:
+            dizi.append(zorunlu[c])
+    if dizi[-1] != "zemin":
+        dizi.append("zemin")
+    return len(dizi) - 1
+
+
 def madalyalar(d, kapi):
     """Altin/gumus/bronz hedef sureler geometriden: yol uzunlugu + bant basina
     bir cevirme bedeli. Elle ayar yok, bolum degisince kendiliginden guncellenir."""
@@ -203,7 +232,7 @@ def kur(d):
     if kn is not None:
         assert g[H - 2][kn] == ".", (d["ad"], "kontrol noktasi dolu kareye dusuyor")
         g[H - 2][kn] = "P"
-    return ["".join(r) for r in g], madalyalar(d, kapi)
+    return ["".join(r) for r in g], madalyalar(d, kapi), en_az_cevirme(d, kapi)
 
 
 BASLIK = '''extends RefCounted
@@ -220,6 +249,7 @@ class_name Bolumler
 ## Ard arda gelen - / * isaretleri o parcanin gidip geldigi araligi belirler.
 ##
 ## "altin"/"gumus"/"bronz": madalya hedef sureleri (saniye).
+## "cevirme": ikinci hedef — bolumu bitirmek icin gereken en az cevirme sayisi.
 
 const BOLUMLER: Array[Dictionary] = [
 '''
@@ -230,7 +260,7 @@ def main():
     out.write(BASLIK)
     ozet = []
     for d in L:
-        rows, (altin, gumus, bronz) = kur(d)
+        rows, (altin, gumus, bronz), cevirme = kur(d)
         assert sum(r.count("S") for r in rows) == 1, d["ad"]
         assert sum(r.count("K") for r in rows) >= 1, d["ad"]
         assert sum(r.count("C") for r in rows) == 1, d["ad"]
@@ -238,15 +268,16 @@ def main():
         out.write('\t{\n\t\t"ad": "%s",\n\t\t"ipucu": "%s",\n' % (d["ad"], d["ipucu"]))
         out.write('\t\t"altin": %.1f,\n\t\t"gumus": %.1f,\n\t\t"bronz": %.1f,\n'
                   % (altin, gumus, bronz))
+        out.write('\t\t"cevirme": %d,\n' % cevirme)
         out.write('\t\t"harita": [\n')
         for r in rows:
             out.write('\t\t\t"%s",\n' % r)
         out.write("\t\t],\n\t},\n")
         kr = [(i, s.index("C")) for i, s in enumerate(rows) if "C" in s][0]
         kn = [s.index("P") for s in rows if "P" in s]
-        ozet.append("  %-20s kristal=%s@%-2d kontrol=%-3s madalya=%.1f / %.1f / %.1f"
+        ozet.append("  %-20s kristal=%s@%-2d kontrol=%-3s madalya=%.1f / %.1f / %.1f  cevirme>=%d"
                     % (d["ad"], "tavan" if kr[0] < 3 else "zemin", kr[1],
-                       kn[0] if kn else "-", altin, gumus, bronz))
+                       kn[0] if kn else "-", altin, gumus, bronz, cevirme))
     out.write("]\n")
     yol = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        "scripts", "bolumler.gd")
