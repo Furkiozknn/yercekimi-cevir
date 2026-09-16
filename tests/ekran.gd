@@ -10,6 +10,8 @@ extends Node
 ##                   haritasi, yuksek kontrast, yardim modu, oda kamerasi)
 ##     <mod> = -4  : tur 3 ozellikleri (altin hayalet, platformlu inis gostergesi)
 ##     <mod> = -5  : tanitim kare dizisi (3 sn, 10 kare/sn) + GIF icin ham veri
+##     <mod> = -6  : tur 4 (v0.5): dokunma alanlari sag el / solak, 19. bolumun
+##                   yeni duzeni, gunun bolumu (menu, ters baslangic, kristal zorunlu)
 ##
 ## Yakalanan kareler 1280x720 (pencere boyutu). Kapak bu kareden 630x500
 ## kirpilarak uretilir — itch.io kapak olcusu.
@@ -45,6 +47,8 @@ func _ready() -> void:
 		await _tur3_cek()
 	elif mod == -5:
 		await _tanitim_cek()
+	elif mod == -6:
+		await _tur4_cek()
 	else:
 		await _oynanis_cek(mod)
 	get_tree().quit(0)
@@ -425,6 +429,83 @@ func _tanitim_cek() -> void:
 	f.store_buffer(ham)
 	f.close()
 	print("tanitim: %d kare, ham %d bayt (320x180 RGB8)" % [KARE, ham.size()])
+
+
+## mod -6: tur 4'te (v0.5) eklenenler.
+func _tur4_cek() -> void:
+	_sahte_ilerleme()
+
+	# 1) Dokunma alanlari ve ipucu: sag el, sonra solak. Ipucu metni tarafi
+	#    soyler; alanlarin harfleri (< > CEVIR) alanla birlikte yer degistirir.
+	Ayarlar.solak = false
+	await _oyunu_ac(0)
+	Ayarlar.dokunmatik_algilandi = true
+	Ayarlar.dokunmatik_degisti.emit()
+	_oyun.get_node("Arayuz/Dokunmatik").modulate.a = 0.9   # harfler karede secilsin
+	await _bekle(0.4)
+	await _cek("dokunma-sag-el")
+	Ayarlar.solak = true
+	_oyun._dokunmatik_acildi()
+	_oyun.get_node("Arayuz/Dokunmatik").modulate.a = 0.9
+	await _bekle(0.4)
+	await _cek("dokunma-solak")
+	Ayarlar.solak = false
+	Ayarlar.dokunmatik_algilandi = false
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 2) 19 — Firtina, yeni duzen: iki oda. Ilk odada oyuncu 32. sutunda gezgin
+	#    dikenle burun buruna, tepesinde TEMIZ tavan (kacis yolu); ikinci odada
+	#    tavan dikeni (42-47), platformlu delik (51-57) ve kapi.
+	await _oyunu_ac(18)
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	o.position = Vector2(32.0 * 16.0 + 8.0, 336.0 - Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.7)
+	await _cek("firtina-oda-1")
+	o.position = Vector2(41.0 * 16.0 + 8.0, 336.0 - Ayarlar.GOVDE.y * 0.5)
+	o.yercekimi_yonu = 1.0
+	o.up_direction = Vector2.UP
+	await _bekle(0.7)
+	await _cek("firtina-oda-2")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 3) Gunun bolumu: menu satiri + dugme, ters baslangic, kristal zorunlu.
+	var t0 := 20260916
+	while Ayarlar.gunluk_degistirici(t0) != 0:
+		t0 += 1
+	var t1 := 20260916
+	while Ayarlar.gunluk_degistirici(t1) != 1:
+		t1 += 1
+	Ayarlar.tarih_zorla = t0
+	Ayarlar.gunluk_tarih = t0
+	Ayarlar.gunluk_en_iyi = 9.87           # menude "en iyi" dolu gorunsun (diske yazilmaz)
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(0.5)
+	await _cek("gunluk-menu")
+	menu.queue_free()
+	await _bekle(0.3)
+	Ayarlar.gunluk_mod = true
+	await _oyunu_ac(Ayarlar.gunluk_bolum())
+	# 0,6 sn sonra oyuncu tavana dogru HAVADA (ucus ~0,85 sn): ok yukari, arka
+	# plan soguk. Tavana konduktan sonra ust HUD seridinin arkasinda kaliyordu.
+	await _cek("gunluk-ters-baslangic")
+	_oyun.queue_free()
+	await _bekle(0.3)
+	Ayarlar.tarih_zorla = t1
+	await _oyunu_ac(Ayarlar.gunluk_bolum())
+	var o2: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	var kapi: Area2D = _oyun.get_node("Dunya/Bolum/Kapi")
+	o2.position = kapi.get_child(0).global_position
+	await _bekle(0.3)
+	await _cek("gunluk-kristal-zorunlu")
+	_oyun.queue_free()
+	Ayarlar.gunluk_mod = false
+	Ayarlar.tarih_zorla = 0
+	Ayarlar.gunluk_en_iyi = 0.0
+	Ayarlar.gunluk_tarih = 0
+	await _bekle(0.3)
 
 
 ## Kapak yazisi. Kirpma alani (325,110)-(955,610) mantiksal koordinatta

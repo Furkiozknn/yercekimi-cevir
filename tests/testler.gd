@@ -48,6 +48,10 @@ func _ready() -> void:
 	await _simge_testi()
 	print("— Dokunmatik metinler —")
 	await _dokunma_metni_testi()
+	print("— Gezen dikenin kacis yuzeyi —")
+	_gezgin_kacis_testi()
+	print("— Gunun bolumu —")
+	await _gunluk_testi()
 	print("— Olculmus esikler (rota_verisi) —")
 	_olcum_testi()
 	print("— Altin hayalet —")
@@ -701,8 +705,24 @@ func _dokunma_metni_testi() -> void:
 	var cevrilmis := Ayarlar.kontrol_metni(tum)
 	for c in Ayarlar.DOKUNMA_METNI:
 		_dogrula(not cevrilmis.contains(String(c[0])), "klavye terimi kalkti: '%s'" % c[0])
-		_dogrula(cevrilmis.contains(String(c[1])), "dokunma karsiligi kondu: '%s'" % c[1])
+		_dogrula(cevrilmis.contains(Ayarlar.dokunma_karsiligi(c)),
+			"dokunma karsiligi kondu: '%s'" % Ayarlar.dokunma_karsiligi(c))
+	_dogrula(not cevrilmis.contains("{"), "yer tutucu ({h}/{c}) metinde kalmadi")
 	_dogrula(Simgeler.eksikler(cevrilmis) == "", "dokunma metinlerinde eksik simge yok")
+
+	# Solak: alanlar yer degistiriyor, metin de TARAFI ona gore soylemeli
+	# (v0.4'te "Sol alttaki iki alanla yuru" sabitti, solakta yanlis tarafi soyluyordu).
+	var solak_yedek := Ayarlar.solak
+	var ham := "A / D ile yürü. BOŞLUK yerçekimini çevirir."
+	Ayarlar.solak = false
+	var sag_el := Ayarlar.kontrol_metni(ham)
+	Ayarlar.solak = true
+	var sol_el := Ayarlar.kontrol_metni(ham)
+	_dogrula(sag_el.contains("Sol alttaki") and sag_el.contains("Sağ yarıya"),
+		"sag el: hareket solda, cevirme sagda ('%s')" % sag_el)
+	_dogrula(sol_el.contains("Sağ alttaki") and sol_el.contains("Sol yarıya"),
+		"solak: hareket sagda, cevirme solda ('%s')" % sol_el)
+	Ayarlar.solak = solak_yedek
 
 	# Dokunus algilaninca oyun sahnesi alanlari acmali ve ipucunu degistirmeli.
 	Ayarlar.sifirla()
@@ -724,9 +744,189 @@ func _dokunma_metni_testi() -> void:
 	var sol: Button = alanlar.get_node("Sol")
 	_dogrula(sol.button_down.get_connections().size() == 1,
 		"alan sinyali tek kez bagli (%d)" % sol.button_down.get_connections().size())
+	# Solak: alanlar VE ipucu birlikte taraf degistirmeli.
+	var cevir: Button = alanlar.get_node("Cevir")
+	_dogrula(sol.offset_left == 0.0 and cevir.offset_left == 320.0,
+		"sag el: hareket alani solda (%.0f), cevirme sagda (%.0f)" % [sol.offset_left, cevir.offset_left])
+	_dogrula(ipucu.text.contains("Sol alttaki"), "sag el ipucu sol tarafi soyluyor: '%s'" % ipucu.text)
+	var solak_eski := Ayarlar.solak
+	Ayarlar.solak = true
+	oyun._dokunmatik_acildi()
+	_dogrula(cevir.offset_left == 0.0 and sol.offset_left == 320.0,
+		"solak: cevirme alani solda (%.0f), hareket sagda (%.0f)" % [cevir.offset_left, sol.offset_left])
+	_dogrula(ipucu.text.contains("Sağ alttaki"), "solak ipucu sag tarafi soyluyor: '%s'" % ipucu.text)
+	_dogrula(sol.button_down.get_connections().size() == 1, "solak kurulumu sinyali cogaltmadi")
+	Ayarlar.solak = solak_eski
 	oyun.queue_free()
 	await get_tree().process_frame
 	Ayarlar.dokunmatik_algilandi = yedek
+
+
+## Gezen dikenin menzilindeki HER sutunda karsi yuzey guvenli olmali. Degilse
+## o sutunlarda iki yuzey de olumlu olur ve bolum yalniz tam hizda suzulerek
+## gecilir — oyunun ogrettigi "dar yerde fren" refleksinin tersi (v0.4'te 18 ve
+## 19. bolumler boyleydi). arac/uret_bolumler.py ayni kurali uretimde zorluyor;
+## bu test uretilen haritada bir daha bakiyor ki kural sessizce kalkamasin.
+func _gezgin_kacis_testi() -> void:
+	var gezgin_var := 0
+	for i in Ayarlar.bolum_sayisi():
+		var h: Array = Ayarlar.bolum(i)["harita"]
+		var n := h.size()
+		var tavan: String = h[1]
+		var zemin: String = h[n - 2]
+		var taban: String = h[n - 1]
+		var kapali: Array = []
+		for r in n:
+			var satir: String = h[r]
+			for c in satir.length():
+				if satir[c] != "*":
+					continue
+				# Zemindeki gezgin (r > 2) icin kacis TAVAN, tavandaki icin ZEMIN.
+				var karsi_olumlu: bool
+				if r > 2:
+					karsi_olumlu = tavan[c] == "v"
+				else:
+					karsi_olumlu = zemin[c] == "^" or taban[c] != "#"
+				if karsi_olumlu:
+					kapali.append(c)
+			if satir.contains("*"):
+				gezgin_var += 1
+		_dogrula(kapali.is_empty(), "bolum %d: gezen dikenin kacis yuzeyi acik%s" % [
+			i + 1, "" if kapali.is_empty() else " (kapali sutunlar %s)" % str(kapali)])
+	_dogrula(gezgin_var >= 4, "gezen dikenli bolum sayisi (%d) — test bos degil" % gezgin_var)
+	# 19 — Firtina: gezgin 33-39, tavan dikeni 42-47; ikisi ortusmuyor ve
+	# gezginin sagindaki zemin (40-47) her zaman guvenli — fren yapip bekleyen
+	# oyuncunun inecegi yer var.
+	var f: Array = Ayarlar.bolum(18)["harita"]
+	var fz: String = f[f.size() - 2]
+	_dogrula(fz.find("*") == 33 and fz.rfind("*") == 39, "19. bolum gezgin menzili 33-39 (%d-%d)" % [fz.find("*"), fz.rfind("*")])
+	_dogrula(String(f[1]).find("v", 30) == 42, "19. bolum ikinci tavan dikeni 42'de basliyor (%d)" % String(f[1]).find("v", 30))
+
+
+## Gunun bolumu: tarihten deterministik secim, AYRI kayit yuvasi ve ana
+## ilerlemenin el degmemis kalmasi.
+func _gunluk_testi() -> void:
+	Ayarlar.sifirla()
+	var tarih_yedek := Ayarlar.tarih_zorla
+
+	# 1) Secim deterministik, aralikta ve dagilmis
+	var a := Ayarlar.gunluk_bolum(20260916)
+	_dogrula(a == Ayarlar.gunluk_bolum(20260916), "ayni tarih ayni bolumu verir")
+	_dogrula(a >= 0 and a < Ayarlar.bolum_sayisi(), "bolum indeksi aralikta (%d)" % a)
+	var farkli := {}
+	var ardisik := 0
+	var onceki := -1
+	var degistirici_hatasi := 0
+	var degistiriciler := {}
+	for g in 30:
+		var t := 20260901 + g
+		var b := Ayarlar.gunluk_bolum(t)
+		farkli[b] = true
+		if onceki >= 0 and b == (onceki + 1) % Ayarlar.bolum_sayisi():
+			ardisik += 1
+		onceki = b
+		var d := Ayarlar.gunluk_degistirici(t)
+		degistiriciler[d] = true
+		if d < 0 or d >= Ayarlar.GUNLUK_DEGISTIRICI.size():
+			degistirici_hatasi += 1
+	_dogrula(farkli.size() >= 10, "30 gunde en az 10 farkli bolum (%d)" % farkli.size())
+	_dogrula(ardisik <= 6, "ardisik gunler ardisik bolum vermiyor (%d/29)" % ardisik)
+	_dogrula(degistirici_hatasi == 0, "degistirici indeksi hep aralikta")
+	_dogrula(degistiriciler.size() == Ayarlar.GUNLUK_DEGISTIRICI.size(), "30 gunde her degistirici cikiyor")
+
+	# 2) Ayri kayit yuvasi: yuvarlak seyahat ve tarih degisince sifirlanma
+	Ayarlar.tarih_zorla = 20260916
+	Ayarlar.gunluk_tarih = 20260916
+	Ayarlar.gunluk_en_iyi = 5.5
+	Ayarlar.gunluk_bitis = 2
+	Ayarlar.kaydet()
+	Ayarlar.gunluk_tarih = 0
+	Ayarlar.gunluk_en_iyi = 0.0
+	Ayarlar.gunluk_bitis = 0
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.gunluk_tarih == 20260916 and is_equal_approx(Ayarlar.gunluk_en_iyi, 5.5)
+		and Ayarlar.gunluk_bitis == 2, "gunluk kayit kayit.cfg uzerinden yuvarlak seyahat etti")
+	_dogrula(Ayarlar.gunluk_en_iyi_metin() == "5.50 sn", "gunun en iyi metni (%s)" % Ayarlar.gunluk_en_iyi_metin())
+	Ayarlar.tarih_zorla = 20260917
+	_dogrula(Ayarlar.gunluk_en_iyi_metin() == "—", "yeni gun: dunun suresi sayilmaz")
+	_dogrula(Ayarlar.gunluk_tarih == 20260917 and Ayarlar.gunluk_bitis == 0, "yeni gun: sayaclar sifirlandi")
+
+	# 3) Ters baslangic degistiricisi (0): tavandan dogarsin; bitis ana ilerlemeye yazmaz
+	var t0 := 20260916
+	while Ayarlar.gunluk_degistirici(t0) != 0:
+		t0 += 1
+	var t1 := 20260916
+	while Ayarlar.gunluk_degistirici(t1) != 1:
+		t1 += 1
+	Ayarlar.sifirla()
+	Ayarlar.tarih_zorla = t0
+	Ayarlar.gunluk_mod = true
+	var b0 := Ayarlar.gunluk_bolum()
+	Ayarlar.secilen_bolum = b0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	_dogrula(oyun.bolum_i == b0, "gunun bolumu yuklendi (%d)" % (b0 + 1))
+	_dogrula(o.yercekimi_yonu < 0.0, "ters baslangic: yercekimi ters dogdu")
+	_dogrula(oyun._altin_yol.is_empty() and oyun._hayalet_yol.is_empty(), "gunluk modda hayalet yok")
+	_dogrula(String(oyun.get_node("Arayuz/Ad").text).contains("GÜNÜN"), "HUD gunun bolumunu soyluyor")
+	await get_tree().create_timer(1.0).timeout
+	_dogrula(o.position.y < 100.0 and o.is_on_floor(), "ters baslangic: tavana dustu ve durdu (y=%.0f)" % o.position.y)
+	var kapi: Area2D = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._durum == 2, "gunun bolumu bitti")
+	_dogrula(Ayarlar.gunluk_bitis == 1 and Ayarlar.gunluk_en_iyi > 0.0,
+		"gunun kaydi yazildi (%d bitis, %.2f sn)" % [Ayarlar.gunluk_bitis, Ayarlar.gunluk_en_iyi])
+	_dogrula(Ayarlar.acilan_bolum == 0 and Ayarlar.en_iyi.is_empty() and Ayarlar.madalya.is_empty()
+		and Ayarlar.en_az.is_empty() and Ayarlar.kristal.is_empty(),
+		"ana ilerleme el degmemis (acilan %d, en iyi %d, madalya %d)" % [
+			Ayarlar.acilan_bolum, Ayarlar.en_iyi.size(), Ayarlar.madalya.size()])
+	_dogrula(not FileAccess.file_exists(Ayarlar.HAYALET_YOLU % b0), "gunluk kosu hayalet yazmadi")
+	# Bekleme dolunca _sonraki() menuye sahne degistirir; test agacini bozmasin diye hemen sokuyoruz.
+	oyun.queue_free()
+	await get_tree().process_frame
+
+	# 4) Kristal zorunlu degistiricisi (1): kapi kristalsiz acilmaz; ana kristal kaydi degismez
+	Ayarlar.tarih_zorla = t1
+	var b1 := Ayarlar.gunluk_bolum()
+	Ayarlar.kristal[b1] = true            # ana oyunda toplanmis olsun: gunlukte yine gorunmeli
+	Ayarlar.secilen_bolum = b1
+	oyun = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	o = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var bolum: Bolum = oyun.get_node("Dunya/Bolum")
+	_dogrula(o.yercekimi_yonu > 0.0, "kristal zorunlu: normal baslangic")
+	_dogrula(bolum.get_node("Kristal").visible, "ana oyunda alinmis kristal gunlukte yeniden orada")
+	kapi = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._durum == 0, "kristalsiz kapi acilmadi")
+	_dogrula(String(oyun.get_node("Arayuz/Mesaj").text).begins_with("KAPI KAPALI"), "kapali kapi mesaji cikti")
+	_dogrula(Ayarlar.gunluk_bitis == 0, "kapali kapi bitis saymadi")
+	o.position = bolum.kristal_konumu
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._kristal_alindi, "kristal bu kosuda alindi")
+	_dogrula(Ayarlar.kristal_sayisi() == 1 and Ayarlar.kristal_var(b1), "ana kristal kaydi degismedi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._durum == 2, "kristalden sonra kapi acildi")
+	_dogrula(Ayarlar.gunluk_bitis == 1, "gunun bitisi sayildi (%d)" % Ayarlar.gunluk_bitis)
+	_dogrula(Ayarlar.acilan_bolum == 0 and Ayarlar.en_iyi.is_empty(), "ana ilerleme yine el degmemis")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+	Ayarlar.gunluk_mod = false
+	Ayarlar.tarih_zorla = tarih_yedek
+	Ayarlar.sifirla()
 
 
 ## Esikler TEK YERDEN: tools/bot.gd'nin urettigi scripts/rota_verisi.gd.
