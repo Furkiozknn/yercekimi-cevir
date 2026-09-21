@@ -96,10 +96,25 @@ class Tuval:
 
 URETILEN = []
 
+# Parildayan varliklar (kapi, kristal) 4 kareli yatay sayfa olarak uretilir;
+# Bolum bunlari PARILTI_ARALIGI'nda bir ilerletir (bkz. scripts/bolum.gd).
+PARILTI_KARE = 4
+
 
 def dogrula(harita, g, ad):
     for i, satir in enumerate(harita):
         assert len(satir) == g, (ad, "satir %d genisligi %d, %d olmali" % (i, len(satir), g))
+
+
+def _sayfa(kareler, ad):
+    """Kareleri yan yana tek levhaya dizer (Sprite2D.hframes = kare sayisi)."""
+    g, y = kareler[0].g, kareler[0].y
+    s = Tuval(g * len(kareler), y)
+    for i, k in enumerate(kareler):
+        for j in range(y):
+            for x in range(g):
+                s.nokta(i * g + x, j, k.p[j][x])
+    return s.yaz(ad)
 
 
 # --- oyuncu -----------------------------------------------------------------
@@ -318,22 +333,28 @@ def uret_platform():
 
 
 # --- hedef, toplanabilir, kontrol noktasi -----------------------------------
-def uret_kapi():
-    """16x48 parlayan laboratuvar kapisi."""
+def _kapi_karesi(kare):
+    """16x48 laboratuvar kapisi. kare 0..3: enerji cizgileri her karede 2 px
+    YUKARI kayar, dis cekirdek her iki karede bir sariya doner (nabiz)."""
     t = Tuval(16, 48)
     t.kutu(0, 0, 16, 48, rgb("koyu"))
     t.kutu(2, 2, 12, 44, rgb("cokkoyuyesil"))
     t.kutu(3, 3, 10, 42, rgb("koyuyesil"))
     t.kutu(4, 5, 8, 38, rgb("yesil"))
     for j in range(6, 42, 2):                # yukari akan enerji cizgileri
-        t.kutu(5, j, 6, 1, rgb("acsari") if (j // 2) % 4 == 0 else rgb("yesil"))
-    t.kutu(6, 8, 4, 32, rgb("beyaz"))        # parlak cekirdek
+        t.kutu(5, j, 6, 1, rgb("acsari") if (j // 2 + kare) % 4 == 0 else rgb("yesil"))
+    t.kutu(6, 8, 4, 32, rgb("beyaz") if kare % 2 == 0 else rgb("acsari"))   # cekirdek
     t.kutu(7, 6, 2, 36, rgb("beyaz"))
     t.cerceve(0, 0, 16, 48, rgb("siyah"))
     t.kutu(0, 0, 16, 2, rgb("mavigri"))      # ust/alt metal kelepce
     t.kutu(0, 46, 16, 2, rgb("mavigri"))
     t.cerceve(0, 0, 16, 48, rgb("siyah"))
-    return t.yaz("kapi.png")
+    return t
+
+
+def uret_kapi():
+    """64x48: 4 kareli parildayan kapi (yalniz scripts/bolum.gd kullanir)."""
+    return _sayfa([_kapi_karesi(k) for k in range(PARILTI_KARE)], "kapi.png")
 
 
 KRISTAL = [
@@ -356,11 +377,31 @@ KRISTAL_SOZ = {
 }
 
 
-def uret_kristal():
-    dogrula(KRISTAL, 12, "kristal")
+# Kare basina ek beyaz pikseller (x, y): kristalin uzerinde kayan isik.
+# Hepsi haritada "W" ya da "c" olan, yani govdenin icindeki noktalar.
+KRISTAL_PARILTI = [[], [(3, 3), (4, 3)], [(7, 2), (8, 5)], [(5, 7)]]
+
+
+def _kristal_karesi(kare):
     t = Tuval(12, 12)
-    t.bas(0, 0, KRISTAL, KRISTAL_SOZ)
-    return t.yaz("kristal.png")
+    soz = dict(KRISTAL_SOZ)
+    if kare == 2:
+        soz["c"] = rgb("camgobegi")          # en parlak kare: govde bir ton acilir
+    t.bas(0, 0, KRISTAL, soz)
+    for (x, y) in KRISTAL_PARILTI[kare]:
+        t.nokta(x, y, rgb("beyaz"))
+    return t
+
+
+def uret_kristal():
+    """12x12 TEK kare: HUD, menu ve Bolum Sec simgesi (parildamaz)."""
+    dogrula(KRISTAL, 12, "kristal")
+    return _kristal_karesi(0).yaz("kristal.png")
+
+
+def uret_kristal_parilti():
+    """48x12: bolum icindeki kristalin 4 kareli parilti sayfasi."""
+    return _sayfa([_kristal_karesi(k) for k in range(PARILTI_KARE)], "kristal_parilti.png")
 
 
 def uret_kontrol():
@@ -494,7 +535,8 @@ def onizleme(olcek=4):
 def main():
     os.makedirs(CIKTI, exist_ok=True)
     isler = [uret_oyuncu, uret_karo, uret_karo_ust, uret_diken, uret_gezgin,
-             uret_platform, uret_inis, uret_kapi, uret_kristal, uret_kontrol, uret_madalya,
+             uret_platform, uret_inis, uret_kapi, uret_kristal, uret_kristal_parilti,
+             uret_kontrol, uret_madalya,
              uret_arka_0, uret_arka_1, uret_arka_2]
     for is_ in isler:
         yol = is_()
