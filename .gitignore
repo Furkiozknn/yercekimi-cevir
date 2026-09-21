@@ -25,3 +25,6 @@ assets/audio/ham/
 
 # Tanitim GIF ara dosyasi (5 MB ham RGB; tools/gif_yap.py girdisi)
 yayin/tanitim/kareler.raw
+
+# Python onbellegi (tools/uret_sprite.py ice aktarilinca olusuyor)
+__pycache__/

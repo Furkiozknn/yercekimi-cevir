@@ -171,20 +171,46 @@ Kaynak: `oyun-terminalleri/aktif/H14-yercekimi-cevir.md`.
       sağ kenarda ve ilk odada sarsıntının negatif karelerinde sağ yarımda
       açık kalıyordu (katman içeriği 640 px'e çıkarıldı, `_parallaks_testi`)
 
+## Tur 7 — yeni mekanikler, tabela, süre listesi, kol sallanması v0.7 (2026-09-21)
+
+Kaynak: `oyun-terminalleri/aktif/H16-yercekimi-cevir.md`.
+
+- [x] **Çevirme yasağı bölgesi** (`=`): yüzeye bitişik kesik çizgili kutu + kilit;
+      içindeyken çevirme reddedilir ve tuş yutulur, HUD rozeti + kilit sesi.
+      9 — Salıncak (zemin 29–31, ardında diken) ve 16 — Kılçık (tavan 12–19,
+      zemin 44–46). Üreteç kuralı `assert` + `_yasak_bolge_testi`; bot bağlayıcı
+      bölgeyi tehlike başı sayıyor. Kareler `docs/tur6/01-04`
+- [x] **Tek yönlü platform** (`_` üstüne / `~` altına inilir): sabit katı yüz,
+      oklu karo; 14 — Boşluk Üstü'nde tek yol `~` köprü, 20 — Son Kapı'da `_`.
+      İniş tahmini ve bot görüyor; test iki yerçekiminde davranış. Kareler `05-07`
+- [x] **Bölüm başı tabelası** 1,2 sn / ilk girdi; `_tabela_testi`; kare `08`
+- [x] **Süre listesi** Bölüm Seç'te (iki sütun × 10, en iyi + madalya + altın);
+      menüde toplam madalya; `_sure_listesi_testi`; kareler `09-10`
+- [x] **Kol sallanması**: kollar ayrı katman, yürüyüşte dışa/içe, zıplamada
+      yukarı, düşüşte T; `_kol_testi`; levha `11`
+- [x] Bot yeniden ölçtü (20/20, 5/5 ölümsüz); testler 748 → **841 doğrulama**;
+      test paketi `kayit.cfg`'yi yedekliyor; Windows + Web dışa aktarımı temiz;
+      web yapısı Playwright ile tarayıcıda denendi (0 sayfa hatası); yayın paketi 0.7.0
+- [x] ~~20 — Son Kapı'nın bitişi~~ — `_` platform son deliğin üstünde; bot
+      5/5 bitiriyor, ortanca 9,23 → 9,15 sn
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
+
+- [ ] **Yeni mekanikleri elle oyna.** Bölge ilk kez 9'da ölümcül bir yerde
+      (kutuya girersen dikene düşersin) — ipucu satırı uyarıyor ama ilk karşılaşma
+      yine ölümle bitebilir; fazla sertse 8 — Asansör'e zararsız bir bölge koy.
+      14'teki `~` köprü tek yol: altında yürüyüp zemine çevirmeyi insan buluyor mu?
 
 - [ ] **20 bölümü elle baştan sona oyna.** Hâlâ en büyük belirsizlik. 19'un
       "iki yüzey de ölümlü" tuzağı kalktı ve bot artık frenle geçiyor; ama
       insan bandındaki botun bile 6, 7 ve 15'te bir zorunlu fren yediği ölçüldü —
       gerçek oyuncunun kaç fren yediği ölçülmedi. Altın ×1,35 buna göre
       seçildi; insan oynayınca doğrulanmalı.
-- [ ] **20 — Son Kapı'nın sonu:** delik 54–57'den kapı önündeki 2 hücreye (58–59)
-      iniş, üretecin izin verdiği en dar bitiş. İnsan bandındaki bot geri
-      yürümeyi bilmediği için 5 koşunun 4'ünde tavanda kaldı. İnsan geri
-      yürür; ama elle oynanınca bu bitiş "haksız" geliyorsa deliği 1 sütun
-      sola al.
+- [x] ~~20 — Son Kapı'nın sonu~~ — v0.7'de son deliğin üstüne `_` platform:
+      tavandan düşüp üstüne iniyorsun, kapıya yürüyorsun; insan bandındaki botla
+      yeniden ölçülmedi.
 - [x] ~~Tavanda yürüyen oyuncu üst HUD şeritlerinin arkasında kalıyor~~ —
       v0.6'da şerit soluyor; **gerçek oynanışta** 0,25'in yeterli olup olmadığı
       (yazı hâlâ okunuyor mu, oyuncu yeterince görünüyor mu) elle denenmeli.
@@ -198,8 +224,12 @@ Kaynak: `oyun-terminalleri/aktif/H14-yercekimi-cevir.md`.
 
 ### Oynanış
 
-- [ ] Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform, dikey kaydırmalı bölüm
-- [ ] Bölüm başı tabelası / en iyi süre listesi ekranı
+- [x] ~~Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform~~ — v0.7
+- [ ] Dikey kaydırmalı bölüm (oda kamerası dikeyde de atlamalı)
+- [ ] Yasak bölge ve tek yönlü platformu daha çok bölümde kullan (şimdi 4 bölümde);
+      insan bandındaki botla (`bot.gd -- … insan`) yeniden ölç — altın çarpanı
+      yeni mekaniklerde doğrulanmadı
+- [x] ~~Bölüm başı tabelası / en iyi süre listesi ekranı~~ — v0.7
 - [x] ~~Günün bölümü: seri sayacı, 3. değiştirici, paylaşılabilir metin~~ — v0.6
 - [ ] Günün bölümü: liste/karşılaştırma yok, yalnız kendi en iyin ve serin;
       paylaşım metni bunun yerine geçiyor
@@ -207,7 +237,8 @@ Kaynak: `oyun-terminalleri/aktif/H14-yercekimi-cevir.md`.
 ### Görsel ve ses
 
 - [x] ~~Kapı ve kristal için 2–4 kareli parıldama animasyonu~~ — v0.6 (4 kare)
-- [ ] Yürüme çevriminde kol sallanması (şu an yalnız bacaklar değişiyor)
+- [x] ~~Yürüme çevriminde kol sallanması~~ — v0.7 (dışa/içe iki poz; tam bir
+      "ileri-geri" salınım 16 px'te çizilmedi, gerekirse üçüncü poz)
 - [x] ~~Müziği bölüm grubuna göre değiştir~~ — v0.6; parçalar dinlenmedi
       (üreteç tohumları ilk denemede seçildi), beğenilmeyen grupta yalnız
       `--tohum` değiştir

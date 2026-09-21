@@ -369,12 +369,14 @@ def uret_tek_yonlu():
     hucre doser; alttan katisi (~) icin dikey aynalayarak cizer (oklar asagi)."""
     t = Tuval(16, 8)
     t.kutu(0, 0, 16, 8, rgb("acikgri"))
-    t.kutu(0, 5, 16, 2, rgb("gri"))                 # alt golge
+    t.kutu(0, 6, 16, 1, rgb("gri"))                 # alt golge
     t.cerceve(0, 0, 16, 8, rgb("siyah"))
-    for c in (3, 8, 13):                            # uc ok: tepe + iki bacak
-        t.nokta(c, 2, rgb("komavi"))
-        t.nokta(c - 1, 3, rgb("komavi"))
-        t.nokta(c + 1, 3, rgb("komavi"))
+    for c in (4, 11):                               # iki ok: 5 px genis, 3 satir (2x'te 10x6)
+        t.nokta(c, 1, rgb("komavi"))
+        t.kutu(c - 1, 2, 3, 1, rgb("komavi"))
+        t.kutu(c - 2, 3, 5, 1, rgb("komavi"))
+        t.kutu(c - 2, 4, 2, 1, rgb("komavi"))       # bacaklar: ok govdesi degil, "^" cizgisi
+        t.kutu(c + 1, 4, 2, 1, rgb("komavi"))
     return t.yaz("tek_yonlu.png")
 
 

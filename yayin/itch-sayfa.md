@@ -44,6 +44,13 @@ after you left the surface.
 - **Daily streak and share text** — consecutive days build a streak; at the end
   a three-line summary (level, twist, time, deaths, flips, streak) is one
   button away from your clipboard
+- **No-flip zones** — dashed orange boxes where gravity cannot be flipped; commit
+  before you walk in, or walk into the spikes behind it
+- **One-way platforms** — solid from one side, pass-through from the other, and
+  the solid side does not rotate with gravity: the same bridge catches you in
+  one gravity and lets you through in the other
+- A level card at every start (name, gold time, your best) and a **best-times
+  list** with medals next to the level grid
 - Music changes with the level group: calm for 1–7, tense for 8–14, fast for 15–20
 - The exit and the crystal glow; the top HUD fades out when you walk on the
   ceiling under it
@@ -107,6 +114,12 @@ bastıysan da.
   herkes aynı bölümü oynar
 - **Seri ve paylaşım** — ardışık günler seriyi büyütür; bitişte üç satırlık özet
   (bölüm, değiştirici, süre, ölüm, çevirme, seri) tek düğmeyle panoya
+- **Çevirme yasağı bölgesi** — kesik çizgili turuncu kutuda yerçekimi çevrilemez;
+  kararı kutuya girmeden ver, yoksa ardındaki dikene yürürsün
+- **Tek yönlü platform** — bir yandan tutar, öbür yandan içinden geçilir; katı
+  yüz yerçekimiyle dönmez, aynı köprü bir yerçekiminde tutar, ötekinde geçirir
+- Her bölüm başında kart (ad, altın süre, en iyin) ve Bölüm Seç'te madalyalı
+  **süre listesi**
 - Müzik bölüm grubuyla değişir: 1–7 sakin, 8–14 gergin, 15–20 hızlı
 - Kapı ve kristal parıldar; tavanda yürürken üstündeki HUD şeridi solar
 - Oda tabanlı kamera: tehlike ekran dışında kalmaz
@@ -164,8 +177,10 @@ Copyright (c) 2003 by Bitstream, Inc. DejaVu changes are in public domain.
       (v0.6'da döngü sonu düzeltildi: önceki sürümlerde müzik ~4 sn'de başa sarıyordu)
 - [ ] Tarayıcıda günün bölümünü bitirip **Paylaşım Metnini Kopyala** düğmesinin panoya
       yazdığını doğrula (kopyalama düğmeye bağlı; otomatik kopyalama web'de çalışmaz)
-- [ ] Tarayıcıda HUD'a bak: `⟳` ve `●` simge olarak çıkıyor mu (v0.3.1 düzeltmesi,
-      tarayıcıda görülmedi); telefon emülasyonunda eğitim metni dokunmaya çevrildi mi
+- [x] Tarayıcıda HUD'a bak: `⟳` ve `●` simge olarak çıkıyor (v0.7 Playwright
+      denemesi: menü, tabela, yürüyüş, duraklatma, süre listesi; 0 sayfa hatası)
+- [ ] Tarayıcıda 9. ve 14. bölümü oyna: yasak bölgede kilit sesi ve rozet,
+      `~` köprünün altına yapışma (bu turda yalnız masaüstü testleriyle ölçüldü)
 - [ ] Windows yapısını zip'le (`yercekimi-cevir.exe` + `.pck` birlikte)
 - [ ] Kapak görselini (630×500) ve 4 ekran görüntüsünü yükle
 - [x] Kapak **315×250 ve 120×45** boyutlarında üretildi ve gözle denetlendi

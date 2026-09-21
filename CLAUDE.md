@@ -26,6 +26,8 @@ Arayüz ve tüm belgeler **Türkçe**.
 | Üst HUD | `Arayuz/HudSol` ve `HudSag` grupları, tavandaki oyuncu girince alfa 0,25 | şeritleri daraltmak 640 px'te metni sığdırmıyor |
 | Simge yazı tipi | `assets/fonts/simgeler.ttf`, `Simgeler.kur()` `Ayarlar._ready()` içinde | gömülü Open Sans'ta `⟳ ●` yok; web'de sistem yazı tipi yedeği olmadığı için kutu çıkıyordu |
 | En-boy oranı | `keep` (siyah şerit) — `expand` **yapılmadı** | oda kamerası 640 px'lik odalara kilitli; geniş görüş alanı 40 sütunluk bölümlerde bölüm dışını gösterir |
+| Çevirme yasağı bölgesi | **yüzeye bağlı** (`=` yürüyüş satırında; zemin/tavan), 48 px yüksek dikdörtgen; gövde değerken `cevir()` reddeder ve tamponu siler | tam boy bölge iki yüzeyi birden bağlardı; yüzeye bağlı bölge "karşı yüzeydeki diken bölgenin altında" desenine izin veriyor (16. bölüm) |
+| Tek yönlü platform | katı yüzü **sabit** (`_` üst, `~` alt), yerçekimine göre değişmez | yerçekimiyle dönen katı yüz her zaman inilen yüz olurdu, yani platform hiç "geçilmez"di; sabit yüz iki yerçekiminde farklı davranır |
 
 ## Klasör yapısı
 
@@ -38,11 +40,12 @@ scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet) · s
              altin_hayalet.gd (ÜRETİLİR: botun en iyi koşusunun yolu)
 scenes/      menu · bolum_sec · ayarlar_ekrani · oyun · oyuncu
 assets/      sprites/*.png (ÜRETİLİR; kapi.png 4 kare 64×48, kristal.png tek kare = HUD
-             simgesi, kristal_parilti.png 4 kare = bölüm içi) · audio/*.wav (ÜRETİLİR;
-             muzik_{menu,sakin,gergin,hizli,bitis}) · oyuncu_frames.tres
+             simgesi, kristal_parilti.png 4 kare = bölüm içi, tek_yonlu.png 16×8 oklu
+             karo, kilit.png 12×12 yasak bölge/HUD) · audio/*.wav (ÜRETİLİR;
+             muzik_{menu,sakin,gergin,hizli,bitis}, 10 efekt) · oyuncu_frames.tres
              fonts/simgeler.ttf + LISANS-simgeler.txt (lisans gereği yanında kalmalı)
 _eski/       silinmeyen eskiler (.gdignore): audio/muzik_oyun.wav (v0.5 tek oyun parçası),
-             yayin-ekran-v0.x/
+             yayin-ekran-v0.x/ (v0.6'ya kadar)
 tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · sesler.md
              bot.gd (madalya sürelerini ölçen bot) · gif_yap.py (bağımlılıksız GIF)
 arac/        uret_bolumler.py
@@ -88,6 +91,21 @@ verir (son bitiş dün ya da bugün değilse 0). Bitişte menüye dönülmez:
 `tools/sesler.md`. **Parıltı:** kapı ve kristal `hframes=4`, `Bolum._process`
 tek sayaçla (`PARILTI_ARALIGI` 0,15 sn) kareyi seçer; bot/test kareye bakmaz.
 
+**Bölüm haritası karakterleri** (`arac/uret_bolumler.py` üretir): `#` blok,
+`^`/`v` diken, `S` başlangıç, `K` kapı, `C` kristal, `P` kontrol, `-` hareketli
+platform, `*` gezen diken, `=` **çevirme yasağı bölgesi** (yürüyüş satırında;
+üreteçte `yasak=[("zemin"|"tavan", c1, c2)]`), `_`/`~` **tek yönlü platform**
+(üstüne / altına inilir; `tek=[("ust"|"alt", satır, c1, c2)]`). Üreteç kuralları:
+bölgenin kendi yüzeyinde engel yok; bağlayıcı bölgenin (ardında kendi yüzeyi
+ölümcül) önünde 3 hücre pencere; tek yönlü platformun ilk 3 sütununda yaklaşma
+yüzeyi temiz, bitişinde taban yüzeyi 6 hücre temiz ya da karşı yüzeye çevrilebilir.
+Bot bölgeyi bağlayıcıysa tehlike başlangıcı sayar (`YASAK_PAYI` 48 px), içindeyken
+yalnız yürür; platformu üçüncü yüzey olarak tarar (`_tehlike_mesafesi(..., plat)`).
+
+**Bölüm başı tabelası** `Ayarlar.tabela_metni(i)`, `TABELA_SURESI` 1,2 sn; yalnız
+`bolum_yukle()` açar, ilk girdi kapatır, sayaç durmaz. **Süre listesi** Bölüm
+Seç'te `liste_goster(true)`: iki sütun × 10 satır, satır düğümleri `Liste/Sol/SatirN`.
+
 **Hayalet kayıtları** `user://hayalet_<bolum>.dat` (PackedVector2Array).
 `Ayarlar.sifirla()` bunları da siler; silmezse önceki koşudan kalan kayıt
 testleri ve yeni oyuncunun ilk koşusunu kirletiyor.
@@ -114,7 +132,10 @@ godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/a
 
 Müzik üreteci `-s` ile çalışırken autoload'lar da yükleniyor: `ses.gd`'deki
 `preload`'lar var olmayan bir WAV'a bakıyorsa üreteç hata basar. Yeni parça
-eklerken **önce üret, `--import` çalıştır, sonra `ses.gd`'ye ekle.**
+eklerken **önce üret, `--import` çalıştır, sonra `ses.gd`'ye ekle.** Aynı şey
+efektler için de geçerli: `preload` henüz içe aktarılmamış bir WAV'a bakıyorsa
+ilk `--import` "has no resource loaders" der ve `ses.gd` derlenmez; ikinci
+`--import` temiz geçer (v0.7'de `kilit.wav` böyle oldu).
 
 Sprite üretiminden sonra **`--import` çalıştır**, yoksa Godot eski PNG'yi kullanmayı sürdürür
 (bu bir kez ekran görüntüsünde yakalandı: dosya değişti, oyun eskisini gösteriyordu).
@@ -131,6 +152,7 @@ godot --path . res://tests/ekran.tscn -- -4 <klasör>    # tur 3: altın hayalet
 godot --path . res://tests/ekran.tscn -- -5 yayin/tanitim   # 3 sn tanıtım kareleri + kareler.raw
 godot --path . res://tests/ekran.tscn -- -6 <klasör>    # tur 4 (v0.5): solak alanlar, 19. bölüm, günün bölümü
 godot --path . res://tests/ekran.tscn -- -7 <klasör>    # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım paneli, parıltı
+godot --path . res://tests/ekran.tscn -- -8 <klasör>    # tur 6 (v0.7): yasak bölge, tek yönlü platform, tabela, süre listesi, kol kareleri
 python tools/gif_yap.py yayin/tanitim/kareler.raw yayin/tanitim/tanitim.gif 320 180 10
 python tools/gif_yap.py --dogrula                       # GIF kodlayıcısının öz denetimi
 godot --headless --path . --export-release "Windows Masaustu"
@@ -243,3 +265,21 @@ kararı Furki verir.
    kareler sonra çekiliyordu). Kural: her katmanın içeriği ekran kadar geniş
    (`Gorsel` + `Gorsel2`, 640) ve `motion_mirroring.x` içeriği aşmasın;
    `_parallaks_testi` bunu ölçüyor. Yeni arka plan katmanı eklerken aynı düzen.
+22. **Test paketi de `user://kayit.cfg`'yi yazıyordu.** Bölüm bitişi ve ayar
+   kaydı testleri `kaydet()` çağırıyor; bir test çalışma zamanı hatasıyla
+   yarıda kalırsa `yedek` geri verilmiyor ve sonraki `_ayar_kayit_testi`
+   kirli değerleri (v0.7'de yardım modu + solak AÇIK) diske yazıyor — bir
+   sonraki koşuda 27 test "açıklanamaz" biçimde kalıyor. `tests/testler.gd`
+   artık başta dosyayı yedekleyip çıkışta geri koyuyor ve bellekte
+   `_varsayilan_ayarlar()` ile başlıyor (ekran aracıyla aynı düzen).
+23. **Godot çalışırken varlık dosyasına dokunma.** Arka planda dışa aktarma
+   sürerken `tools/uret_sprite.py` bir PNG'yi yeniden yazdı; export yarım
+   dosyayı okurken `Parameter "mem" is null` + segfault ile çöktü ve eski
+   yapı dosyaları yerinde kaldı (tarih/boyut değişmedi — çıkış kodunu ve
+   dosya tarihini kontrol et). Üretim betikleri ve Godot partileri ardışık
+   koşar, paralel değil.
+24. **`var k := a.b and c()` çıkarımı derlenmez** `a` `CharacterBody2D` gibi
+   betiksiz tiplenmişse (`_oyuncu.yasiyor` Variant): "Cannot infer the type".
+   `var k: bool = ...` yaz. Parse hatası **tek dosyayı** düşürür ama o sahneyi
+   kullanan bütün testler "Nonexistent function" ile kalır — listedeki ilk
+   `SCRIPT ERROR`a bak, gerisi onun gölgesi.

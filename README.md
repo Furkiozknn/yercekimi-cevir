@@ -74,6 +74,26 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
   değişmediyse parça bölüm geçişinde kesilmez.
 - **Kapı ve kristal parıldar.** Dört kareli sayfalar (`tools/uret_sprite.py`),
   0,15 sn'de bir kare; HUD ve menüdeki kristal simgesi tek kare kalır.
+- **Çevirme yasağı bölgesi** (v0.7). Yüzeye bitişik, kesik çizgili turuncu kutu ve
+  ortasında kilit: içindeyken yerçekimi çevrilemez, basılan tuş yutulur (bölgeden
+  çıkınca "kendiliğinden" çevirme olmaz), üstte **ÇEVİRME KİLİTLİ** rozeti ve kısa
+  kilit sesi. Bölge yalnız kendi yüzeyini bağlar: zemindeki kutunun üstünde tavanda
+  yürüyen serbesttir. 9 — Salıncak'ta dikenin hemen önünde (kararı kutuya girmeden
+  vermelisin), 16 — Kılçık'ta tavanda (altındaki dikeni geçerken inemezsin) ve
+  zeminde. Üreteç kuralı: bölgenin yüzeyinde ölümcül engel olamaz.
+- **Tek yönlü platform** (v0.7). Oklu gri karo: oklar hangi yöne bakıyorsa o yönde
+  içinden geçilir, öbür yandan gelince tutar. `_` üstüne inilir (yerçekimi aşağı),
+  alttan geçilir; `~` altına inilir (yerçekimi yukarı), üstten geçilir. Katı yüz
+  sabittir, yerçekimiyle dönmez — aynı platform iki yerçekiminde farklı davranır.
+  14 — Boşluk Üstü'nde altında delik, üstünde tavan dikeni olan bir `~` köprü (tek
+  yol platformun altında yürümek, sonra zemine çevirmek); 20 — Son Kapı'nın son
+  deliğinde `_` (tavandan düşüp üstüne inersin, kapıya yürürsün). İniş göstergesi ve
+  bot ikisini de görür.
+- **Bölüm başı tabelası** (v0.7). Bölüm yüklenince 1,2 sn "N — Ad · altın X sn ·
+  en iyi Y sn" kartı; ilk girdiyle kapanır, süre sayacı durmaz.
+- **Süre listesi** (v0.7). Bölüm Seç'te **Süre Listesi** düğmesi 20 bölümü iki
+  sütunlu listeye çevirir: ad, en iyi süren, madalyan, altın hedefi. Menüde toplam
+  madalya sayısı.
 
 ## Okunurluk ve yardım
 
@@ -116,6 +136,7 @@ godot --path . res://tests/ekran.tscn -- -1 <klasör>  # menü / bölüm seç / 
 godot --path . res://tests/ekran.tscn -- -2 <klasör>  # yayın paketi görselleri + kapak
 godot --path . res://tests/ekran.tscn -- -3 <klasör>  # tur 2 özelliklerinin denetim kareleri
 godot --path . res://tests/ekran.tscn -- -7 <klasör>  # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım, parıltı
+godot --path . res://tests/ekran.tscn -- -8 <klasör>  # tur 6 (v0.7): yasak bölge, tek yönlü platform, tabela, süre listesi
 
 python arac/uret_bolumler.py     # 20 bölümü yeniden üret (çözülebilirliği doğrular)
 python tools/uret_sprite.py      # tüm pixel art'ı yeniden üret
@@ -136,7 +157,7 @@ Yayın paketi (yüklenmedi): `yayin/`.
 | `scripts/oyuncu.gd` | Çevirme mekaniği (tampon + kojot), yerçekimi oku, ölüm, esneme-sıkışma. |
 | `scripts/oyun.gd` | Bölüm döngüsü, oda kamerası, hayalet, ölüm haritası, iniş göstergesi, yardım modu. |
 | `tools/` | Varlık üreticileri (pixel art, ses) + `sesler.md`. |
-| `tests/` | Headless otomatik test (748 doğrulama) + ekran görüntüsü aracı. |
+| `tests/` | Headless otomatik test (841 doğrulama) + ekran görüntüsü aracı. |
 
 Bölüm haritaları TileMapLayer yerine ASCII + kod üretimi: 20 bölüm tek dosyada
 düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
@@ -340,13 +361,51 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
   rengi) kalıyordu — "hayalet kazandı" karesi yakaladı. Her katmana ikinci
   sprite kopyası (640 px) + aynalama 640; `_parallaks_testi` örtüyü ölçüyor.
 
+## 7. turda verilen kararlar (v0.7 — yeni mekanikler, tabela, süre listesi, kol sallanması)
+
+- **Yasak bölge yüzeye bağlı, tam boy değil.** Görev "içindeyken çevrilemeyen
+  bölge" diyordu; iki okuma vardı. Tam boy bölge iki yüzeyi birden bağlar ve
+  "karşı yüzeydeki diken bölgenin altında" desenini (16'daki tavan bölgesi:
+  dikeni tavandan geçerken bölge bitene kadar inemezsin) yasaklardı. Yüzeye
+  bağlı bölge daha zengin ve "bölge boyunca o yüzeyde ölümcül engel olmasın"
+  kuralına birebir oturuyor. Bölgede basılan tuş **yutulur** (tampon silinir):
+  aksi hâlde bölgeden çıkar çıkmaz bekleyen çevirme patlıyor ve oyuncu
+  "ben basmadım" diyordu.
+- **Tek yönlü platformun katı yüzü sabit.** İlk okuma "yerçekimi yönünden
+  katı" idi; ama oyuncu hep yerçekimi yönünde düştüğü için o platform hiç
+  geçilmez, sıradan ince platform olurdu. Sabit yüz (`_` üst, `~` alt) iki
+  yerçekiminde farklı davranıyor: 14'te `~` köprü zeminden çevirince tutuyor
+  (altında delik, üstünde diken — tek yol), 20'de `_` tavandan düşünce tutuyor,
+  zeminden çevirince içinden geçiliyor. 20'nin v0.5'ten beri açık "haksız bitiş"
+  notu (delik 54–57'den kapı önündeki 2 hücreye iniş) bu platformla kapandı:
+  tavandan tam hızda çevirip platforma inip yürüyorsun.
+- **Yeni mekanikler mevcut bölümlere sığdı, bölüm sayısı 20 kaldı.** 9'da diken
+  bandı 2 hücre sağa kaydı (29–33 → 32–33, önünde bölge 29–31); 16 sekiz banttan
+  yediye indi (iki bölge araya girince 3 hücrelik pencereler yetmedi), ölçülen
+  süre 9,30 → 8,25 sn ve en az çevirme 8 → 6; 14'te hareketli platformun yerini
+  `~` köprü aldı ve deliğin üstüne tavan dikeni geldi; 20'de son hareketli
+  platform `_`'ya döndü. Botun 20/20 bölümü 5/5 ölümsüz bitirmesi ölçüt.
+- **Üreteç kuralları önce, sonra bölüm.** Bölge: kendi yüzeyinde engel yok,
+  bağlayıcıysa (ardında kendi yüzeyi ölümcül) önünde 3 hücre pencere, içinde
+  karşı yüzey ölümcül olamaz. Platform: ilk 3 sütununda yaklaşma yüzeyi temiz,
+  bitişinde taban yüzeyi 6 hücre temiz ya da karşı yüzeye çevrilebilir; köprülediği
+  sütunlarda iki yüzey birden ölümcül olabilir (başka yerde olamaz). Bot da
+  bölge kuralını koşudan önce bir daha ölçüyor.
+- **Tabela sayacı durdurmuyor.** Kart bilgidir, mola değil; hızlı oyuncu ilk tuşla
+  kapatıyor. Ölümde açılmaz (yeniden doğuş bölüm başı değil).
+- **Süre listesi ızgaranın yanına değil yerine.** 640×360'ta ikisi sığmıyor; tek
+  düğme iki görünümü değiştiriyor, 20 satır iki sütun × 10.
+- **Test paketi kayıt dosyasını yedekliyor.** Yarıda kalan bir koşu yardım modu
+  ve solak ayarını diske yazdı; 27 test "açıklanamaz" kaldı. Testler artık ekran
+  aracı gibi başta yedekleyip çıkışta geri koyuyor (CLAUDE.md tuzak 22).
+
 ## Durum
 
-**v0.6 — tavan HUD, seri, hayalet yarışı, müzik grupları, parıltı.** v0.5'in
-üstüne: üst HUD şeritleri tavandaki oyuncuya yol veriyor, günün bölümünde seri
-sayacı ve panoya kopyalanan paylaşım metni, üçüncü değiştirici (hayalet
-yarışı), bölüm grubuna göre üç müzik parçası, parıldayan kapı ve kristal.
-Yükleme yapılmadı. Sonraki adımlar: `YOL-HARITASI.md`.
+**v0.7 — çevirme yasağı bölgesi, tek yönlü platform, tabela, süre listesi, kol
+sallanması.** v0.6'nın üstüne: iki yeni mekanik (9, 14, 16 ve 20. bölümlerde),
+bölüm başı kartı, Bölüm Seç'te iki sütunlu süre listesi ve menüde madalya
+sayısı, yürüyüşte sallanan kollar. Yükleme yapılmadı. Sonraki adımlar:
+`YOL-HARITASI.md`.
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta
 `%APPDATA%\Godot\app_userdata\Yerçekimi Çevir\kayit.cfg`).

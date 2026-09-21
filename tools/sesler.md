@@ -32,6 +32,7 @@ dosyayı doğrusal ara değerli yeniden örneklemeyle hızlandırıp yavaşlatı
 | `madalya.wav` | powerup | 1.35 | 0.85 | 0.40 sn | madalya kazanıldı (bölüm sonuyla üst üste) |
 | `menu.wav` | blip | 1.00 | 0.55 | 0.11 sn | menü tıklaması, duraklatma |
 | `inis.wav` | hit | 0.70 | 0.35 | 0.20 sn | yüzeye konuş — kısık olmalı, çok sık çalıyor |
+| `kilit.wav` | blip | 0.45 | 0.70 | 0.24 sn | çevirme yasağı bölgesine giriş ve bölgede reddedilen çevirme (v0.7) |
 
 Ham rFXGen çıktıları `assets/audio/ham/` altında tutulur, depoya girmez
 (`.gitignore`) ve `.gdignore` ile içe aktarılmaz.
