@@ -41,20 +41,31 @@ Ham rFXGen çıktıları `assets/audio/ham/` altında tutulur, depoya girmez
 `tools/muzik_uret.gd` (ortak araçlardan kopya, değiştirilmedi).
 
 ```bash
-godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_menu.wav  --ruh sakin   --tohum 2
-godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_oyun.wav  --ruh gizemli --tohum 5
-godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_bitis.wav --tur jingle  --ruh neseli --tohum 1
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_menu.wav   --ruh sakin   --tohum 2
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_sakin.wav  --ruh sakin   --tohum 7
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_gergin.wav --ruh gergin  --tohum 3
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_hizli.wav  --ruh hizli   --tohum 11
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_bitis.wav  --tur jingle  --ruh neseli --tohum 1
 ```
 
 | Dosya | Ruh | Süre | Nerede |
 |---|---|---|---|
-| `muzik_menu.wav` | sakin | 20,9 sn | menü, bölüm seç, ayarlar |
-| `muzik_oyun.wav` | gizemli | 17,8 sn | oyun içi (laboratuvar teması) |
+| `muzik_menu.wav` | sakin (tohum 2) | 20,9 sn | menü, bölüm seç, ayarlar |
+| `muzik_sakin.wav` | sakin (tohum 7) | 20,9 sn | bölüm 1–7 |
+| `muzik_gergin.wav` | gergin (tohum 3) | 13,7 sn | bölüm 8–14 |
+| `muzik_hizli.wav` | hızlı (tohum 11) | 12,8 sn | bölüm 15–20 |
 | `muzik_bitis.wav` | neşeli (jingle) | 4,3 sn | bitiş ekranı, döngüsüz |
 
+Grup seçimi `Ses.bolum_parcasi(i)` (v0.6). v0.5'e kadarki tek oyun parçası
+(`gizemli`, tohum 5, 17,8 sn) `_eski/audio/muzik_oyun.wav` altında.
+Parçalar dinlenmedi; beğenilmeyen grupta yalnız `--tohum` değiştir ve yeniden üret.
+
 Döngü noktaları çalışma anında `scripts/ses.gd` içinde kuruluyor
-(`loop_mode = LOOP_FORWARD`, `loop_end = data.size() / 2`), içe aktarma
-ayarına güvenilmiyor.
+(`loop_mode = LOOP_FORWARD`, `loop_end = get_length() * mix_rate`), içe
+aktarma ayarına güvenilmiyor. **`data.size() / 2` kullanma:** içe aktarma
+QOA ile sıkıştırıyor (`compress/mode=2`), o zaman bayt/2 parçanın beşte biri
+olur ve müzik ~4 sn'de başa sarar — v0.5'e kadar böyleydi. `_ses_testi`
+artık `loop_end == uzunluk` istiyor.
 
 ## Ses veriyolları
 

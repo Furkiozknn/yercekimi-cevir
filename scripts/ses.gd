@@ -18,11 +18,18 @@ const EFEKT := {
 	&"inis": preload("res://assets/audio/inis.wav"),
 }
 
+## Oyun ici muzik bolum grubuna gore: 1-7 sakin, 8-14 gergin, 15-20 hizli
+## (bkz. bolum_parcasi). Menu parcasi ayri. Tohumlar tools/sesler.md'de.
 const MUZIK := {
 	&"menu": preload("res://assets/audio/muzik_menu.wav"),
-	&"oyun": preload("res://assets/audio/muzik_oyun.wav"),
+	&"sakin": preload("res://assets/audio/muzik_sakin.wav"),
+	&"gergin": preload("res://assets/audio/muzik_gergin.wav"),
+	&"hizli": preload("res://assets/audio/muzik_hizli.wav"),
 	&"bitis": preload("res://assets/audio/muzik_bitis.wav"),
 }
+
+## Bolum grubu sinirlari (sifir tabanli bolum indeksi, ust sinir haric).
+const GRUP_SINIRI: Array = [7, 14]
 
 const HAVUZ: int = 6
 
@@ -42,14 +49,28 @@ func _ready() -> void:
 	_muzik = AudioStreamPlayer.new()
 	_muzik.bus = &"Muzik"
 	add_child(_muzik)
-	# Ice aktarma ayarina guvenmeden dongu noktalarini burada kur: WAV 16 bit mono.
+	# Ice aktarma ayarina guvenmeden dongu noktalarini burada kur. loop_end
+	# ORNEK sayisidir ve get_length() uzerinden alinir: ice aktarma parcalari
+	# QOA ile sikistiriyor (compress/mode=2), data.size()/2 o zaman bayt/2 =
+	# parcanin BESTE BIRI olur ve muzik ~4 sn'de basa sarar (v0.5'e kadar
+	# boyleydi; testler yalniz loop_end > 0'a bakiyordu).
 	for ad in MUZIK:
 		if ad == &"bitis":
 			continue
 		var s: AudioStreamWAV = MUZIK[ad]
 		s.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		s.loop_begin = 0
-		s.loop_end = s.data.size() / 2
+		s.loop_end = int(round(s.get_length() * s.mix_rate))
+
+
+## Bolum indeksinden (0 tabanli) o bolumun muzik parcasi. Oyun sahnesi her
+## bolum basinda bunu muzik()'e verir; grup degismediyse parca kesilmez.
+func bolum_parcasi(i: int) -> StringName:
+	if i < int(GRUP_SINIRI[0]):
+		return &"sakin"
+	if i < int(GRUP_SINIRI[1]):
+		return &"gergin"
+	return &"hizli"
 
 
 ## Cikmadan ONCE cagrilmali. Godot agaci alttan yukari sokuyor: Ses._exit_tree()
