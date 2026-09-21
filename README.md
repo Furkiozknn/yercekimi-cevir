@@ -1,5 +1,7 @@
 # Yerçekimi Çevir
 
+[![CI](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml/badge.svg)](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml)
+
 Zıplama yok: tek tuşla yerçekimini ters çevirip tavana "düşerek" dikenlerden kaçtığın
 kısa ve zor bir hassas platform oyunu. **20 bölüm**, her bölüm 1–2 ekran.
 
@@ -409,3 +411,34 @@ sayısı, yürüyüşte sallanan kollar. Yükleme yapılmadı. Sonraki adımlar:
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta
 `%APPDATA%\Godot\app_userdata\Yerçekimi Çevir\kayit.cfg`).
+
+
+## Bilinen sınırlar
+
+Hepsi ölçüldü veya yapılandırmadan doğrulandı — tahmin yok.
+
+- **Yalnızca Windows ve Web.** `export_presets.cfg` iki hedef tanımlıyor:
+  `Windows Masaüstü` ve `Web (HTML5)`. Linux, macOS ve Android dışarı
+  aktarımı yok.
+- **Arayüz yalnızca Türkçe.** `project.godot` içinde çeviri/locale girdisi
+  bulunmuyor; metinler sahnelere gömülü.
+- **Web yapısı tek iş parçacıklı** (`thread_support=false`). itch.io'ya
+  yüklerken **SharedArrayBuffer kutusu işaretlenmemeli**.
+- **Bölüm başı ipucu metni HUD ile çakışıyor.** Sol üst köşede oyuncu
+  sprite'ının ve üst duvarın üzerine biniyor. Okunuyor, oynanışı
+  engellemiyor — kozmetik.
+- **İlerleme tek makinede.** Kayıt yerel; bulut senkronu yok, dosya
+  silinirse tüm bölüm ve madalya ilerlemesi sıfırlanır.
+
+## Test ve CI
+
+```bash
+godot --headless --path . --import                    # bir kez, .godot onbellegi
+godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
+```
+
+Her push'ta **aynı komut** GitHub Actions'ta koşuyor (Godot 4.7.2, Linux
+headless, Git LFS çekilerek). Son ölçüm: **841 doğrulama, 0 hata**.
+
+İçe aktarma ayrı bir adım çünkü taze bir klonda `.godot` önbelleği hiç
+yok; onsuz testin içeriğiyle ilgisi olmayan ayrıştırma hataları alınır.
