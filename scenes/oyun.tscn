@@ -18,27 +18,44 @@ layer = -10
 
 [node name="Kat0" type="ParallaxLayer" parent="Arka"]
 motion_scale = Vector2(0.08, 0.04)
-motion_mirroring = Vector2(320, 0)
+motion_mirroring = Vector2(640, 0)
 
 [node name="Gorsel" type="Sprite2D" parent="Arka/Kat0"]
 texture = ExtResource("3_arka0")
 centered = false
 
+[node name="Gorsel2" type="Sprite2D" parent="Arka/Kat0"]
+position = Vector2(320, 0)
+texture = ExtResource("3_arka0")
+centered = false
+
 [node name="Kat1" type="ParallaxLayer" parent="Arka"]
 motion_scale = Vector2(0.25, 0.1)
-motion_mirroring = Vector2(320, 0)
+motion_mirroring = Vector2(640, 0)
 
 [node name="Gorsel" type="Sprite2D" parent="Arka/Kat1"]
 modulate = Color(1, 1, 1, 0.8)
 texture = ExtResource("4_arka1")
 centered = false
 
+[node name="Gorsel2" type="Sprite2D" parent="Arka/Kat1"]
+modulate = Color(1, 1, 1, 0.8)
+position = Vector2(320, 0)
+texture = ExtResource("4_arka1")
+centered = false
+
 [node name="Kat2" type="ParallaxLayer" parent="Arka"]
 motion_scale = Vector2(0.5, 0.2)
-motion_mirroring = Vector2(320, 0)
+motion_mirroring = Vector2(640, 0)
 
 [node name="Gorsel" type="Sprite2D" parent="Arka/Kat2"]
 modulate = Color(1, 1, 1, 0.55)
+texture = ExtResource("5_arka2")
+centered = false
+
+[node name="Gorsel2" type="Sprite2D" parent="Arka/Kat2"]
+modulate = Color(1, 1, 1, 0.55)
+position = Vector2(320, 0)
 texture = ExtResource("5_arka2")
 centered = false
 
@@ -146,20 +163,16 @@ color = Color(0.17, 0.91, 0.96, 1)
 
 [node name="Arayuz" type="CanvasLayer" parent="."]
 
-[node name="HudArkaSol" type="ColorRect" parent="Arayuz"]
+[node name="HudSol" type="Control" parent="Arayuz"]
+mouse_filter = 2
+
+[node name="Arka" type="ColorRect" parent="Arayuz/HudSol"]
 offset_right = 232.0
 offset_bottom = 39.0
 color = Color(0.02, 0.02, 0.05, 0.55)
 mouse_filter = 2
 
-[node name="HudArkaSag" type="ColorRect" parent="Arayuz"]
-offset_left = 398.0
-offset_right = 640.0
-offset_bottom = 39.0
-color = Color(0.02, 0.02, 0.05, 0.55)
-mouse_filter = 2
-
-[node name="Ad" type="Label" parent="Arayuz"]
+[node name="Ad" type="Label" parent="Arayuz/HudSol"]
 theme_override_constants/outline_size = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 offset_left = 8.0
@@ -169,7 +182,7 @@ offset_bottom = 22.0
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
 
-[node name="KristalIkon" type="TextureRect" parent="Arayuz"]
+[node name="KristalIkon" type="TextureRect" parent="Arayuz/HudSol"]
 modulate = Color(1, 1, 1, 0.3)
 offset_left = 9.0
 offset_top = 22.0
@@ -177,7 +190,7 @@ offset_right = 21.0
 offset_bottom = 34.0
 texture = ExtResource("6_kristal")
 
-[node name="KristalYazi" type="Label" parent="Arayuz"]
+[node name="KristalYazi" type="Label" parent="Arayuz/HudSol"]
 theme_override_constants/outline_size = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 offset_left = 24.0
@@ -187,7 +200,17 @@ offset_bottom = 37.0
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.17, 0.91, 0.96, 1)
 
-[node name="Sayac" type="Label" parent="Arayuz"]
+[node name="HudSag" type="Control" parent="Arayuz"]
+mouse_filter = 2
+
+[node name="Arka" type="ColorRect" parent="Arayuz/HudSag"]
+offset_left = 398.0
+offset_right = 640.0
+offset_bottom = 39.0
+color = Color(0.02, 0.02, 0.05, 0.55)
+mouse_filter = 2
+
+[node name="Sayac" type="Label" parent="Arayuz/HudSag"]
 theme_override_constants/outline_size = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 offset_left = 320.0
@@ -198,7 +221,7 @@ theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.74, 0.78, 0.88, 1)
 horizontal_alignment = 2
 
-[node name="Hedef" type="Label" parent="Arayuz"]
+[node name="Hedef" type="Label" parent="Arayuz/HudSag"]
 theme_override_constants/outline_size = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 offset_left = 320.0
@@ -344,6 +367,11 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 12
 text = ""
 horizontal_alignment = 1
+
+[node name="Kopyala" type="Button" parent="Arayuz/Bitis/Kutu"]
+visible = false
+layout_mode = 2
+text = "Paylaşım Metnini Kopyala"
 
 [node name="Menu" type="Button" parent="Arayuz/Bitis/Kutu"]
 layout_mode = 2

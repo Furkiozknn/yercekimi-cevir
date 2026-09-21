@@ -58,6 +58,13 @@ const ARKA_DUZ: Color = Color(1.0, 1.0, 1.0)        ## normal yercekiminde arka 
 const ARKA_TERS: Color = Color(0.74, 0.86, 1.22)    ## ters yercekiminde (soguk kayma)
 const ARKA_GECIS: float = 0.25
 
+# --- Ust HUD seritleri ---
+## Tavanda yuruyen oyuncu (ya da hayalet) ust seritlerin arkasinda kaliyordu
+## (x < 232 ve x > 398). Bir sey seridin dikdortgenine girince serit
+## HUD_SOLUK'a iner, cikinca geri gelir; gecis HUD_SOLMA_SURESI surer.
+const HUD_SOLUK: float = 0.25
+const HUD_SOLMA_SURESI: float = 0.15
+
 # --- Renkler (arayuz) ---
 const RENK_METIN: Color = Color(0.90, 0.92, 0.97)
 const MADALYA_AD: Array = ["—", "Bronz", "Gümüş", "Altın"]
@@ -132,11 +139,19 @@ var yardim_olumsuz: bool = false    ## diken oldurmez, geri iter
 ## oynar. AYRI kayit yuvasi: ana ilerlemeye (acilan bolum, en iyi, madalya,
 ## kristal, en az cevirme, hayalet) hic dokunmaz. Gunun kaydi yalniz o gun
 ## gecerlidir, tarih degisince sifirlanir.
-const GUNLUK_DEGISTIRICI: Array = ["ters başlangıç", "kristal zorunlu"]
+## 2 = hayalet yarisi: altin hayalet (botun olculmus kosusu) rakiptir, kapi
+## yalniz ondan once varilinca sayilir.
+const GUNLUK_DEGISTIRICI: Array = ["ters başlangıç", "kristal zorunlu", "hayalet yarışı"]
 var gunluk_mod: bool = false          ## oturum: Oyun sahnesi gunun bolumu olarak acildi
 var gunluk_tarih: int = 0             ## kayittaki gun (yyyymmdd)
 var gunluk_en_iyi: float = 0.0        ## o gunun en iyi suresi, 0 = henuz bitmedi
 var gunluk_bitis: int = 0             ## o gun kac kez bitirildi
+## Seri: gunun bolumunun ARDISIK gunlerde bitirilme sayisi. Tarih degisince
+## SIFIRLANMAZ (gunluk_* alanlarinin tersine); bir gun atlaninca sonraki
+## bitis 1'e dusurur. Yardim modunda da sayilir: seri bir rekor degil,
+## oynama aliskanligi.
+var gunluk_seri: int = 0              ## serinin uzunlugu (gun)
+var gunluk_seri_tarih: int = 0        ## serinin son gunu (yyyymmdd), 0 = hic bitirilmedi
 var tarih_zorla: int = 0              ## testler ve ekran araci icin; 0 = sistem tarihi
 
 ## Dokunmatik ilk kez algilandiginda: arayuz metinleri ve dokunma alanlari
@@ -315,6 +330,8 @@ func gunluk_bolum(tarih: int = 0) -> int:
 
 ## 0 = ters baslangic (yercekimi ters, tavandan baslarsin)
 ## 1 = kristal zorunlu (kapi kristal alinmadan acilmaz)
+## 2 = hayalet yarisi (altin hayaletten once kapiya varmak zorunlu)
+## Karma / bolum sayisi mod 3: 90 gunde 27/30/33 (esit sayilir).
 func gunluk_degistirici(tarih: int = 0) -> int:
 	return (_gunluk_karma(tarih if tarih > 0 else bugun()) / bolum_sayisi()) % GUNLUK_DEGISTIRICI.size()
 
@@ -331,8 +348,8 @@ func _gunluk_tazele() -> void:
 		gunluk_bitis = 0
 
 
-## Gunun bolumu bitti. Ana ilerlemeye YAZMAZ. Yardim modunda sure kaydedilmez.
-## {"rekor": bool, "yardim": bool}
+## Gunun bolumu bitti. Ana ilerlemeye YAZMAZ. Yardim modunda sure kaydedilmez,
+## seri yine sayilir. {"rekor": bool, "yardim": bool, "seri": int}
 func gunluk_bitti(sure: float) -> Dictionary:
 	_gunluk_tazele()
 	var rekor := false
@@ -341,8 +358,29 @@ func gunluk_bitti(sure: float) -> Dictionary:
 		rekor = gunluk_en_iyi <= 0.0 or sure < gunluk_en_iyi
 		if rekor:
 			gunluk_en_iyi = sure
-		kaydet()
-	return {"rekor": rekor, "yardim": yardim_acik}
+	if gunluk_seri_tarih != bugun():
+		# Dun bitirildiyse seri surer (+1), yoksa 1'den baslar. Ayni gun
+		# ikinci bitis seriyi buyutmez.
+		gunluk_seri = gunluk_seri_al() + 1
+		gunluk_seri_tarih = bugun()
+	kaydet()
+	return {"rekor": rekor, "yardim": yardim_acik, "seri": gunluk_seri}
+
+
+## Bugune gore gecerli seri: son bitis bugun ya da dunse seri yasiyor, daha
+## eskiyse (ya da saat geri alindiysa) 0.
+func gunluk_seri_al() -> int:
+	if gunluk_seri_tarih <= 0:
+		return 0
+	var fark := _gun_sayisi(bugun()) - _gun_sayisi(gunluk_seri_tarih)
+	return gunluk_seri if fark >= 0 and fark <= 1 else 0
+
+
+## yyyymmdd -> 1970'ten beri gun sayisi (ay ve yil sinirlarinda "dun" dogru
+## cikar; saat dilimi iki tarafta da ayni oldugu icin farki etkilemez).
+func _gun_sayisi(tarih: int) -> int:
+	return int(Time.get_unix_time_from_datetime_dict(
+		{"year": tarih / 10000, "month": (tarih / 100) % 100, "day": tarih % 100}) / 86400)
 
 
 func gunluk_en_iyi_metin() -> String:
@@ -353,6 +391,14 @@ func gunluk_en_iyi_metin() -> String:
 ## Menu ve HUD icin: "7 — Üç Engel · ters başlangıç"
 func gunluk_baslik() -> String:
 	return "%s · %s" % [String(bolum(gunluk_bolum())["ad"]), gunluk_degistirici_adi()]
+
+
+## Panoya kopyalanan paylasim metni. Simge yok (baska uygulamanin yazi tipi
+## bilinmez), "⟳" yerine "çevirme" yaziyor.
+func gunluk_paylasim(sure: float, olum: int, cevirme: int) -> String:
+	var t := bugun()
+	return "Yerçekimi Çevir · günün bölümü · %02d.%02d.%d\n%s\n%.2f sn · %d ölüm · %d çevirme · seri %d gün" % [
+		t % 100, (t / 100) % 100, t / 10000, gunluk_baslik(), sure, olum, cevirme, gunluk_seri_al()]
 
 
 # --- Ayarlarin uygulanmasi ---------------------------------------------------
@@ -460,6 +506,8 @@ func yukle() -> void:
 	gunluk_tarih = int(cfg.get_value("gunluk", "tarih", 0))
 	gunluk_en_iyi = maxf(0.0, float(cfg.get_value("gunluk", "en_iyi", 0.0)))
 	gunluk_bitis = int(cfg.get_value("gunluk", "bitis", 0))
+	gunluk_seri = maxi(0, int(cfg.get_value("gunluk", "seri", 0)))
+	gunluk_seri_tarih = int(cfg.get_value("gunluk", "seri_tarih", 0))
 
 
 func kaydet() -> void:
@@ -492,6 +540,8 @@ func kaydet() -> void:
 	cfg.set_value("gunluk", "tarih", gunluk_tarih)
 	cfg.set_value("gunluk", "en_iyi", gunluk_en_iyi)
 	cfg.set_value("gunluk", "bitis", gunluk_bitis)
+	cfg.set_value("gunluk", "seri", gunluk_seri)
+	cfg.set_value("gunluk", "seri_tarih", gunluk_seri_tarih)
 	var hata := cfg.save(KAYIT_YOLU)
 	if hata != OK:
 		push_warning("Kayit yazilamadi: %d" % hata)
@@ -511,4 +561,6 @@ func sifirla() -> void:
 	gunluk_tarih = 0
 	gunluk_en_iyi = 0.0
 	gunluk_bitis = 0
+	gunluk_seri = 0
+	gunluk_seri_tarih = 0
 	gunluk_mod = false

@@ -8,7 +8,8 @@ func _ready() -> void:
 	_alt_basligi_yaz()
 	$Kutu/Basla.pressed.connect(_basla)
 	$Kutu/Gunluk.pressed.connect(_gunluk)
-	$Gunluk.text = "Günün bölümü: %s · en iyi %s" % [Ayarlar.gunluk_baslik(), Ayarlar.gunluk_en_iyi_metin()]
+	$Gunluk.text = "Günün bölümü: %s · en iyi %s · seri %d gün" % [
+		Ayarlar.gunluk_baslik(), Ayarlar.gunluk_en_iyi_metin(), Ayarlar.gunluk_seri_al()]
 	$Kutu/Sec.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
 		get_tree().change_scene_to_file("res://scenes/bolum_sec.tscn"))

@@ -3,10 +3,11 @@ extends Node2D
 ## Kontrol noktasi, kristal, madalya, hayalet yaris, olum haritasi, inis
 ## gostergesi, yardim modu, duraklatma ve bitis ekrani da burada.
 
-enum { OYNA, OLDU, TAMAM, BITTI }
+enum { OYNA, OLDU, TAMAM, BITTI, HAYALET }   ## HAYALET: gunluk hayalet yarisi kaybedildi, bolum bastan
 
 const TAMAM_BEKLEME: float = 1.00   ## bolum bitisinde sonraki boluma gecmeden once
 const TAMAM_HARITA: float = 2.40    ## olum haritasi varsa: okumaya yetecek kadar
+const HAYALET_BEKLEME: float = 1.00 ## "hayalet kazandi" mesaji bu kadar kalir, sonra bolum bastan
 const GECIS_SURESI: float = 0.22
 const A := preload("res://scripts/ayarlar.gd")
 const ODA: float = float(A.ODA_GENISLIGI)
@@ -44,6 +45,7 @@ var _bekleme: float = TAMAM_BEKLEME   ## bu bolum bitisinde beklenecek sure
 # Ana oyunda kristal Ayarlar'a yazilir; gunluk modda YAZILMAZ, yalniz
 # "kristal zorunlu" degistiricisinin kapisini acar.
 var _kristal_alindi: bool = false
+var _gunluk_ek: String = ""   ## gunluk bitis paneline eklenen satir (rekor / yardim modu)
 
 @onready var _dunya: Node2D = $Dunya
 @onready var _oyuncu: CharacterBody2D = $Dunya/Oyuncu
@@ -55,19 +57,24 @@ var _kristal_alindi: bool = false
 @onready var _olum_parca: CPUParticles2D = $Dunya/Olum
 @onready var _toplama: CPUParticles2D = $Dunya/Toplama
 @onready var _arka_katlar: Array[CanvasItem] = [$Arka/Kat0, $Arka/Kat1, $Arka/Kat2]
-@onready var _ad: Label = $Arayuz/Ad
-@onready var _sayac: Label = $Arayuz/Sayac
-@onready var _hedef: Label = $Arayuz/Hedef
+## Ust HUD iki grup: serit arkasi + uzerindeki yazilar. Grup olarak
+## soldurulur (bkz. _hud_solma); kristal simgesinin kendi alfasi bozulmaz
+## cunku modulate cocuklara carpilarak iner.
+@onready var _hud_gruplari: Array[Control] = [$Arayuz/HudSol, $Arayuz/HudSag]
+@onready var _ad: Label = $Arayuz/HudSol/Ad
+@onready var _sayac: Label = $Arayuz/HudSag/Sayac
+@onready var _hedef: Label = $Arayuz/HudSag/Hedef
 @onready var _ipucu: Label = $Arayuz/Ipucu
 @onready var _mesaj: Label = $Arayuz/Mesaj
 @onready var _yardim_rozet: Label = $Arayuz/Yardim
-@onready var _kristal_ikon: TextureRect = $Arayuz/KristalIkon
-@onready var _kristal_yazi: Label = $Arayuz/KristalYazi
+@onready var _kristal_ikon: TextureRect = $Arayuz/HudSol/KristalIkon
+@onready var _kristal_yazi: Label = $Arayuz/HudSol/KristalYazi
 @onready var _olum_haritasi: Panel = $Arayuz/OlumHaritasi
 @onready var _harita_alan: Control = $Arayuz/OlumHaritasi/Alan
 @onready var _duraklat: Panel = $Arayuz/Duraklat
 @onready var _bitis: Panel = $Arayuz/Bitis
 @onready var _bitis_metin: Label = $Arayuz/Bitis/Kutu/Metin
+@onready var _kopyala_dugme: Button = $Arayuz/Bitis/Kutu/Kopyala
 @onready var _dokunmatik: Control = $Arayuz/Dokunmatik
 @onready var _karartma: ColorRect = $Gecis/Karartma
 
@@ -83,11 +90,11 @@ func _ready() -> void:
 	$Arayuz/Duraklat/Kutu/Ayar.pressed.connect(_ayarlara)
 	$Arayuz/Duraklat/Kutu/Menu.pressed.connect(_menuye)
 	$Arayuz/Bitis/Kutu/Menu.pressed.connect(_menuye)
+	_kopyala_dugme.pressed.connect(_kopyala)
 	_dokunmatik_kur()
 	Ayarlar.dokunmatik_degisti.connect(_dokunmatik_acildi)
 	_hayalet.modulate = Ayarlar.HAYALET_RENGI
 	_altin.modulate = Ayarlar.ALTIN_HAYALET_RENGI
-	Ses.muzik(&"oyun")
 	bolum_yukle(Ayarlar.secilen_bolum)
 	_karartma.color.a = 1.0
 	_karart(false)
@@ -139,6 +146,7 @@ func _titret() -> void:
 
 func bolum_yukle(i: int) -> void:
 	bolum_i = clampi(i, 0, Ayarlar.bolum_sayisi() - 1)
+	Ses.muzik(Ses.bolum_parcasi(bolum_i))   # grup degismediyse parca kesilmez
 	if _bolum != null:
 		# adi hemen birak: yeni bolum de "Bolum" adiyla eklenebilsin
 		_bolum.name = "EskiBolum"
@@ -180,8 +188,10 @@ func bolum_yukle(i: int) -> void:
 	_altin.visible = false
 	if Ayarlar.gunluk_mod:
 		# Hayaletler normal baslangicin kaydi; ters baslangicta yalan soylerler.
+		# Hayalet yarisi degistiricisinde altin hayalet RAKIPTIR: ayar kapali
+		# olsa da kosar, kapi yalniz ondan once varilinca sayilir.
 		_hayalet_yol = PackedVector2Array()
-		_altin_yol = PackedVector2Array()
+		_altin_yol = AltinHayalet.yol(bolum_i) if Ayarlar.gunluk_degistirici() == 2 else PackedVector2Array()
 	_ad.text = String(veri["ad"])
 	if Ayarlar.gunluk_mod:
 		_ad.text += "   GÜNÜN BÖLÜMÜ · " + Ayarlar.gunluk_degistirici_adi()
@@ -243,8 +253,10 @@ func _hedef_guncelle() -> void:
 func _kristal_guncelle() -> void:
 	if Ayarlar.gunluk_mod:
 		_kristal_ikon.modulate.a = 1.0 if _kristal_alindi else 0.28
+		var d := Ayarlar.gunluk_degistirici()
 		_kristal_yazi.text = ("kristal alındı" if _kristal_alindi else
-			("kristal ZORUNLU — kapı onsuz açılmaz" if Ayarlar.gunluk_degistirici() == 1 else "kristal"))
+			("kristal ZORUNLU — kapı onsuz açılmaz" if d == 1 else
+			("HAYALET YARIŞI — altın hayaleti geç" if d == 2 else "kristal")))
 		return
 	var var_mi := Ayarlar.kristal_var(bolum_i)
 	_kristal_ikon.modulate.a = 1.0 if var_mi else 0.28
@@ -264,6 +276,7 @@ func _physics_process(_delta: float) -> void:
 
 func _process(delta: float) -> void:
 	_sarsinti_isle(delta)
+	_hud_solma(delta)
 	if get_tree().paused:
 		return
 	_zaman += delta
@@ -278,6 +291,8 @@ func _process(delta: float) -> void:
 			_kamera_guncelle(false)
 			_hayalet_isle()
 			_inis_isle()
+			if _durum == OYNA and _hayalet_yarisi() and _hayalet_bitti():
+				_hayalet_kazandi()
 		OLDU:
 			if _zaman >= Ayarlar.OLUM_BEKLEME:
 				yeniden_basla()
@@ -285,7 +300,31 @@ func _process(delta: float) -> void:
 			if _zaman >= _bekleme and not _gecis:
 				_gecis = true
 				_sonraki()
+		HAYALET:
+			if _zaman >= HAYALET_BEKLEME:
+				bolum_yukle(bolum_i)      # sure, olum ve hayalet birlikte basa doner
 	_sayac.text = "Süre %.2f   Ölüm %d   ⟳ %d" % [sure, olum, cevirme]
+
+
+## Tavanda yuruyen oyuncu (ya da hayalet) ust HUD seritlerinin arkasinda
+## kaliyordu (x < 232 ve x > 398). Bir sey seridin dikdortgenine girince o
+## grup (serit + yazilari) Ayarlar.HUD_SOLUK'a iner, cikinca geri gelir.
+## Girdiye dokunmaz: seritler zaten fare olaylarini yok sayiyor.
+func _hud_solma(delta: float) -> void:
+	var donusum := get_viewport().get_canvas_transform()
+	var kutular: Array[Rect2] = []
+	var gorunenler: Array[Node2D] = [_oyuncu, _hayalet, _altin]
+	for d in gorunenler:
+		if d.visible:
+			kutular.append(Rect2(donusum * d.global_position - Vector2(8.0, 12.0), Vector2(16.0, 24.0)))
+	var adim: float = delta * (1.0 - Ayarlar.HUD_SOLUK) / Ayarlar.HUD_SOLMA_SURESI
+	for grup in _hud_gruplari:
+		var serit: Rect2 = (grup.get_node("Arka") as Control).get_rect()
+		var hedef := 1.0
+		for k in kutular:
+			if serit.intersects(k):
+				hedef = Ayarlar.HUD_SOLUK
+		grup.modulate.a = move_toward(grup.modulate.a, hedef, adim)
 
 
 ## Oda tabanli kamera: kamera oyuncuyu izlemez, 640 px'lik odalar arasinda atlar.
@@ -504,6 +543,9 @@ func _kontrol(konum: Vector2) -> void:
 func _kapi() -> void:
 	if _durum != OYNA:
 		return
+	if _hayalet_yarisi() and _hayalet_bitti():
+		_hayalet_kazandi()           # kapiya hayaletten SONRA varmak sayilmaz
+		return
 	if Ayarlar.gunluk_mod and Ayarlar.gunluk_degistirici() == 1 and not _kristal_alindi:
 		# Kristal zorunlu: kapi kapali. Oyuncu kapidan cikip yeniden girince
 		# body_entered yeniden tetiklenir, yani mesaj gerektiginde tekrar cikar.
@@ -537,13 +579,62 @@ func _gunluk_bitti() -> void:
 	if bool(sonuc["rekor"]):
 		Ses.cal(&"madalya")
 	if bool(sonuc["yardim"]):
-		_mesaj.text = ("GÜNÜN BÖLÜMÜ TAMAM — %.2f sn · %d çevirme\n"
-			+ "Yardım modu açık: süre kaydı tutulmuyor.") % [sure, cevirme]
+		_gunluk_ek = "Yardım modu açık: süre kaydı tutulmuyor."
 	else:
-		_mesaj.text = "GÜNÜN BÖLÜMÜ TAMAM — %.2f sn · %d çevirme%s" % [
-			sure, cevirme, "\nGÜNÜN REKORU!" if bool(sonuc["rekor"]) else ""]
+		_gunluk_ek = "GÜNÜN REKORU!" if bool(sonuc["rekor"]) else ""
+	_mesaj.text = "GÜNÜN BÖLÜMÜ TAMAM — %.2f sn · %d çevirme · seri %d gün%s" % [
+		sure, cevirme, int(sonuc["seri"]), ("\n" + _gunluk_ek) if _gunluk_ek != "" else ""]
 	_mesaj.add_theme_color_override("font_color",
 		Ayarlar.MADALYA_RENK[3] if bool(sonuc["rekor"]) else Ayarlar.RENK_METIN)
+
+
+## Gunun bolumu bitince menuye donmek yerine paylasim paneli. Panoya kopyalama
+## bir DUGMEYE bagli: tarayici panoya yazmayi yalniz kullanici dokunusunda
+## kabul ediyor, bitiste kendiliginden kopyalamak web'de sessizce basarisiz
+## olurdu. Masaustunde de ayni yol — tek kod.
+func _gunluk_panel() -> void:
+	_durum = BITTI
+	_mesaj.text = ""
+	$Arayuz/Bitis/Kutu/Baslik.text = "GÜNÜN BÖLÜMÜ TAMAM"
+	_bitis_metin.text = paylasim_metni() + (("\n\n" + _gunluk_ek) if _gunluk_ek != "" else "")
+	_kopyala_dugme.text = "Paylaşım Metnini Kopyala"
+	_kopyala_dugme.visible = true
+	_bitis.visible = true
+	_kopyala_dugme.grab_focus()
+
+
+## Panoya kopyalanan metin: bolum, degistirici, sure, olum, cevirme, seri.
+func paylasim_metni() -> String:
+	return Ayarlar.gunluk_paylasim(sure, olum, cevirme)
+
+
+func _kopyala() -> void:
+	DisplayServer.clipboard_set(paylasim_metni())
+	_kopyala_dugme.text = "Kopyalandı"
+	Ses.cal(&"menu")
+
+
+# --- gunluk hayalet yarisi ----------------------------------------------------
+
+func _hayalet_yarisi() -> bool:
+	return Ayarlar.gunluk_mod and Ayarlar.gunluk_degistirici() == 2 and not _altin_yol.is_empty()
+
+
+## Altin hayaletin yolu bitti = hayalet kapiya vardi. Indeks formulu
+## _hayalet_isle ile ayni: hayalet ekrandan kaybolunca kazanmistir.
+func _hayalet_bitti() -> bool:
+	return int(sure * 60.0 / float(Ayarlar.HAYALET_ARALIGI)) >= _altin_yol.size()
+
+
+func _hayalet_kazandi() -> void:
+	_durum = HAYALET
+	_zaman = 0.0
+	_inis.visible = false
+	_mesaj.text = "HAYALET KAZANDI — baştan"
+	_mesaj.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[3])
+	Ses.cal(&"olum")
+	sars(Ayarlar.SARSINTI_OLUM)
+	_oyuncu.set_physics_process(false)
 
 
 func _ana_bitti() -> void:
@@ -619,7 +710,7 @@ func _olum_haritasi_goster() -> void:
 func _sonraki() -> void:
 	_olum_haritasi.visible = false
 	if Ayarlar.gunluk_mod:
-		_menuye()                    # gunun bolumu tek bolumdur, zincir yok
+		_gunluk_panel()              # gunun bolumu tek bolumdur, zincir yok
 		return
 	if bolum_i + 1 < Ayarlar.bolum_sayisi():
 		_mesaj.add_theme_color_override("font_color", Ayarlar.RENK_METIN)
