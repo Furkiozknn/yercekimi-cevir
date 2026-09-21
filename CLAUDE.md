@@ -6,7 +6,8 @@ Bu dosya her oturumda otomatik yüklenir. Kısa ve güncel tut.
 
 Godot 4.7 / GDScript, 2B hassas platform oyunu. Tek dikey eylem **çevirme**:
 yerçekimi işareti ters döner, oyuncu tavana "düşer". Zıplama yok. 20 bölüm.
-Arayüz ve tüm belgeler **Türkçe**.
+Arayüz ve tüm belgeler **Türkçe** (tek istisna: README'nin en üstündeki bir
+satırlık İngilizce tanıtım, GitHub'da ilk bakışta anlaşılsın diye).
 
 ## Değişmez teknik kararlar
 
@@ -53,6 +54,8 @@ tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı)
 yayin/       itch.io paketi (yüklenmemiş) · yayin/tanitim/ 3 sn tanıtım GIF'i + kareler
 docs/        README görselleri · varliklar.png (sprite denetim levhası)
 build/       dışa aktarma çıktısı — `.gdignore` var, SİLME
+.github/     workflows/ci.yml — `main` push ve PR'larında testler (Godot 4.7.2, Linux)
+kök          LICENSE (MIT) · YOL-HARITASI.md (sonraki adımlar)
 ```
 
 **Madalya eşikleri ve "en az çevirme" hedefi tek yerde:** üretilen
@@ -67,7 +70,7 @@ iz/sarsıntı/ezilme değerleri, madalya renkleri hep orada.
 
 **Kullanıcı ayarları da orada** ve hepsi `user://kayit.cfg` içinde saklanıyor:
 ses, tam ekran, oyun hissi, yüksek kontrast, yerçekimi oku, iniş göstergesi,
-solak dokunmatik, düğme opaklığı, titreşim, yardım modu (açık/hız/ölümsüzlük).
+altın hayalet, solak dokunmatik, düğme opaklığı, titreşim, yardım modu (açık/hız/ölümsüzlük).
 Yeni bir ayar eklerken **üç yeri** birden güncelle: `var`, `yukle()`, `kaydet()` —
 ve `tests/testler.gd` içindeki `_ayar_kayit_testi` bunu doğruluyor.
 
@@ -167,17 +170,21 @@ Dışa aktarmadan önce `build/windows` ve `build/web` klasörleri **var olmalı
 Aynı anda birden çok oyun oturumu çalışabiliyor, RAM dar. Godot çalıştırmadan önce:
 
 ```bash
-[ -f D:/Repolar/.godot-kilit ] || echo "yercekimi-cevir" > D:/Repolar/.godot-kilit
+# Yalnız yerel geliştirme makinesinde; CI'da gerekmez. Yolu düzenine göre ayarla:
+KILIT="${GODOT_KILIT:-$HOME/.godot-kilit}"
+[ -f "$KILIT" ] || echo "yercekimi-cevir" > "$KILIT"
 # ... iş bitince
-rm -f D:/Repolar/.godot-kilit
+rm -f "$KILIT"
 ```
 
 Kilit varsa ve 15 dakikadan yeniyse 30 sn bekle. Açık Godot süreci bırakma.
 
 ## Yayın
 
-**Push yok, GitHub deposu yok, itch.io yüklemesi yok.** Yerel commit ve
-`git tag` serbest. Yayın paketi `yayin/` altında yalnız hazırlanır;
+**GitHub deposu var, itch.io yüklemesi yok.** Depo 21 Eylül 2026'da GitHub'a
+taşındı (`Furkiozknn/yercekimi-cevir`, varsayılan dal `main`); `main`'e her
+push'ta ve her pull request'te `.github/workflows/ci.yml` testleri koşuyor.
+Yerel commit ve `git tag` serbest. Yayın paketi `yayin/` altında yalnız hazırlanır;
 `yayin/butler-komutlari.md` içindeki komutlar **çalıştırılmamıştır**,
 kararı Furki verir.
 

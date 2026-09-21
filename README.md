@@ -98,6 +98,9 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 - **Süre listesi** (v0.7). Bölüm Seç'te **Süre Listesi** düğmesi 20 bölümü iki
   sütunlu listeye çevirir: ad, en iyi süren, madalyan, altın hedefi. Menüde toplam
   madalya sayısı.
+- **Bitiş özeti.** 20. bölüm bitince oyun toplamı tek ekranda: toplam süre,
+  toplam ölüm, kristal, madalya kazanılan bölüm ve en az çevirmeyle biten bölüm
+  sayısı; ayrı bir bitiş parçası çalar.
 
 ## Okunurluk ve yardım
 
@@ -122,7 +125,7 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 
 Kod ve varlıklar [MIT](LICENSE) altında — Furki Özkan, 2026; görseller, sesler
 ve müzik depodaki üreteclerle koddan üretilir. `assets/fonts/simgeler.ttf` ("Oyun Simgeleri")
-DejaVu Sans Bold'un 34 simgelik alt kümesidir; Bitstream Vera lisansı altında
+DejaVu Sans Bold'un 32 simgelik alt kümesidir; Bitstream Vera lisansı altında
 dağıtılır, bildirim `assets/fonts/LISANS-simgeler.txt` dosyasındadır.
 
 ## Ekranlar
@@ -148,7 +151,16 @@ python tools/uret_sprite.py      # tüm pixel art'ı yeniden üret
 python tools/uret_ses.py         # tüm ses efektlerini yeniden üret
 ```
 
-Dışa aktarılmış yapı: `build/windows/yercekimi-cevir.exe`, `build/web/index.html`.
+Dışa aktarma çıktısı `build/windows/yercekimi-cevir.exe` ve
+`build/web/index.html` yollarına yazılır — **yapı dosyaları depoda yok**
+(`.gitignore`), önce klasörleri oluşturup dışa aktarman gerekir:
+
+```bash
+mkdir -p build/windows build/web
+godot --headless --path . --export-release "Windows Masaustu"
+godot --headless --path . --export-release "Web (HTML5)"
+```
+
 Yayın paketi (yüklenmedi): `yayin/`.
 
 ## Kod düzeni
@@ -169,7 +181,7 @@ düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
 çözülebilirliğini doğruluyor — çevirme penceresi yeterince geniş mi, aynı sütunda
 hem zemin hem tavan tehlikesi var mı, kristal kaçamağı ölümcül mü.
 
-## Bu turda verilen kararlar
+## 1. turda verilen kararlar (v0.2 — ilk yayına hazır sürüm)
 
 - **Zorluk:** prototip raporunda 9–12 arası "insan için fazla zor olabilir" dendi.
   Bölüm sayısı 20'ye çıkarıldı ve araya kolay bölümler serpiştirilmek yerine
@@ -179,21 +191,23 @@ hem zemin hem tavan tehlikesi var mı, kristal kaçamağı ölümcül mü.
   3 hücre boy) — yukarıdan inen oyuncu kapıyı ıskalamıyor.
 - **Madalya süreleri elle değil geometriden:** yol uzunluğu / yürüme hızı + bant
   başına bir çevirme bedeli. Bölüm değişince süreler kendiliğinden güncelleniyor,
-  20 bölüm elle ayarlanmıyor.
+  20 bölüm elle ayarlanmıyor. **Bu karar v0.4'te değişti:** eşikler artık
+  ölçülmüş bot koşusundan geliyor (`scripts/rota_verisi.gd`, 20 bölümün 20'sinde
+  `"tahmin": false`) — bkz. "4. turda verilen kararlar".
 - **Kristal yeri de otomatik:** ana rotanın dışında ve her tehlike bandından en az
   8 sütun uzakta — beceriksiz bir kaçamak ölümle bitmesin diye.
 - **Pixel art kodla üretiliyor.** Bu makinede GUI çizim aracı ve Pillow yok;
   `tools/uret_sprite.py` saf Python'la (zlib + struct, 20 satırlık PNG yazıcı)
   üretiyor. Tek palet: Endesga 32.
 - **Ses efektleri perde kaydırmayla çeşitlendirildi.** rFXGen v5.0'ın komut satırı
-  ön ayarları deterministik — aynı ön ayar hep aynı dosyayı veriyor. 5 ön ayardan
-  9 ayrı efekt çıkarmak için yeniden örnekleme kullanıldı (`tools/sesler.md`).
+  ön ayarları deterministik — aynı ön ayar hep aynı dosyayı veriyor. 6 ön ayardan
+  10 ayrı efekt çıkarmak için yeniden örnekleme kullanıldı (`tools/sesler.md`).
 - **Oyun hissi kapatılabilir.** Sarsıntı, parçacık ve çevirme izi tek bir ayarla
   kapanıyor; rahatsız eden oyuncu mekaniği kaybetmeden kapatabilsin.
 
 ## 2. turda verilen kararlar (v0.3 — rakip analizinden)
 
-Kaynak: `oyun-terminalleri/tasarim/yercekimi-cevir-rakip-analizi.md` (VVVVVV,
+Kaynak: ayrı bir rakip analizi çalışması, depoda değil (VVVVVV,
 Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
 
 - **Türün en sık şikâyeti "haksız ölüm".** Üç yerden aynı anda saldırıldı: kojot
@@ -211,7 +225,9 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
   imkânsız olamaz. Ulaşılamayan bir hedef koymaktansa fazla cömert olsun.
 - **Hayalet, ayrı bir "altın koşu" verisi değil, senin en iyi koşun.** Elde
   kaydedilmiş bir altın koşu yok; madalya süreleri formülden geliyor. Bu yüzden
-  tek hayalet var ve rengi o koşunun madalyası.
+  tek hayalet var ve rengi o koşunun madalyası. **Bu karar da v0.4'te değişti:**
+  `scripts/altin_hayalet.gd` içinde 20 bölümün ölçülmüş altın koşusu duruyor ve
+  ikinci bir hayalet olarak koşuyor (ayarlardan kapatılabilir).
 - **İniş göstergesi tuşu basılı tutunca çıkar.** Çevirme tuşa BASINCA olduğu için
   "önce bak sonra çevir" mümkün değil; basılı tutmak "şimdi nereye iniyorum"
   sorusunu havadayken canlı yanıtlıyor.
@@ -406,6 +422,9 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
 
 ## Durum
 
+**v0.7.1 — MIT lisans dosyası, her push'ta CI, README görsel düzeltmesi.**
+v0.7'nin üstüne yalnız depo işleri girdi; oynanış aynı.
+
 **v0.7 — çevirme yasağı bölgesi, tek yönlü platform, tabela, süre listesi, kol
 sallanması.** v0.6'nın üstüne: iki yeni mekanik (9, 14, 16 ve 20. bölümlerde),
 bölüm başı kartı, Bölüm Seç'te iki sütunlu süre listesi ve menüde madalya
@@ -421,15 +440,18 @@ sayısı, yürüyüşte sallanan kollar. Yükleme yapılmadı. Sonraki adımlar:
 Hepsi ölçüldü veya yapılandırmadan doğrulandı — tahmin yok.
 
 - **Yalnızca Windows ve Web.** `export_presets.cfg` iki hedef tanımlıyor:
-  `Windows Masaüstü` ve `Web (HTML5)`. Linux, macOS ve Android dışarı
+  `Windows Masaustu` ve `Web (HTML5)` — adlar `export_presets.cfg`'de aksansız,
+  `--export-release` ile birebir böyle yazılmalı. Linux, macOS ve Android dışarı
   aktarımı yok.
 - **Arayüz yalnızca Türkçe.** `project.godot` içinde çeviri/locale girdisi
-  bulunmuyor; metinler sahnelere gömülü.
+  bulunmuyor; metinler sahnelere ve betiklere doğrudan gömülü
+  (`scenes/*.tscn` + `scripts/*.gd`), çeviri katmanı yok.
 - **Web yapısı tek iş parçacıklı** (`thread_support=false`). itch.io'ya
   yüklerken **SharedArrayBuffer kutusu işaretlenmemeli**.
-- **Bölüm başı ipucu metni HUD ile çakışıyor.** Sol üst köşede oyuncu
-  sprite'ının ve üst duvarın üzerine biniyor. Okunuyor, oynanışı
-  engellemiyor — kozmetik.
+- **Bölüm başı ipucu metni bölümün üzerine biniyor.** Ekranın ortasında,
+  üstten 96 px'te duruyor (`scenes/oyun.tscn` → `Ipucu`); HUD şeritlerinin
+  (y 0–39) altında kalıyor ama haritanın 5-6. satırındaki karoların üzerine
+  çizilebiliyor. Okunuyor, oynanışı engellemiyor — kozmetik.
 - **İlerleme tek makinede.** Kayıt yerel; bulut senkronu yok, dosya
   silinirse tüm bölüm ve madalya ilerlemesi sıfırlanır.
 
@@ -440,7 +462,8 @@ godot --headless --path . --import                    # bir kez, .godot onbelleg
 godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
 ```
 
-Her push'ta **aynı komut** GitHub Actions'ta koşuyor (Godot 4.7.2, Linux
+`main`'e her push'ta ve her pull request'te **aynı komut** GitHub Actions'ta
+koşuyor (Godot 4.7.2, Linux
 headless, Git LFS çekilerek). Son ölçüm: **841 doğrulama, 0 hata**.
 
 İçe aktarma ayrı bir adım çünkü taze bir klonda `.godot` önbelleği hiç

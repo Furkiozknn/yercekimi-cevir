@@ -4,7 +4,8 @@ Hepsi `python tools/uret_ses.py` ile yeniden üretilir. Çıktı: 22050 Hz / 16 
 
 ## rFXGen notu (önemli)
 
-`D:\Araclar\rFXGen\rfxgen_v5.0_win_x64\rfxgen.exe`
+rFXGen v5.0 — yerel bir kurulum, depoda değil; çalıştırılabilir dosyanın yolunu
+kendi kurulumuna göre ver.
 
 ```
 rfxgen.exe --generate <onayar> --output <dosya.wav> --format 22050,16,1
