@@ -19,7 +19,8 @@ import wave
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CIKTI = os.path.join(KOK, "assets", "audio")
 HAM = os.path.join(CIKTI, "ham")
-RFXGEN = r"D:\Araclar\rFXGen\rfxgen_v5.0_win_x64\rfxgen.exe"
+# rFXGen yerel bir kurulum, depoda degil. Yolu RFXGEN ortam degiskeniyle ez.
+RFXGEN = os.environ.get("RFXGEN", r"D:\Araclar\rFXGen\rfxgen_v5.0_win_x64\rfxgen.exe")
 BICIM = "22050,16,1"
 
 # ad -> (rFXGen on ayari, perde carpani, kazanc)

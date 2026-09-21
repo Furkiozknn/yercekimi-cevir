@@ -20,7 +20,7 @@ Aşağıdaki komutlarda `<kullanici>` yerine gerçek itch.io kullanıcı adını
 ## Yapıları hazırla
 
 ```bash
-cd D:/Repolar/yercekimi-cevir
+cd <depo kökü>
 
 # Temiz yeniden üretim (klasörler var olmalı, Godot kendisi oluşturmuyor)
 mkdir -p build/windows build/web
