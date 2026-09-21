@@ -34,6 +34,7 @@ EFEKTLER = {
     "madalya":    ("powerup",   1.35, 0.85),   # bitis ekraninda madalya damgasi
     "menu":       ("blip",      1.00, 0.55),
     "inis":       ("hit",       0.70, 0.35),   # yuzeye konus — kisik olmali
+    "kilit":      ("blip",      0.45, 0.70),   # yasak bolgeye giris / reddedilen cevirme: pes, kisa
 }
 
 

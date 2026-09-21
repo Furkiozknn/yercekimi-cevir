@@ -64,18 +64,18 @@ theme_override_colors/font_color = Color(1, 0.91, 0.38, 1)
 horizontal_alignment = 1
 
 [node name="KristalIkon" type="TextureRect" parent="."]
-offset_left = 264.0
+offset_left = 190.0
 offset_top = 320.0
-offset_right = 276.0
+offset_right = 202.0
 offset_bottom = 332.0
 texture = ExtResource("3_kristal")
 
 [node name="Durum" type="Label" parent="."]
 theme_override_constants/outline_size = 4
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-offset_left = 280.0
+offset_left = 206.0
 offset_top = 319.0
-offset_right = 600.0
+offset_right = 636.0
 offset_bottom = 335.0
 theme_override_font_sizes/font_size = 11
 theme_override_colors/font_color = Color(0.6, 0.64, 0.75, 1)

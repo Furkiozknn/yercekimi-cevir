@@ -16,6 +16,7 @@ const EFEKT := {
 	&"madalya": preload("res://assets/audio/madalya.wav"),
 	&"menu": preload("res://assets/audio/menu.wav"),
 	&"inis": preload("res://assets/audio/inis.wav"),
+	&"kilit": preload("res://assets/audio/kilit.wav"),
 }
 
 ## Oyun ici muzik bolum grubuna gore: 1-7 sakin, 8-14 gergin, 15-20 hizli

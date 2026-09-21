@@ -43,9 +43,34 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 6
 columns = 6
 
+[node name="Liste" type="HBoxContainer" parent="."]
+visible = false
+offset_left = 24.0
+offset_top = 52.0
+offset_right = 616.0
+offset_bottom = 296.0
+theme_override_constants/separation = 12
+
+[node name="Sol" type="VBoxContainer" parent="Liste"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Sag" type="VBoxContainer" parent="Liste"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
 [node name="Geri" type="Button" parent="."]
-offset_left = 270.0
+offset_left = 200.0
 offset_top = 306.0
-offset_right = 370.0
+offset_right = 300.0
 offset_bottom = 336.0
 text = "Geri"
+
+[node name="Gorunum" type="Button" parent="."]
+offset_left = 320.0
+offset_top = 306.0
+offset_right = 460.0
+offset_bottom = 336.0
+text = "Süre Listesi"

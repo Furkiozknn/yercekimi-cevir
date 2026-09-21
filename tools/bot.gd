@@ -75,6 +75,11 @@ const TEMIZ_INIS: float = 32.0
 ## pencereye tasiyor.
 const SON_FREN: float = 20.0
 const TARAMA_ADIMI: float = 4.0
+## Cevirme yasagi bolgesi (v0.7): bolgenin BITISINDEN sonra kendi yuzeyinde
+## bu kadar px icinde tehlike varsa bolge "baglayici"dir — icine giren
+## cevirme hakkini kaybettigi icin tehlike bolgenin BASINDA baslar. 48 px =
+## uretecin 3 hucrelik pencere kurali (arac/uret_bolumler.py PENCERE).
+const YASAK_PAYI: float = 48.0
 
 var _oyun: Node2D = null
 var _bolum: Bolum = null
@@ -217,6 +222,7 @@ func _kosu(i: int, tohum: int) -> Dictionary:
 	_satir = _harita.size()
 	_sutun = String(_harita[0]).length()
 	_kapi_x = _kapi_sutunu() * float(Ayarlar.HUCRE) + 8.0
+	_yasak_kurali_dogrula(i)
 
 	var kare := 0
 	_kare_no = 0
@@ -242,6 +248,20 @@ func _kosu(i: int, tohum: int) -> Dictionary:
 	var yol: PackedVector2Array = _oyun._yol.duplicate()
 	return {"bitti": bitti, "sure": float(kare) / 60.0, "cevirme": _oyun.cevirme,
 		"olum": _oyun.olum, "yol": yol, "neden": neden}
+
+
+## Yasak bolgenin kendi yuzeyinde olumcul engel olamaz: iceri giren oyuncu
+## cevirme hakkini kaybediyor, olumden kacamaz. Uretec bunu assert ile
+## zorluyor; bot kosudan once uretilen haritada bir daha bakar ve kural
+## delinmisse olcumu durdurur (yanlis bir bolumden esik cikarmasin).
+func _yasak_kurali_dogrula(i: int) -> void:
+	for b in _bolum.yasak_bolgeler:
+		for c in range(int(b["c1"]), int(b["c2"]) + 1):
+			if _sutun_tehlikeli(c, bool(b["ust"])):
+				printerr("bolum %d: yasak bolgenin yuzeyinde olumcul engel (sutun %d, %s)" % [
+					i + 1, c, "tavan" if bool(b["ust"]) else "zemin"])
+				get_tree().quit(1)
+				return
 
 
 # --- bot karari ---------------------------------------------------------------
@@ -275,6 +295,17 @@ func _karar_ver(delta: float) -> void:
 
 	var ust: bool = _o.yercekimi_yonu < 0.0
 	var x: float = _o.global_position.x
+	# Tek yonlu platformda duruyorsa (v0.7) tarama o platformu yuzey sayar.
+	var plat: Dictionary = _bolum.tek_yonlu_uzerinde(_o.global_position, _o.yercekimi_yonu)
+
+	# YASAK BOLGEDE cevirme yok (v0.7): karar vermenin anlami yok, tam hizda
+	# yuru ve cik. Planlama zaten baglayici bolgeye girmemeyi sagliyor
+	# (bkz. _tehlike_mesafesi); baglayici olmayan bolgede yurumek bedava.
+	if _bolum.yasak_icinde(Rect2(_o.global_position - Ayarlar.GOVDE * 0.5, Ayarlar.GOVDE)):
+		_gecikme = -1.0
+		_fren = false
+		_yuru(true)
+		return
 
 	# Bekleyen karar: tepki gecikmesi boyunca yurume durumu DEGISMEZ (fren
 	# yaptiysa frende kalir), gecikme dolunca karar tekrar dogrulanir —
@@ -284,13 +315,13 @@ func _karar_ver(delta: float) -> void:
 		# "yetisemeyecegim" demek de bir insan tepkisidir. Bu olmadan bot
 		# tepki suresi boyunca yuruyup 16. bolumde 56. sutundaki dikene
 		# giriyordu — cevirme tusuna basmadan.
-		if _tehlike_mesafesi(x, ust, 0.0, ONGORU) < SON_FREN:
+		if _tehlike_mesafesi(x, ust, 0.0, ONGORU, plat) < SON_FREN:
 			_fren = true
 		_yuru(not _fren)
 		_gecikme -= delta
 		if _gecikme <= 0.0:
 			_gecikme = -1.0
-			if _cevirme_guvenli(ust):
+			if _cevirme_guvenli(ust, plat):
 				if _iz:
 					_yaz_iz("CEVIR")
 				Input.action_press("cevir")
@@ -300,7 +331,7 @@ func _karar_ver(delta: float) -> void:
 		return
 
 	# Tehlike (tavanda: kapi da tehlikedir) gorunurde degilse tam hizda git.
-	var mesafe := _tehlike_mesafesi(x, ust, 0.0, ONGORU)
+	var mesafe := _tehlike_mesafesi(x, ust, 0.0, ONGORU, plat)
 	if mesafe >= ONGORU:
 		_fren = false
 		_yuru(true)
@@ -309,7 +340,7 @@ func _karar_ver(delta: float) -> void:
 	# Gorunurde: guvenliyse cevir (tam hizda cevirebiliyorsa hic yavaslamaz),
 	# degilse tehlikenin dibine kadar yuru ve orada dur — hizi kesen oyuncu
 	# neredeyse dik iner ve 3 hucrelik pencereye ancak oyle sigar.
-	var guvenli := _cevirme_guvenli(ust)
+	var guvenli := _cevirme_guvenli(ust, plat)
 	_fren = not guvenli and mesafe < SON_FREN
 	_yuru(not _fren)
 	if guvenli and _basili == 0:
@@ -318,7 +349,7 @@ func _karar_ver(delta: float) -> void:
 
 ## Simdi cevirsem: inecek yer var mi, yol temiz mi, indigim yuzey hem yeterince
 ## hem de SU ANKINDEN DAHA COK temiz mi?
-func _cevirme_guvenli(ust: bool) -> bool:
+func _cevirme_guvenli(ust: bool, plat: Dictionary = {}) -> bool:
 	var t: Dictionary = _oyun._inis_tahmini()
 	if not bool(t["var"]) or bool(t["tehlike"]):
 		return false
@@ -331,7 +362,9 @@ func _cevirme_guvenli(ust: bool) -> bool:
 	if k.x > _kapi_x:
 		return false
 	var gecis: float = float(t.get("sure", 1.0))
-	var yeni := _tehlike_mesafesi(k.x, yeni_ust, gecis, ONGORU)
+	# Inis bir tek yonlu platforma olabilir: o zaman yeni yuzey o platformdur.
+	var yeni_plat: Dictionary = t.get("plat", {})
+	var yeni := _tehlike_mesafesi(k.x, yeni_ust, gecis, ONGORU, yeni_plat)
 	if yeni < TEMIZ_INIS:
 		return false
 	# Cevirme beni DAHA ILERI goturmeli. Karsilastirma mutlak x uzerinden:
@@ -339,14 +372,22 @@ func _cevirme_guvenli(ust: bool) -> bool:
 	# indigim yerden ne kadar? Bu kural olmadan bot indigi yerde hemen geri
 	# cevirmek zorunda kaliyor ve 4 cevirmelik bolumu 14 cevirmede (ucu
 	# olumle) oynuyordu.
-	var simdiki: float = _o.global_position.x + _tehlike_mesafesi(_o.global_position.x, ust, 0.0, ONGORU)
+	var simdiki: float = _o.global_position.x + _tehlike_mesafesi(_o.global_position.x, ust, 0.0, ONGORU, plat)
 	return k.x + yeni > simdiki
 
 
 ## Verilen yuzeyde x'ten saga yurunurse ilk tehlikeye kac piksel var?
 ## t0: bu tarama kac saniye SONRA basliyor (hareketli parcalar o kadar ilerletilir).
-func _tehlike_mesafesi(x0: float, ust: bool, t0: float, en_fazla: float) -> float:
-	var y := _yuzey_merkez(ust)
+## plat: uzerinde durulan tek yonlu platform (bos = zemin/tavan). Platformun
+## sutunlari guvenlidir (uzerinde tehlike olamaz); bitince taban yuzeye
+## dusulur ve tarama oradan surer — dusus ANINDA sayilir, yani iyimser
+## degil: uretec platform sonrasi taban yuzeyi SUZULME hucre temiz istiyor.
+## bolge_bak: yasak bolge baglayiciysa (bitisinden sonra YASAK_PAYI icinde
+## kendi yuzeyinde tehlike) tehlike bolgenin BASINDA baslar; icteki olcum
+## icin kapatilir (ozyineleme olmasin).
+func _tehlike_mesafesi(x0: float, ust: bool, t0: float, en_fazla: float,
+		plat: Dictionary = {}, bolge_bak: bool = true) -> float:
+	var yuzey_y := _yuzey_merkez(ust)
 	var d := 0.0
 	while d <= en_fazla:
 		var x := x0 + d
@@ -356,8 +397,17 @@ func _tehlike_mesafesi(x0: float, ust: bool, t0: float, en_fazla: float) -> floa
 			# kapinin ustunden gecmek bolumu KAYBETTIRIR — oyuncu kapiya hic
 			# degmez ve geri donemez. Yani kapi tavanda bir tehlikedir.
 			return d if ust else en_fazla
-		if _sutun_tehlikeli(int(floor(x / float(Ayarlar.HUCRE))), ust):
-			return d
+		var c := int(floor(x / float(Ayarlar.HUCRE)))
+		var platformda: bool = not plat.is_empty() and c >= int(plat["c1"]) and c <= int(plat["c2"])
+		var y: float = _bolum.tek_yonlu_merkez_y(plat) if platformda else yuzey_y
+		if not platformda:
+			if _sutun_tehlikeli(c, ust):
+				return d
+			if bolge_bak and _bolum.yasak_sutun(c, ust):
+				var b: Dictionary = _bolum.yasak_bolge(c, ust)
+				var son_x := float(int(b["c2"]) + 1) * float(Ayarlar.HUCRE)
+				if _tehlike_mesafesi(son_x, ust, t0 + (son_x - x0) / Ayarlar.HIZ, YASAK_PAYI, {}, false) < YASAK_PAYI:
+					return d
 		if _bolum.hareketli_kesisiyor(
 				Rect2(x - Ayarlar.GOVDE.x * 0.5, y - Ayarlar.GOVDE.y * 0.5, Ayarlar.GOVDE.x, Ayarlar.GOVDE.y),
 				false, t0 + d / Ayarlar.HIZ):

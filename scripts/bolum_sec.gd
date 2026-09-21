@@ -1,9 +1,12 @@
 extends Control
 ## Bolum Sec: acilmis bolumler tiklanabilir; her hucrede en iyi sure, kazanilan
-## madalya ve kristal durumu gorunur.
+## madalya ve kristal durumu gorunur. "Sure Listesi" ayni 20 bolumu iki sutunlu
+## bir listeye cevirir: ad, en iyi sure, madalya, altin hedefi (v0.7).
 
 const T_MADALYA := preload("res://assets/sprites/madalya.png")
 const T_KRISTAL := preload("res://assets/sprites/kristal.png")
+
+var _liste_acik: bool = false
 
 
 func _ready() -> void:
@@ -11,14 +14,104 @@ func _ready() -> void:
 	var izgara: GridContainer = $Kutu/Izgara
 	for i in Ayarlar.bolum_sayisi():
 		izgara.add_child(_hucre(i))
+	_liste_kur()
 	$Geri.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
 		get_tree().change_scene_to_file("res://scenes/menu.tscn"))
+	$Gorunum.pressed.connect(func() -> void:
+		Ses.cal(&"menu")
+		liste_goster(not _liste_acik))
 	$Ozet.text = "Kristal %d / %d     Madalya %d / %d     En az çevirme %d / %d" % [
 		Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
-		_madalyali_bolum(), Ayarlar.bolum_sayisi(),
+		Ayarlar.madalya_sayisi(), Ayarlar.bolum_sayisi(),
 		_en_az_bolum(), Ayarlar.bolum_sayisi()]
 	Ses.muzik(&"menu")
+
+
+## Izgara <-> liste. Ikisi de ayni alani kullanir; dugme metni oteki gorunumu soyler.
+func liste_goster(acik: bool) -> void:
+	_liste_acik = acik
+	$Kutu.visible = not acik
+	$Liste.visible = acik
+	$Gorunum.text = "Bölüm Izgarası" if acik else "Süre Listesi"
+
+
+## 20 satir 640x360'a tek sutunda sigmaz (20 x 20 px = 400): iki sutun, 10'ar.
+func _liste_kur() -> void:
+	var sutunlar: Array = [$Liste/Sol, $Liste/Sag]
+	var n := Ayarlar.bolum_sayisi()
+	var yarim := int(ceil(n / 2.0))
+	for i in n:
+		(sutunlar[i / yarim] as Control).add_child(_satir(i))
+
+
+## Bir liste satiri: "ad ..... en iyi [madalya] ● altin". Tiklaninca bolum acilir.
+func _satir(i: int) -> Button:
+	var acik := Ayarlar.acik_mi(i)
+	var d := Button.new()
+	d.name = "Satir%d" % (i + 1)
+	d.custom_minimum_size = Vector2(0, 20)
+	d.disabled = not acik
+	d.flat = true
+	var h := HBoxContainer.new()
+	h.name = "Kutu"
+	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_theme_constant_override("separation", 6)
+	d.add_child(h)
+
+	var ad := _yazi(String(Ayarlar.bolum(i)["ad"]), 0, HORIZONTAL_ALIGNMENT_LEFT)
+	ad.name = "Ad"
+	ad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ad.clip_text = true
+	h.add_child(ad)
+
+	var en_iyi := _yazi(Ayarlar.en_iyi_metin(i) if acik else "kilitli", 58, HORIZONTAL_ALIGNMENT_RIGHT)
+	en_iyi.name = "EnIyi"
+	if not acik:
+		en_iyi.modulate.a = 0.5
+	h.add_child(en_iyi)
+
+	var m := Ayarlar.madalya_al(i)
+	var madalya := TextureRect.new()
+	madalya.name = "Madalya"
+	madalya.custom_minimum_size = Vector2(12, 12)
+	madalya.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	madalya.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if m > 0:
+		madalya.texture = _madalya_dokusu(m)
+	h.add_child(madalya)
+
+	var altin := _yazi("● %.2f sn" % float(Ayarlar.esik(i)["altin"]), 64, HORIZONTAL_ALIGNMENT_RIGHT)
+	altin.name = "Altin"
+	altin.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[3])
+	h.add_child(altin)
+
+	if acik:
+		d.pressed.connect(func() -> void:
+			Ses.cal(&"menu")
+			Ayarlar.secilen_bolum = i
+			get_tree().change_scene_to_file("res://scenes/oyun.tscn"))
+	return d
+
+
+func _yazi(metin: String, genislik: float, hiza: int) -> Label:
+	var l := Label.new()
+	l.text = metin
+	l.custom_minimum_size = Vector2(genislik, 0)
+	l.horizontal_alignment = hiza
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 10)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return l
+
+
+## 3 altin=0, 2 gumus=12, 1 bronz=24 (madalya.png 36x12, uc madalya yan yana).
+func _madalya_dokusu(m: int) -> AtlasTexture:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = T_MADALYA
+	atlas.region = Rect2((3 - m) * 12, 0, 12, 12)
+	return atlas
 
 
 ## Hedefteki en az cevirmeyle (ya da daha aziyla) bitirilen bolum sayisi.
@@ -27,14 +120,6 @@ func _en_az_bolum() -> int:
 	for i in Ayarlar.bolum_sayisi():
 		var az := Ayarlar.en_az_al(i)
 		if az >= 0 and az <= Ayarlar.en_az_hedef(i):
-			n += 1
-	return n
-
-
-func _madalyali_bolum() -> int:
-	var n := 0
-	for i in Ayarlar.bolum_sayisi():
-		if Ayarlar.madalya_al(i) > 0:
 			n += 1
 	return n
 
@@ -79,10 +164,7 @@ func _hucre(i: int) -> Button:
 	madalya.custom_minimum_size = Vector2(12, 12)
 	madalya.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if m > 0:
-		var atlas := AtlasTexture.new()
-		atlas.atlas = T_MADALYA
-		atlas.region = Rect2((3 - m) * 12, 0, 12, 12)   # 3 altin=0, 2 gumus=12, 1 bronz=24
-		madalya.texture = atlas
+		madalya.texture = _madalya_dokusu(m)
 	else:
 		madalya.modulate.a = 0.0
 	simgeler.add_child(madalya)

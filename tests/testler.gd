@@ -12,6 +12,14 @@ var _sayi: int = 0
 
 func _ready() -> void:
 	await get_tree().process_frame
+	# Testler Ayarlar.kaydet() cagiran yollardan geciyor (bolum bitisi, ayar
+	# kaydi): kullanicinin user://kayit.cfg dosyasi test verisiyle eziliyordu ve
+	# yarida kalan bir kosu (v0.7'de bir kez oldu) yardim/solak ayarlarini
+	# ACIK birakip diske yaziyordu. Basta yedekle, cikista geri koy; bellekte
+	# varsayilan ayarlarla basla ki sonuc onceki kosuya bagli olmasin.
+	var kayit_vardi := FileAccess.file_exists(Ayarlar.KAYIT_YOLU)
+	var kayit_yedek := FileAccess.get_file_as_bytes(Ayarlar.KAYIT_YOLU) if kayit_vardi else PackedByteArray()
+	_varsayilan_ayarlar()
 	print("— Bolum verisi —")
 	await _bolum_testi()
 	print("— Madalya esikleri —")
@@ -30,6 +38,16 @@ func _ready() -> void:
 	await _kontrol_testi()
 	print("— Parilti (kapi ve kristal kareleri) —")
 	await _parilti_testi()
+	print("— Cevirme yasagi bolgesi —")
+	await _yasak_bolge_testi()
+	print("— Tek yonlu platform —")
+	await _tek_yonlu_testi()
+	print("— Bolum basi tabelasi —")
+	await _tabela_testi()
+	print("— Sure listesi ve madalya sayisi —")
+	await _sure_listesi_testi()
+	print("— Kol sallanmasi (sprite sayfasi) —")
+	_kol_testi()
 	print("— Affetme: kojot cevirme —")
 	await _kojot_testi()
 	print("— Yeniden deneme suresi —")
@@ -77,11 +95,37 @@ func _ready() -> void:
 		print("TESTLER GECTI")
 	else:
 		printerr("TESTLER KALDI")
+	if kayit_vardi:
+		var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
+		if f != null:
+			f.store_buffer(kayit_yedek)
+			f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Ayarlar.KAYIT_YOLU))
 	# Motorun kapanis sirasi alttan yukari: muzik burada durdurulmazsa cikista
 	# "resource still in use" hatasi basiliyor.
 	Ses.kapat()
 	await get_tree().create_timer(0.25).timeout
 	get_tree().quit(1 if _hata > 0 else 0)
+
+
+## Kullanici ayarlari testin girdisi degildir: her kosu ayni varsayilanlarla baslar.
+func _varsayilan_ayarlar() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.oyun_hissi = true
+	Ayarlar.inis_gostergesi = true
+	Ayarlar.yercekimi_oku = true
+	Ayarlar.altin_hayalet = true
+	Ayarlar.yuksek_kontrast = false
+	Ayarlar.yardim_acik = false
+	Ayarlar.yardim_olumsuz = false
+	Ayarlar.yardim_hiz = 1.0
+	Ayarlar.solak = false
+	Ayarlar.dokunmatik_opaklik = 0.35
+	Ayarlar.titresim = true
+	Ayarlar.dokunmatik_algilandi = false
+	Ayarlar.tarih_zorla = 0
+	Ayarlar.zaman_sifirla()
 
 
 func _dogrula(kosul: bool, ad: String) -> void:
@@ -104,10 +148,14 @@ func _bolum_testi() -> void:
 		var kn := 0
 		var genislik: int = String(harita[0]).length()
 		var duzgun := true
+		var bilinmeyen := ""
 		for ham in harita:
 			var satir: String = ham
 			if satir.length() != genislik:
 				duzgun = false
+			for ch in satir:
+				if not "#.^vSKCP-*=_~".contains(ch) and not bilinmeyen.contains(ch):
+					bilinmeyen += ch
 			s += satir.count("S")
 			k += satir.count("K")
 			kr += satir.count("C")
@@ -117,6 +165,7 @@ func _bolum_testi() -> void:
 		b.kur(veri)
 		var ad: String = "bolum %d" % (i + 1)
 		_dogrula(duzgun, ad + ": tum satirlar esit genislikte")
+		_dogrula(bilinmeyen == "", ad + ": haritada bilinmeyen karakter yok ('%s')" % bilinmeyen)
 		_dogrula(s == 1, ad + ": tam 1 baslangic (%d)" % s)
 		_dogrula(k >= 1, ad + ": en az 1 kapi (%d)" % k)
 		_dogrula(kr == 1, ad + ": tam 1 kristal (%d)" % kr)
@@ -161,7 +210,7 @@ func _ses_testi() -> void:
 	_dogrula(AudioServer.get_bus_index("Muzik") > 0, "Muzik veriyolu var")
 	_dogrula(AudioServer.get_bus_index("Efekt") > 0, "Efekt veriyolu var")
 	for ad in ["cevir", "cevir_ters", "kristal", "kontrol", "olum", "bolum_sonu",
-			"madalya", "menu", "inis"]:
+			"madalya", "menu", "inis", "kilit"]:
 		_dogrula(Ses.EFEKT.has(StringName(ad)), "efekt yuklendi: %s" % ad)
 	for ad in ["menu", "sakin", "gergin", "hizli"]:
 		var s: AudioStreamWAV = Ses.MUZIK[StringName(ad)]
@@ -1429,3 +1478,313 @@ func _ayar_kayit_testi() -> void:
 	Ayarlar.yardim_olumsuz = yedek["olumsuz"]
 	Ayarlar.kaydet()
 	Ayarlar.zaman_sifirla()
+
+
+# --- tur 6 (v0.7): yasak bolge, tek yonlu platform, tabela, sure listesi, kollar --
+
+## Cevirme yasagi bolgesi: (1) uretilen haritalarda bolgenin kendi yuzeyinde
+## olumcul engel yok (uretec kurali burada bir daha olculuyor); (2) oyunda
+## bolgedeki oyuncu ceviremiyor, rozet cikiyor, reddedilen basis tamponu
+## siliyor; bolge yalniz KENDI yuzeyini baglar, cikinca kilit kalkar.
+func _yasak_bolge_testi() -> void:
+	var bolgeli := 0
+	var baglayici := 0
+	for i in Ayarlar.bolum_sayisi():
+		var b := Bolum.new()
+		add_child(b)
+		b.kur(Ayarlar.bolum(i))
+		if b.yasak_bolgeler.is_empty():
+			b.queue_free()
+			continue
+		bolgeli += 1
+		var h: Array = b.harita
+		var n := h.size()
+		for z in b.yasak_bolgeler:
+			var ust: bool = z["ust"]
+			var yuzey: String = h[1] if ust else h[n - 2]
+			var taban: String = h[0] if ust else h[n - 1]
+			var temiz := true
+			for c in range(int(z["c1"]), int(z["c2"]) + 1):
+				if yuzey[c] in ["v", "^", "*"] or taban[c] != "#":
+					temiz = false
+			_dogrula(temiz, "bolum %d: yasak bolge %d-%d (%s) yuzeyinde olumcul engel yok" % [
+				i + 1, int(z["c1"]), int(z["c2"]), "tavan" if ust else "zemin"])
+			var k: Rect2 = z["kutu"]
+			var bitisik: bool = is_equal_approx(k.position.y, 16.0) if ust else is_equal_approx(k.end.y, float(b.yukseklik_px - 16))
+			_dogrula(bitisik and is_equal_approx(k.size.y, Bolum.YASAK_BOYU),
+				"bolum %d: bolge dikdortgeni yuzeye bitisik, %d px" % [i + 1, int(Bolum.YASAK_BOYU)])
+			for c in range(int(z["c2"]) + 1, int(z["c2"]) + 4):
+				if c < yuzey.length() and (yuzey[c] in ["v", "^", "*"] or taban[c] != "#"):
+					baglayici += 1
+					break
+		b.queue_free()
+		await get_tree().process_frame
+	_dogrula(bolgeli >= 2, "en az 2 bolumde yasak bolge var (%d)" % bolgeli)
+	_dogrula(baglayici >= 1, "en az bir bolge baglayici: bitisinde kendi yuzeyi olumcul (%d)" % baglayici)
+	_dogrula(Ses.EFEKT.has(&"kilit"), "kilit sesi yuklendi")
+
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 8
+	Ayarlar.secilen_bolum = 8              # 9 — Salincak: zemin bolgesi 29-31, ardinda diken 32-33
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var bolum: Bolum = oyun.get_node("Dunya/Bolum")
+	var rozet: Control = oyun.get_node("Arayuz/Kilit")
+	_dogrula(bolum.yasak_bolgeler.size() == 1 and not bool(bolum.yasak_bolgeler[0]["ust"])
+		and int(bolum.yasak_bolgeler[0]["c1"]) == 29 and int(bolum.yasak_bolgeler[0]["c2"]) == 31,
+		"9. bolum: zemin bolgesi 29-31")
+	var denendi := [0]
+	o.kilit_denendi.connect(func() -> void: denendi[0] += 1)
+	for i in 4:
+		await get_tree().physics_frame
+	_dogrula(not o.kilitli and not rozet.visible, "bolge disinda kilit yok, rozet kapali")
+	o.position = Vector2(30 * 16 + 8, bolum.baslangic.y)
+	for i in 4:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor(), "oyuncu bolgede zeminde")
+	_dogrula(o.kilitli, "bolgede oyuncu kilitli")
+	_dogrula(rozet.visible, "HUD kilit rozeti gorunuyor")
+	var yon: float = o.yercekimi_yonu
+	_dogrula(not o.cevir(), "bolgede cevirme reddedildi")
+	_dogrula(o.yercekimi_yonu == yon, "yercekimi degismedi")
+	_dogrula(denendi[0] == 1, "kilit_denendi sinyali geldi (%d)" % denendi[0])
+	o.girdi_acik = true
+	Input.action_press("cevir")
+	await get_tree().physics_frame
+	Input.action_release("cevir")
+	for i in 3:
+		await get_tree().physics_frame
+	o.girdi_acik = false
+	_dogrula(o.yercekimi_yonu == yon, "tusla da cevirmedi")
+	_dogrula(o._tampon == 0.0, "reddedilen basis tamponu sildi (bolgeden cikinca kendiliginden cevirmesin)")
+	_dogrula(denendi[0] >= 2, "tusla deneme de sinyal verdi (%d)" % denendi[0])
+	# Bolge yalniz kendi yuzeyini baglar: ayni sutunda tavandaki oyuncu serbest.
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(30 * 16 + 8, float(Ayarlar.HUCRE) + Ayarlar.GOVDE.y * 0.5)
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor() and not o.kilitli and not rozet.visible, "ayni sutunda TAVANDAKI oyuncu kilitli degil")
+	_dogrula(o.cevir(), "tavanda cevirme calisiyor")
+	o.hazirla(bolum.baslangic)
+	for i in 4:
+		await get_tree().physics_frame
+	_dogrula(not o.kilitli and not rozet.visible, "bolgeden cikinca kilit kalkti")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Tek yonlu platform: '_' yalniz asagi duseni tutar (yukari dusen icinden
+## gecer), '~' yalniz yukari duseni; inis tahmini ikisini de gorur.
+func _tek_yonlu_testi() -> void:
+	var doku: Texture2D = Bolum.T_TEK_YONLU
+	_dogrula(doku.get_width() == 16 and doku.get_height() == 8, "tek yonlu karo 16x8 (%dx%d)" % [doku.get_width(), doku.get_height()])
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 19
+	Ayarlar.secilen_bolum = 19             # 20 — Son Kapi: '_' 54-58, satir 16
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var b: Bolum = oyun.get_node("Dunya/Bolum")
+	_dogrula(b.tek_yonlular.size() == 1 and bool(b.tek_yonlular[0]["ust_kati"])
+		and int(b.tek_yonlular[0]["c1"]) == 54 and int(b.tek_yonlular[0]["c2"]) == 58, "20. bolum: ustune inilen platform 54-58")
+	var k: Rect2 = b.tek_yonlular[0]["kutu"]
+	_dogrula(is_equal_approx(k.size.y, Bolum.TEK_KALINLIK) and is_equal_approx(k.position.y, 16.0 * 16.0 + 4.0),
+		"serit %d px kalin, hucrenin ortasinda (y=%.0f)" % [int(Bolum.TEK_KALINLIK), k.position.y])
+	var x := (k.position.x + k.end.x) * 0.5
+	# a) yukaridan dusen oyuncu ustune iner
+	o.hazirla(Vector2(x, k.position.y - 60.0), 1.0)
+	for i in 40:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor(), "'_': asagi duserken platform tuttu")
+	_dogrula(absf((o.position.y + Ayarlar.GOVDE.y * 0.5) - k.position.y) <= 1.5,
+		"'_': ayak platformun ust kenarinda (y=%.1f)" % o.position.y)
+	_dogrula(not b.tek_yonlu_uzerinde(o.position, 1.0).is_empty(), "platformda durdugu algilaniyor")
+	_dogrula(b.tek_yonlu_uzerinde(Vector2(x, 100.0), 1.0).is_empty(), "havadayken platformda sayilmiyor")
+	# b) alttan yukari dusen oyuncu icinden gecer, tavana varir
+	o.hazirla(Vector2(x, k.end.y + 40.0), -1.0)
+	for i in 60:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor() and o.position.y < 40.0, "'_': yukari duserken icinden gecti, tavana vardi (y=%.0f)" % o.position.y)
+	# c) inis tahmini: tavandan cevirince platformu isaretler
+	var t: Dictionary = oyun._inis_tahmini()
+	_dogrula(bool(t["var"]) and absf(float(t["konum"].y) - k.position.y) < 9.0 and not (t["plat"] as Dictionary).is_empty(),
+		"'_': inis tahmini platformu buldu (y=%.0f)" % float(t["konum"].y))
+
+	oyun.bolum_yukle(13)                   # 14 — Bosluk Ustu: '~' 38-49, satir 11
+	await get_tree().physics_frame
+	b = oyun.get_node("Dunya/Bolum")
+	_dogrula(b.tek_yonlular.size() == 1 and not bool(b.tek_yonlular[0]["ust_kati"])
+		and int(b.tek_yonlular[0]["c1"]) == 38 and int(b.tek_yonlular[0]["c2"]) == 49, "14. bolum: altina inilen platform 38-49")
+	k = b.tek_yonlular[0]["kutu"]
+	x = (k.position.x + k.end.x) * 0.5
+	# a) zeminden yukari dusen oyuncu alt yuzeye yapisir
+	o.hazirla(Vector2(x, k.end.y + 60.0), -1.0)
+	for i in 40:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor() and absf((o.position.y - Ayarlar.GOVDE.y * 0.5) - k.end.y) <= 1.5,
+		"'~': yukari duserken alt yuzey tuttu (y=%.1f)" % o.position.y)
+	_dogrula(not b.tek_yonlu_uzerinde(o.position, -1.0).is_empty(), "'~': altinda durdugu algilaniyor")
+	# b) ustten asagi dusen icinden gecer, zemine iner (40. sutun: delik 42-47'nin disinda)
+	var x2 := 40.0 * 16.0 + 8.0
+	o.hazirla(Vector2(x2, k.position.y - 40.0), 1.0)
+	for i in 60:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor() and o.position.y > 300.0, "'~': asagi duserken icinden gecti, zemine indi (y=%.0f)" % o.position.y)
+	# c) inis tahmini: zeminden cevirince alt yuzeyi isaretler
+	var t2: Dictionary = oyun._inis_tahmini()
+	_dogrula(bool(t2["var"]) and absf(float(t2["konum"].y) - k.end.y) < 9.0 and not (t2["plat"] as Dictionary).is_empty(),
+		"'~': inis tahmini alt yuzeyi buldu (y=%.0f)" % float(t2["konum"].y))
+	# Platformun altindaki delik + ustundeki tavan dikeni: tek yol platform.
+	var h: Array = b.harita
+	var n := h.size()
+	_dogrula(String(h[n - 1]).substr(42, 6) == "......" and String(h[1]).substr(43, 4) == "vvvv",
+		"14. bolumde platformun altinda delik, ustunde tavan dikeni (tek yol platform)")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Bolum basi tabelasi: metin (ad, altin, en iyi), 1,2 sn sonra ya da ilk
+## girdiyle kapanir, yeniden dogusta acilmaz, gunluk modda degistiriciyi soyler.
+func _tabela_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.en_iyi[0] = 4.2
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var tabela: Panel = oyun.get_node("Arayuz/Tabela")
+	var yazi: Label = oyun.get_node("Arayuz/Tabela/Metin")
+	_dogrula(tabela.visible, "bolum basinda tabela acik")
+	_dogrula(yazi.text.begins_with(String(Ayarlar.bolum(0)["ad"])) and yazi.text.contains("altın %.2f sn" % float(Ayarlar.esik(0)["altin"]))
+		and yazi.text.contains("en iyi 4.20 sn"), "tabela metni: ad, altin, en iyi ('%s')" % yazi.text)
+	_dogrula(Simgeler.eksikler(yazi.text) == "", "tabela metninde eksik simge yok")
+	_dogrula(is_equal_approx(Ayarlar.TABELA_SURESI, 1.2), "tabela suresi 1,2 sn")
+	await get_tree().create_timer(0.6).timeout
+	_dogrula(tabela.visible, "0,6 sn sonra hala acik")
+	await get_tree().create_timer(0.8).timeout
+	_dogrula(not tabela.visible, "1,2 sn dolunca kapandi")
+	o.oldur()
+	await get_tree().create_timer(0.4).timeout
+	_dogrula(o.yasiyor and not tabela.visible, "yeniden dogusta tabela acilmadi")
+	oyun.bolum_yukle(1)
+	await get_tree().process_frame
+	_dogrula(tabela.visible and yazi.text.contains("en iyi —"), "2. bolum: tabela acildi, rekor yok ('%s')" % yazi.text)
+	Input.action_press("move_right")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	Input.action_release("move_right")
+	_dogrula(not tabela.visible, "ilk girdiyle kapandi")
+	Ayarlar.gunluk_mod = true
+	oyun.bolum_yukle(2)
+	await get_tree().process_frame
+	_dogrula(yazi.text.contains("günün bölümü") and yazi.text.contains(Ayarlar.gunluk_degistirici_adi()),
+		"gunluk tabela degistiriciyi soyluyor ('%s')" % yazi.text)
+	Ayarlar.gunluk_mod = false
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.sifirla()
+
+
+## Bolum Sec'teki sure listesi: 20 satir iki sutunda 640x360'a sigiyor; kayit
+## satira yansiyor (sure + madalya); menude ve ozette madalya sayisi.
+func _sure_listesi_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 5
+	var sonuc: Dictionary = Ayarlar.bolum_bitti(4, 3.0, 2)
+	_dogrula(int(sonuc["madalya"]) == 3, "5. bolum 3,00 sn ile altin (%d)" % int(sonuc["madalya"]))
+	_dogrula(Ayarlar.madalya_sayisi() == 1, "madalya sayisi 1 (%d)" % Ayarlar.madalya_sayisi())
+	var sec: Control = load("res://scenes/bolum_sec.tscn").instantiate()
+	add_child(sec)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_dogrula(sec.get_node("Kutu").visible and not sec.get_node("Liste").visible, "baslangicta izgara gorunumu")
+	sec.liste_goster(true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_dogrula(sec.get_node("Liste").visible and not sec.get_node("Kutu").visible, "liste acildi, izgara gizlendi")
+	_dogrula(sec.get_node("Gorunum").text == "Bölüm Izgarası", "dugme oteki gorunumu soyluyor")
+	var sol: Control = sec.get_node("Liste/Sol")
+	var sag: Control = sec.get_node("Liste/Sag")
+	_dogrula(sol.get_child_count() == 10 and sag.get_child_count() == 10, "iki sutun, 10'ar satir (%d / %d)" % [sol.get_child_count(), sag.get_child_count()])
+	var ekran := Rect2(0.0, 0.0, 640.0, 360.0)
+	var sigan := 0
+	var toplam := 0
+	for sutun in [sol, sag]:
+		for s in sutun.get_children():
+			toplam += 1
+			if ekran.encloses((s as Control).get_global_rect()) and (s as Control).get_global_rect().end.y <= 296.0:
+				sigan += 1
+	_dogrula(toplam == Ayarlar.bolum_sayisi() and sigan == toplam, "%d satirin hepsi 640x360'a sigiyor (%d)" % [toplam, sigan])
+	var s5: Button = sec.get_node("Liste/Sol/Satir5")
+	_dogrula((s5.get_node("Kutu/EnIyi") as Label).text == "3.00 sn", "5. satir en iyi sure ('%s')" % (s5.get_node("Kutu/EnIyi") as Label).text)
+	var m5: TextureRect = s5.get_node("Kutu/Madalya")
+	_dogrula(m5.texture != null and (m5.texture as AtlasTexture).region.position.x == 0.0, "5. satirda altin madalya simgesi")
+	_dogrula((s5.get_node("Kutu/Ad") as Label).text == String(Ayarlar.bolum(4)["ad"]), "5. satir bolum adi")
+	_dogrula((s5.get_node("Kutu/Altin") as Label).text.contains("%.2f" % float(Ayarlar.esik(4)["altin"])), "5. satir altin hedefi")
+	_dogrula(not s5.disabled, "acik bolum satiri tiklanabilir")
+	var s1: Button = sec.get_node("Liste/Sol/Satir1")
+	_dogrula((s1.get_node("Kutu/EnIyi") as Label).text == "—" and (s1.get_node("Kutu/Madalya") as TextureRect).texture == null,
+		"1. satir: rekor yok, madalya yok")
+	var s20: Button = sec.get_node("Liste/Sag/Satir20")
+	_dogrula(s20.disabled and (s20.get_node("Kutu/EnIyi") as Label).text == "kilitli", "20. satir kilitli")
+	var eksik := ""
+	for sutun in [sol, sag]:
+		for s in sutun.get_children():
+			for ad in ["Ad", "EnIyi", "Altin"]:
+				eksik += Simgeler.eksikler((s.get_node("Kutu/" + ad) as Label).text)
+	_dogrula(eksik == "", "liste metinlerinde eksik simge yok ('%s')" % eksik)
+	sec.liste_goster(false)
+	_dogrula(sec.get_node("Kutu").visible and sec.get_node("Gorunum").text == "Süre Listesi", "izgaraya donuldu")
+	_dogrula((sec.get_node("Ozet") as Label).text.contains("Madalya 1 / %d" % Ayarlar.bolum_sayisi()), "ozet madalya sayisini soyluyor")
+	sec.queue_free()
+	await get_tree().process_frame
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	var durum: String = (menu.get_node("Durum") as Label).text
+	_dogrula(durum.contains("1 / %d madalya" % Ayarlar.bolum_sayisi()), "menu toplam madalya sayisini soyluyor ('%s')" % durum)
+	_dogrula(Simgeler.eksikler(durum) == "", "menu durum satirinda eksik simge yok")
+	menu.queue_free()
+	await get_tree().process_frame
+	Ayarlar.sifirla()
+
+
+## Yuruyus cevriminde kollar sallaniyor mu? Sprite sayfasinda kol bolgesi
+## (satir 8-14, sutun 0-3 ve 12-15) yuruyus karelerinde bekleme karesinden ve
+## birbirinden farkli olmali; zipla/dus karelerinde de ayri. Kask degismemeli.
+func _kol_testi() -> void:
+	var g: Image = (load("res://assets/sprites/oyuncu.png") as Texture2D).get_image()
+	_dogrula(g.get_width() == 128 and g.get_height() == 24, "oyuncu sayfasi 8 kare 16x24 (%dx%d)" % [g.get_width(), g.get_height()])
+	var idle := _kol_imzasi(g, 0)
+	var yuru0 := _kol_imzasi(g, 2)
+	var yuru1 := _kol_imzasi(g, 3)
+	var zipla := _kol_imzasi(g, 6)
+	var dus := _kol_imzasi(g, 7)
+	_dogrula(yuru0 != idle and yuru1 != idle and yuru0 != yuru1, "yuruyus karelerinde kollar bekleme karesinden ve birbirinden farkli")
+	_dogrula(_kol_imzasi(g, 2) == _kol_imzasi(g, 4) and _kol_imzasi(g, 3) == _kol_imzasi(g, 5), "4 kareli cevrim: 1=3, 2=4 kol pozu")
+	_dogrula(zipla != idle and dus != idle and zipla != dus, "zipla ve dus karelerinde kollar ayri")
+	_dogrula(_kask_imzasi(g, 0) == _kask_imzasi(g, 2) and _kask_imzasi(g, 0) == _kask_imzasi(g, 7), "kask her karede ayni")
+
+
+func _kol_imzasi(g: Image, kare: int) -> String:
+	var s := ""
+	for y in range(8, 15):
+		for x in [0, 1, 2, 3, 12, 13, 14, 15]:
+			s += g.get_pixel(kare * 16 + x, y).to_html(false)
+	return s
+
+
+func _kask_imzasi(g: Image, kare: int) -> String:
+	var s := ""
+	for y in range(2, 8):
+		for x in range(4, 12):
+			s += g.get_pixel(kare * 16 + x, y).to_html(false)
+	return s

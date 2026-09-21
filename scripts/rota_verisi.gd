@@ -22,9 +22,9 @@ const VERI: Array = [
 	{"sure": 7.283, "altin": 9.833, "gumus": 12.746, "bronz": 17.480, "cevirme": 6, "tahmin": false, "biten": 5, "kosu": 5},
 	{"sure": 7.283, "altin": 9.833, "gumus": 12.746, "bronz": 17.480, "cevirme": 6, "tahmin": false, "biten": 5, "kosu": 5},
 	{"sure": 8.200, "altin": 11.070, "gumus": 14.350, "bronz": 19.680, "cevirme": 8, "tahmin": false, "biten": 5, "kosu": 5},
-	{"sure": 9.300, "altin": 12.555, "gumus": 16.275, "bronz": 22.320, "cevirme": 8, "tahmin": false, "biten": 5, "kosu": 5},
+	{"sure": 8.250, "altin": 11.138, "gumus": 14.438, "bronz": 19.800, "cevirme": 6, "tahmin": false, "biten": 5, "kosu": 5},
 	{"sure": 7.283, "altin": 9.833, "gumus": 12.746, "bronz": 17.480, "cevirme": 6, "tahmin": false, "biten": 5, "kosu": 5},
 	{"sure": 7.283, "altin": 9.833, "gumus": 12.746, "bronz": 17.480, "cevirme": 6, "tahmin": false, "biten": 5, "kosu": 5},
 	{"sure": 8.233, "altin": 11.115, "gumus": 14.408, "bronz": 19.760, "cevirme": 6, "tahmin": false, "biten": 5, "kosu": 5},
-	{"sure": 9.233, "altin": 12.465, "gumus": 16.158, "bronz": 22.160, "cevirme": 8, "tahmin": false, "biten": 5, "kosu": 5},
+	{"sure": 9.150, "altin": 12.353, "gumus": 16.012, "bronz": 21.960, "cevirme": 8, "tahmin": false, "biten": 5, "kosu": 5},
 ]

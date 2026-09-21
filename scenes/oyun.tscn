@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/oyun.gd" id="1_kod"]
 [ext_resource type="PackedScene" path="res://scenes/oyuncu.tscn" id="2_oyuncu"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/kristal.png" id="6_kristal"]
 [ext_resource type="Texture2D" path="res://assets/sprites/oyuncu.png" id="7_oyuncu_tex"]
 [ext_resource type="Texture2D" path="res://assets/sprites/inis.png" id="8_inis"]
+[ext_resource type="Texture2D" path="res://assets/sprites/kilit.png" id="9_kilit"]
 
 [node name="Oyun" type="Node2D"]
 process_mode = 3
@@ -231,6 +232,69 @@ offset_bottom = 37.0
 theme_override_font_sizes/font_size = 10
 theme_override_colors/font_color = Color(0.62, 0.66, 0.76, 1)
 horizontal_alignment = 2
+
+[node name="Kilit" type="Control" parent="Arayuz"]
+visible = false
+mouse_filter = 2
+
+[node name="Arka" type="ColorRect" parent="Arayuz/Kilit"]
+offset_left = 240.0
+offset_top = 6.0
+offset_right = 392.0
+offset_bottom = 26.0
+color = Color(0.02, 0.02, 0.05, 0.7)
+mouse_filter = 2
+
+[node name="Ikon" type="TextureRect" parent="Arayuz/Kilit"]
+offset_left = 246.0
+offset_top = 10.0
+offset_right = 258.0
+offset_bottom = 22.0
+texture = ExtResource("9_kilit")
+mouse_filter = 2
+
+[node name="Yazi" type="Label" parent="Arayuz/Kilit"]
+theme_override_constants/outline_size = 4
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
+offset_left = 262.0
+offset_top = 8.0
+offset_right = 392.0
+offset_bottom = 24.0
+theme_override_font_sizes/font_size = 10
+theme_override_colors/font_color = Color(0.97, 0.68, 0.2, 1)
+text = "ÇEVİRME KİLİTLİ"
+mouse_filter = 2
+
+[node name="Tabela" type="Panel" parent="Arayuz"]
+visible = false
+offset_left = 110.0
+offset_top = 48.0
+offset_right = 530.0
+offset_bottom = 84.0
+mouse_filter = 2
+
+[node name="Arka" type="ColorRect" parent="Arayuz/Tabela"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.02, 0.02, 0.05, 0.7)
+mouse_filter = 2
+
+[node name="Cizgi" type="ColorRect" parent="Arayuz/Tabela"]
+anchor_right = 1.0
+offset_bottom = 2.0
+color = Color(0.17, 0.91, 0.96, 1)
+mouse_filter = 2
+
+[node name="Metin" type="Label" parent="Arayuz/Tabela"]
+offset_left = 8.0
+offset_top = 4.0
+offset_right = 412.0
+offset_bottom = 32.0
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.9, 0.92, 0.97, 1)
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
 
 [node name="Ipucu" type="Label" parent="Arayuz"]
 theme_override_constants/outline_size = 4

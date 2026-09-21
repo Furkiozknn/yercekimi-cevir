@@ -8,10 +8,15 @@ extends CharacterBody2D
 signal oldu
 signal cevirdi(yeni_yon: float)
 signal kondu
+signal kilit_denendi              ## yasak bolgede cevirme istendi, reddedildi
 
 var yercekimi_yonu: float = 1.0   ## 1 = asagi ceker, -1 = yukari ceker
 var yasiyor: bool = true
 var girdi_acik: bool = true       ## testler kapatabilsin diye
+## Cevirme yasagi bolgesinde (Bolum.yasak_icinde); oyun sahnesi her fizik
+## karesinde kurar (ebeveyn once islenir). Acikken cevir() reddeder ve
+## bekleyen tamponu da siler: bolgeden cikinca "kendiliginden" cevirme olmasin.
+var kilitli: bool = false
 
 var _tampon: float = 0.0
 var _kojot: float = 0.0           ## yuzeyden ayrildiktan sonra kalan cevirme hakki
@@ -42,6 +47,7 @@ func hazirla(konum: Vector2, yon: float = 1.0) -> void:
 	_bakis = 1.0
 	_iz_kalan = 0.0
 	_onceki_yerde = true
+	kilitli = false
 	yasiyor = true
 	_gorsel.flip_v = yon < 0.0
 	_gorsel.scale = Vector2.ONE
@@ -67,6 +73,10 @@ func oldur() -> void:
 ## tusu saklar. Ikisi birlikte "bir kare gec bastim" olumunu ortadan kaldirir.
 func cevir() -> bool:
 	if not is_on_floor() and _kojot <= 0.0:
+		return false
+	if kilitli:
+		_tampon = 0.0
+		kilit_denendi.emit()
 		return false
 	_kojot = 0.0
 	yercekimi_yonu = -yercekimi_yonu

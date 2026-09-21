@@ -77,6 +77,12 @@ var _gunluk_ek: String = ""   ## gunluk bitis paneline eklenen satir (rekor / ya
 @onready var _kopyala_dugme: Button = $Arayuz/Bitis/Kutu/Kopyala
 @onready var _dokunmatik: Control = $Arayuz/Dokunmatik
 @onready var _karartma: ColorRect = $Gecis/Karartma
+@onready var _kilit_hud: Control = $Arayuz/Kilit          ## "ÇEVİRME KİLİTLİ" rozeti (seritlerin arasinda)
+@onready var _tabela: Panel = $Arayuz/Tabela
+@onready var _tabela_metin: Label = $Arayuz/Tabela/Metin
+
+var _tabela_kalan: float = 0.0
+var _kilit_tween: Tween = null
 
 
 func _ready() -> void:
@@ -84,6 +90,7 @@ func _ready() -> void:
 	_oyuncu.oldu.connect(_olum_oldu)
 	_oyuncu.cevirdi.connect(_cevirdi)
 	_oyuncu.kondu.connect(_kondu)
+	_oyuncu.kilit_denendi.connect(_kilit_reddi)
 	$Arayuz/Duraklat/Kutu/Devam.pressed.connect(_devam)
 	$Arayuz/Duraklat/Kutu/Bastan.pressed.connect(_bastan)
 	$Arayuz/Duraklat/Kutu/Atla.pressed.connect(_atla)
@@ -208,6 +215,24 @@ func bolum_yukle(i: int) -> void:
 	yeniden_basla()
 	_oda = -1
 	_kamera_guncelle(true)
+	_tabela_goster()
+
+
+## Bolum basi tabelasi: yalniz bolum yuklenince (yeniden dogusta degil).
+## TABELA_SURESI sonra ya da ilk girdiyle kapanir; sayac bu sirada durmaz.
+func _tabela_goster() -> void:
+	_tabela_metin.text = Ayarlar.tabela_metni(bolum_i)
+	_tabela_kalan = Ayarlar.TABELA_SURESI
+	_tabela.visible = true
+
+
+func _tabela_isle(delta: float) -> void:
+	if not _tabela.visible:
+		return
+	_tabela_kalan -= delta
+	if _tabela_kalan <= 0.0 or Input.is_action_just_pressed("cevir") \
+			or Input.is_action_just_pressed("move_left") or Input.is_action_just_pressed("move_right"):
+		_tabela.visible = false
 
 
 func _hayalet_rengi() -> Color:
@@ -227,6 +252,7 @@ func yeniden_basla() -> void:
 	_mesaj.text = ""
 	_durum = OYNA
 	_zaman = 0.0
+	_kilit_hud.visible = false
 	_arka_ton(yon, true)
 	_kamera_guncelle(true)
 
@@ -268,6 +294,7 @@ func _kristal_guncelle() -> void:
 func _physics_process(_delta: float) -> void:
 	if _durum != OYNA or get_tree().paused:
 		return
+	_kilit_guncelle()
 	# Hayalet kaydi: her HAYALET_ARALIGI fizik karesinde bir konum.
 	_kare += 1
 	if _kare % Ayarlar.HAYALET_ARALIGI == 0 and _yol.size() < Ayarlar.HAYALET_EN_FAZLA:
@@ -279,6 +306,7 @@ func _process(delta: float) -> void:
 	_hud_solma(delta)
 	if get_tree().paused:
 		return
+	_tabela_isle(delta)
 	_zaman += delta
 	match _durum:
 		OYNA:
@@ -304,6 +332,32 @@ func _process(delta: float) -> void:
 			if _zaman >= HAYALET_BEKLEME:
 				bolum_yukle(bolum_i)      # sure, olum ve hayalet birlikte basa doner
 	_sayac.text = "Süre %.2f   Ölüm %d   ⟳ %d" % [sure, olum, cevirme]
+
+
+## Cevirme yasagi bolgesi: oyuncunun govdesi bolge dikdortgenine degiyorsa
+## oyuncu.kilitli acilir (cevir() reddeder), rozet gorunur; ilk giriste
+## "kilit" sesi. Ebeveyn cocuktan once islendigi icin oyuncunun ayni
+## karedeki cevir() cagrisi bu degeri gorur.
+func _kilit_guncelle() -> void:
+	var govde := Rect2(_oyuncu.global_position - Ayarlar.GOVDE * 0.5, Ayarlar.GOVDE)
+	var k: bool = _oyuncu.yasiyor and _bolum.yasak_icinde(govde)
+	if k and not _oyuncu.kilitli:
+		Ses.cal(&"kilit")
+	_oyuncu.kilitli = k
+	_kilit_hud.visible = k
+
+
+## Bolgede cevirme istendi: ses + rozet sarsilir (tus okundu ama reddedildi).
+func _kilit_reddi() -> void:
+	Ses.cal(&"kilit")
+	if not Ayarlar.oyun_hissi:
+		return
+	if _kilit_tween != null and _kilit_tween.is_valid():
+		_kilit_tween.kill()
+	_kilit_hud.position.x = 0.0
+	_kilit_tween = create_tween()
+	for dx in [4.0, -4.0, 2.0, 0.0]:
+		_kilit_tween.tween_property(_kilit_hud, "position:x", dx, 0.04)
 
 
 ## Tavanda yuruyen oyuncu (ya da hayalet) ust HUD seritlerinin arkasinda
@@ -390,7 +444,7 @@ func _inis_isle() -> void:
 ## yalniz sabit harita uzerinden yapiliyordu: platformlu bolumlerde gosterge
 ## platformu yok sayip altindaki zemini (ya da bolum disini) gosteriyordu.
 func _inis_tahmini() -> Dictionary:
-	var yok := {"var": false, "konum": Vector2.ZERO, "yon": 1.0, "tehlike": false, "sure": 0.0}
+	var yok := {"var": false, "konum": Vector2.ZERO, "yon": 1.0, "tehlike": false, "sure": 0.0, "plat": {}}
 	if _bolum == null or not _oyuncu.yasiyor:
 		return yok
 	var yon: float = _oyuncu.yercekimi_yonu
@@ -419,9 +473,11 @@ func _inis_tahmini() -> Dictionary:
 		var govde := Rect2(k - Ayarlar.GOVDE * 0.5, Ayarlar.GOVDE)
 		if _bolum.olumcul_kutu(govde) or _bolum.hareketli_kesisiyor(govde, false, t):
 			tehlike = true
-		if _bolum.kati_mi(ayak) or _bolum.hareketli_nokta(ayak, true, t):
+		# Tek yonlu platform yalniz kendi yonunden tutar: '_' asagi dusene,
+		# '~' yukari dusene. Ters yonden gelen ayak icinden gecer (bkz. Bolum).
+		if _bolum.kati_mi(ayak) or _bolum.hareketli_nokta(ayak, true, t) or _bolum.tek_yonlu_nokta(ayak, yon):
 			return {"var": true, "konum": Vector2(roundf(k.x), roundf(ayak.y)),
-				"yon": yon, "tehlike": tehlike, "sure": t}
+				"yon": yon, "tehlike": tehlike, "sure": t, "plat": _bolum.tek_yonlu_bul(ayak, yon)}
 	return yok
 
 
@@ -504,6 +560,8 @@ func _olum_oldu() -> void:
 	_zaman = 0.0
 	_mesaj.text = "ÖLDÜN"
 	_inis.visible = false
+	_kilit_hud.visible = false
+	_tabela.visible = false
 	Ses.cal(&"olum")
 	sars(Ayarlar.SARSINTI_OLUM)
 	_parcacik(_olum_parca, _oyuncu.global_position)
@@ -677,7 +735,7 @@ func _olum_haritasi_goster() -> void:
 		var c := 0
 		while c < satir.length():
 			var ch := satir[c]
-			if ch != "#" and ch != "^" and ch != "v" and ch != "K":
+			if not (ch in ["#", "^", "v", "K", "_", "~", "="]):
 				c += 1
 				continue
 			var bas := c
@@ -691,6 +749,8 @@ func _olum_haritasi_goster() -> void:
 			match ch:
 				"#": kutu.color = Color(0.29, 0.33, 0.46)
 				"K": kutu.color = Color(0.39, 0.78, 0.30)
+				"_", "~": kutu.color = Color(0.75, 0.79, 0.86)
+				"=": kutu.color = Color(0.97, 0.46, 0.13, 0.6)
 				_: kutu.color = Color(0.89, 0.23, 0.27)
 			_harita_alan.add_child(kutu)
 	for yer in _olum_yerleri:
@@ -722,11 +782,9 @@ func _sonraki() -> void:
 		_durum = BITTI
 		_mesaj.text = ""
 		_oyuncu.visible = false
-		var madalyalar := 0
+		var madalyalar := Ayarlar.madalya_sayisi()
 		var az := 0
 		for i in Ayarlar.bolum_sayisi():
-			if Ayarlar.madalya_al(i) > 0:
-				madalyalar += 1
 			if Ayarlar.en_az_al(i) >= 0 and Ayarlar.en_az_al(i) <= Ayarlar.en_az_hedef(i):
 				az += 1
 		_bitis_metin.text = ("Tüm %d bölüm bitti!\n\nToplam süre: %.2f sn\nToplam ölüm: %d\n"

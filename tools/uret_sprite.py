@@ -126,7 +126,9 @@ OYUNCU_SOZ = {
     "B": rgb("mavigri"), "b": rgb("lacivert"),
 }
 
-# Govde: 0..17 satirlar (kask + govde). Bacaklar ayri, 18..22.
+# Govde: 0..17 satirlar (kask + govde), KOLSUZ. Kollar ayri katman (KOL),
+# bacaklar ayri (18..22). v0.7: yuruyus cevriminde kollar sallaniyor; onceden
+# kollar govdeye cizili ve sabitti.
 GOVDE = [
     "................",
     "................",
@@ -139,14 +141,49 @@ GOVDE = [
     ".....oooooo.....",
     "....oSSSSSSo....",
     "...oSSllllSSo...",
-    ".oDoSSlSSlSSoDo.",
-    ".oDoSSllllSSoDo.",
-    ".oDoSSSSSSSSoDo.",
-    ".ooooSSSSSSoooo.",
+    "...oSSlSSlSSo...",
+    "...oSSllllSSo...",
+    "...oSSSSSSSSo...",
+    "....oSSSSSSo....",
     "....oDSSSSDo....",
     "....oDDDDDDo....",
     ".....oDDDDo.....",
 ]
+
+# Kollar: (ilk satir, harita). Govdenin USTUNE basilir; '.' seffaf oldugu
+# icin govde pikselleri korunur, kol govdenin onunde gorunur.
+#   yan    sarkik (bekleme)               dis    dirsekler disari: "\ /"
+#   ic     kollar govdenin onune "/ \"    yukari kollar basin yaninda (zipla)
+#   acik   kollar yana acik, T (dus)
+KOL = {
+    "yan": (11, [
+        ".oDo........oDo.",
+        ".oDo........oDo.",
+        ".oDo........oDo.",
+        ".ooo........ooo.",
+    ]),
+    "dis": (11, [
+        ".oDo........oDo.",
+        "oDo..........oDo",
+        "oo............oo",
+    ]),
+    "ic": (11, [
+        ".oDo........oDo.",
+        "..oDo......oDo..",
+        "...oo......oo...",
+    ]),
+    "yukari": (8, [
+        ".oo.........oo..",
+        ".oDo........oDo.",
+        ".oDo........oDo.",
+        ".oDo........oDo.",
+    ]),
+    "acik": (10, [
+        ".ooo........ooo.",
+        "oDDDo......oDDDo",
+        ".ooo........ooo.",
+    ]),
+}
 
 BACAK_BIRLIKTE = [
     ".....oDooDo.....",
@@ -185,10 +222,13 @@ BACAK_ACILMIS = [  # havada duserken: bacaklar acilmis
 ]
 
 
-def oyuncu_karesi(bacak, yukari=0):
-    """16x24 bir kare: govde + bacak. yukari=1 ise govde 1 px yukari kayar (adim hissi)."""
+def oyuncu_karesi(bacak, kol="yan", yukari=0):
+    """16x24 bir kare: govde + kol + bacak. yukari=1 ise govde ve kollar 1 px
+    yukari kayar (adim hissi); bacaklar yerde kalir."""
     t = Tuval(16, 24)
     t.bas(0, 0 - yukari, GOVDE, OYUNCU_SOZ)
+    satir, harita = KOL[kol]
+    t.bas(0, satir - yukari, harita, OYUNCU_SOZ)
     t.bas(0, 18, bacak, OYUNCU_SOZ)
     return t
 
@@ -197,15 +237,19 @@ def uret_oyuncu():
     for ad, h in [("GOVDE", GOVDE), ("BIRLIKTE", BACAK_BIRLIKTE), ("ACIK_A", BACAK_ACIK_A),
                   ("ACIK_B", BACAK_ACIK_B), ("TOPLU", BACAK_TOPLU), ("ACILMIS", BACAK_ACILMIS)]:
         dogrula(h, 16, "oyuncu/" + ad)
+    for ad, (_, h) in KOL.items():
+        dogrula(h, 16, "oyuncu/kol_" + ad)
+    # Yuruyus: bacaklar acilirken kollar disa savrulur, kapanirken govdenin
+    # onune gelir — iki kol pozu + iki bacak pozu, 4 karede tam cevrim.
     kareler = [
-        oyuncu_karesi(BACAK_BIRLIKTE),           # idle 0
-        oyuncu_karesi(BACAK_BIRLIKTE, 1),        # idle 1 (nefes)
-        oyuncu_karesi(BACAK_ACIK_A),             # yuru 0
-        oyuncu_karesi(BACAK_BIRLIKTE, 1),        # yuru 1
-        oyuncu_karesi(BACAK_ACIK_B),             # yuru 2
-        oyuncu_karesi(BACAK_BIRLIKTE, 1),        # yuru 3
-        oyuncu_karesi(BACAK_TOPLU),              # zipla (yukari)
-        oyuncu_karesi(BACAK_ACILMIS),            # dus
+        oyuncu_karesi(BACAK_BIRLIKTE, "yan"),          # idle 0
+        oyuncu_karesi(BACAK_BIRLIKTE, "yan", 1),       # idle 1 (nefes)
+        oyuncu_karesi(BACAK_ACIK_A, "dis"),            # yuru 0
+        oyuncu_karesi(BACAK_BIRLIKTE, "ic", 1),        # yuru 1
+        oyuncu_karesi(BACAK_ACIK_B, "dis"),            # yuru 2
+        oyuncu_karesi(BACAK_BIRLIKTE, "ic", 1),        # yuru 3
+        oyuncu_karesi(BACAK_TOPLU, "yukari"),          # zipla (yukari): kollar basin yaninda
+        oyuncu_karesi(BACAK_ACILMIS, "acik"),          # dus: kollar yana acik
     ]
     sayfa = Tuval(16 * len(kareler), 24)
     for i, k in enumerate(kareler):
@@ -317,6 +361,46 @@ def uret_inis():
         t.kutu(x, 2, 2, 1, b)
         t.kutu(x, 3, 2, 1, s)
     return t.yaz("inis.png")
+
+
+def uret_tek_yonlu():
+    """16x8 tek yonlu platform karosu: acik gri izgara, ustunde koyu mavi YUKARI
+    oklar = "yukari dogru icinden gecilir, ustune inilir". Bolum bunu hucre
+    hucre doser; alttan katisi (~) icin dikey aynalayarak cizer (oklar asagi)."""
+    t = Tuval(16, 8)
+    t.kutu(0, 0, 16, 8, rgb("acikgri"))
+    t.kutu(0, 5, 16, 2, rgb("gri"))                 # alt golge
+    t.cerceve(0, 0, 16, 8, rgb("siyah"))
+    for c in (3, 8, 13):                            # uc ok: tepe + iki bacak
+        t.nokta(c, 2, rgb("komavi"))
+        t.nokta(c - 1, 3, rgb("komavi"))
+        t.nokta(c + 1, 3, rgb("komavi"))
+    return t.yaz("tek_yonlu.png")
+
+
+KILIT = [
+    "...gggggg...",
+    "..gg....gg..",
+    "..g......g..",
+    "..g......g..",
+    ".oooooooooo.",
+    ".oSSSSSSSSo.",
+    ".oSSSooSSSo.",
+    ".oSSSooSSSo.",
+    ".oSSSSoSSSo.",
+    ".oSSSSSSSSo.",
+    ".oooooooooo.",
+    "............",
+]
+KILIT_SOZ = {".": None, "o": rgb("siyah"), "g": rgb("acikgri"), "S": rgb("sari")}
+
+
+def uret_kilit():
+    """12x12 asma kilit: cevirme yasagi bolgesinin isareti (bolum ici 2x, HUD 1x)."""
+    dogrula(KILIT, 12, "kilit")
+    t = Tuval(12, 12)
+    t.bas(0, 0, KILIT, KILIT_SOZ)
+    return t.yaz("kilit.png")
 
 
 def uret_platform():
@@ -535,8 +619,8 @@ def onizleme(olcek=4):
 def main():
     os.makedirs(CIKTI, exist_ok=True)
     isler = [uret_oyuncu, uret_karo, uret_karo_ust, uret_diken, uret_gezgin,
-             uret_platform, uret_inis, uret_kapi, uret_kristal, uret_kristal_parilti,
-             uret_kontrol, uret_madalya,
+             uret_platform, uret_tek_yonlu, uret_kilit, uret_inis, uret_kapi,
+             uret_kristal, uret_kristal_parilti, uret_kontrol, uret_madalya,
              uret_arka_0, uret_arka_1, uret_arka_2]
     for is_ in isler:
         yol = is_()

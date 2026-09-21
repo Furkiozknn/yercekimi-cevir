@@ -65,6 +65,11 @@ const ARKA_GECIS: float = 0.25
 const HUD_SOLUK: float = 0.25
 const HUD_SOLMA_SURESI: float = 0.15
 
+# --- Bolum basi tabelasi ---
+## "N — Ad · altin X sn · en iyi Y sn" karti; bu kadar sn sonra ya da ilk
+## girdiyle kapanir. Sure sayaci bu sirada DURMAZ: kart bilgidir, mola degil.
+const TABELA_SURESI: float = 1.2
+
 # --- Renkler (arayuz) ---
 const RENK_METIN: Color = Color(0.90, 0.92, 0.97)
 const MADALYA_AD: Array = ["—", "Bronz", "Gümüş", "Altın"]
@@ -233,6 +238,24 @@ func madalya_hesapla(i: int, sure: float) -> int:
 
 func madalya_al(i: int) -> int:
 	return int(madalya.get(i, 0))
+
+
+## Madalya kazanilan bolum sayisi (menu, Bolum Sec ozeti ve bitis ekrani).
+func madalya_sayisi() -> int:
+	var n := 0
+	for i in bolum_sayisi():
+		if madalya_al(i) > 0:
+			n += 1
+	return n
+
+
+## Tabela metni: "9 — Salıncak · altın 6.99 sn · en iyi —". Gunluk modda
+## degistirici ve gunun en iyisi.
+func tabela_metni(i: int) -> String:
+	var ad := String(bolum(i)["ad"])
+	if gunluk_mod:
+		return "%s · günün bölümü: %s · en iyi %s" % [ad, gunluk_degistirici_adi(), gunluk_en_iyi_metin()]
+	return "%s · altın %.2f sn · en iyi %s" % [ad, float(esik(i)["altin"]), en_iyi_metin(i)]
 
 
 func kristal_var(i: int) -> bool:

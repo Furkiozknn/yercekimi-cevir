@@ -14,6 +14,9 @@ extends Node
 ##                   yeni duzeni, gunun bolumu (menu, ters baslangic, kristal zorunlu)
 ##     <mod> = -7  : tur 5 (v0.6): tavan-HUD solmasi, gunluk hayalet yarisi,
 ##                   paylasim paneli, menude seri, kapi/kristal parilti kareleri
+##     <mod> = -8  : tur 6 (v0.7): cevirme yasagi bolgesi (rozet, reddedilen
+##                   cevirme, tavan/zemin bolgeleri), tek yonlu platformlar,
+##                   bolum basi tabelasi, sure listesi, menude madalya, kol kareleri
 ##
 ## Yakalanan kareler 1280x720 (pencere boyutu). Kapak bu kareden 630x500
 ## kirpilarak uretilir — itch.io kapak olcusu.
@@ -59,6 +62,8 @@ func _ready() -> void:
 		await _tur4_cek()
 	elif mod == -7:
 		await _tur5_cek()
+	elif mod == -8:
+		await _tur6_cek()
 	else:
 		await _oynanis_cek(mod)
 
@@ -600,6 +605,127 @@ func _tur5_cek() -> void:
 	await _cek("parilti-oyun")
 	_oyun.queue_free()
 	await _bekle(0.3)
+
+
+## mod -8: tur 6'da (v0.7) eklenenler.
+func _tur6_cek() -> void:
+	_sahte_ilerleme()
+
+	# 1) Cevirme yasagi bolgesi: 9 — Salincak, zemin bolgesi 29-31 (ardinda diken).
+	#    Oyuncu bolgenin icinde: kesik cizgili turuncu kutu, kilit, ustte rozet.
+	await _oyunu_ac(8)
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	_oyun.get_node("Arayuz/Tabela").visible = false
+	o.position = Vector2(30.0 * 16.0 + 8.0, 336.0 - Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.5)
+	print("TANI kilit: kilitli=%s rozet=%s" % [o.kilitli, _oyun.get_node("Arayuz/Kilit").visible])
+	await _cek("yasak-bolge-icinde")
+	Input.action_press("cevir")                    # reddedilir: ses + rozet sarsintisi
+	await _bekle(0.06)
+	Input.action_release("cevir")
+	await _cek("yasak-bolge-cevirme-reddi")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 2) 16 — Kilcik: ilk odada TAVAN bolgesi (12-19, altinda zemin dikeni),
+	#    ikinci odada zemin bolgesi (44-46) + hemen ardinda diken (47-50).
+	await _oyunu_ac(15)
+	o = _oyun.get_node("Dunya/Oyuncu")
+	_oyun.get_node("Arayuz/Tabela").visible = false
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(15.0 * 16.0 + 8.0, float(Ayarlar.HUCRE) + Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.5)
+	await _cek("yasak-bolge-tavan")
+	o.yercekimi_yonu = 1.0
+	o.up_direction = Vector2.UP
+	o.position = Vector2(41.0 * 16.0 + 8.0, 336.0 - Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.5)
+	await _cek("yasak-bolge-zemin-oda-2")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 3) 14 — Bosluk Ustu: '~' platform (38-49), altinda delik, ustunde tavan
+	#    dikeni. Oyuncu platformun ALTINDA ters yercekimiyle yuruyor; sonra
+	#    cevirme tusu: zemine inis isareti (gosterge basiliyken).
+	await _oyunu_ac(13)
+	o = _oyun.get_node("Dunya/Oyuncu")
+	_oyun.get_node("Arayuz/Tabela").visible = false
+	var b: Bolum = _oyun.get_node("Dunya/Bolum")
+	var alt: Rect2 = b.tek_yonlular[0]["kutu"]
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(44.0 * 16.0 + 8.0, alt.end.y + Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.5)
+	print("TANI alt platform: yerde=%s y=%.1f" % [o.is_on_floor(), o.position.y])
+	await _cek("tek-yonlu-alt-platform")
+	Input.action_press("move_right")
+	Input.action_press("cevir")
+	await _bekle(0.18)
+	await _cek("tek-yonlu-alt-cevirme")
+	Input.action_release("cevir")
+	Input.action_release("move_right")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 4) 20 — Son Kapi: '_' platform (54-58) son deligin ustunde; oyuncu ustunde.
+	await _oyunu_ac(19)
+	o = _oyun.get_node("Dunya/Oyuncu")
+	_oyun.get_node("Arayuz/Tabela").visible = false
+	b = _oyun.get_node("Dunya/Bolum")
+	var ust: Rect2 = b.tek_yonlular[0]["kutu"]
+	o.position = Vector2(56.0 * 16.0 + 8.0, ust.position.y - Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.5)
+	print("TANI ust platform: yerde=%s y=%.1f" % [o.is_on_floor(), o.position.y])
+	await _cek("tek-yonlu-ust-platform")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 5) Bolum basi tabelasi: 13 — Uzun Yol (sahte ilerlemede rekor var). _oyunu_ac
+	#    0,6 sn bekliyor, tabela 1,2 sn acik: kare tam ortasinda.
+	await _oyunu_ac(12)
+	await _cek("tabela")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 6) Bolum Sec: sure listesi gorunumu.
+	var sec: Control = load("res://scenes/bolum_sec.tscn").instantiate()
+	add_child(sec)
+	await _bekle(0.4)
+	sec.liste_goster(true)
+	await _bekle(0.4)
+	await _cek("sure-listesi")
+	sec.queue_free()
+	await _bekle(0.3)
+
+	# 7) Menu: durum satirinda toplam madalya.
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(0.5)
+	await _cek("menu-madalya")
+	menu.queue_free()
+	await _bekle(0.3)
+
+	# 8) Kol kareleri: sprite sayfasinin 8 karesi 6x, gozle denetim icin.
+	_kol_levhasi()
+
+
+## oyuncu.png (8 kare, 16x24) 6x buyutulmus tek levha; render gerektirmez.
+func _kol_levhasi() -> void:
+	var g: Image = (load("res://assets/sprites/oyuncu.png") as Texture2D).get_image()
+	g.convert(Image.FORMAT_RGBA8)
+	var k := 6
+	var buyuk := g.duplicate() as Image
+	buyuk.resize(g.get_width() * k, g.get_height() * k, Image.INTERPOLATE_NEAREST)
+	var levha := Image.create(buyuk.get_width() + 16, buyuk.get_height() + 16, false, Image.FORMAT_RGBA8)
+	levha.fill(Color(0.23, 0.27, 0.40))
+	for i in 8:                                    # kare sinirlari
+		if i % 2 == 1:
+			levha.fill_rect(Rect2i(8 + i * 16 * k, 8, 16 * k, 24 * k), Color(0.29, 0.33, 0.46))
+	levha.blend_rect(buyuk, Rect2i(Vector2i.ZERO, buyuk.get_size()), Vector2i(8, 8))
+	_sira += 1
+	var yol := "%s/%02d-kol-kareleri.png" % [_klasor, _sira]
+	print("ekran: %s  %dx%d -> %d" % [yol, levha.get_width(), levha.get_height(), levha.save_png(yol)])
 
 
 ## Kapinin ve kristalin 4 karesini, cizildikleri anda ekrandan kirpip yan yana
