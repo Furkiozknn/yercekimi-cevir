@@ -14,7 +14,7 @@ butler version
 butler login
 ```
 
-Kullanıcı adı ve proje slug'ı: `<kullanici>/yercekimi-cevir`.
+Kullanıcı adı ve proje slug'ı: `<itch-kullanici>/yercekimi-cevir`.
 Aşağıdaki komutlarda `<kullanici>` yerine gerçek itch.io kullanıcı adını yaz.
 
 ## Yapıları hazırla
@@ -42,10 +42,10 @@ build/web/index.html + index.wasm + index.pck + index.js + 2 worklet
 
 ```bash
 # Tarayıcıda oynanan sürüm
-butler push build/web     <kullanici>/yercekimi-cevir:html5   --userversion 0.7.0
+butler push build/web     <itch-kullanici>/yercekimi-cevir:html5   --userversion 0.7.0
 
 # Windows
-butler push build/windows <kullanici>/yercekimi-cevir:windows --userversion 0.7.0
+butler push build/windows <itch-kullanici>/yercekimi-cevir:windows --userversion 0.7.0
 ```
 
 `html5` kanalı itch.io tarafında otomatik olarak "oynanabilir" işaretlenir.
@@ -55,7 +55,7 @@ etmek bunu sağlıyor.
 ## Doğrulama
 
 ```bash
-butler status <kullanici>/yercekimi-cevir
+butler status <itch-kullanici>/yercekimi-cevir
 ```
 
 Yükleme sonrası itch.io proje ayarlarında:
@@ -69,5 +69,5 @@ Yükleme sonrası itch.io proje ayarlarında:
 
 ```bash
 # Yanlış yapı gittiyse: eski sürümü yeniden push etmek yerine kanalı boşalt
-butler wipe <kullanici>/yercekimi-cevir:html5
+butler wipe <itch-kullanici>/yercekimi-cevir:html5
 ```

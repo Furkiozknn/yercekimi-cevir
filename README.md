@@ -1,12 +1,14 @@
 # Yerçekimi Çevir
 
+*No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 841 headless checks.*
+
 [![CI](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml/badge.svg)](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml)
 
 Zıplama yok: tek tuşla yerçekimini ters çevirip tavana "düşerek" dikenlerden kaçtığın
 kısa ve zor bir hassas platform oyunu. **20 bölüm**, her bölüm 1–2 ekran.
 
 ![Ana menü](docs/01-menu.png)
-![Çevirme anı](yayin/ekran/04-cevirme.png)
+![Çevirme anı](yayin/ekran/07-cevirme.png)
 
 ## Kontroller
 
@@ -118,7 +120,8 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 
 ## Lisanslar
 
-Kod ve varlıklar bu depoya ait. `assets/fonts/simgeler.ttf` ("Oyun Simgeleri")
+Kod ve varlıklar [MIT](LICENSE) altında — Furki Özkan, 2026; görseller, sesler
+ve müzik depodaki üreteclerle koddan üretilir. `assets/fonts/simgeler.ttf` ("Oyun Simgeleri")
 DejaVu Sans Bold'un 34 simgelik alt kümesidir; Bitstream Vera lisansı altında
 dağıtılır, bildirim `assets/fonts/LISANS-simgeler.txt` dosyasındadır.
 

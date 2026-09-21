@@ -6,11 +6,14 @@ name: CI
 # Burada yeni bir test komutu UYDURULMUYOR. CLAUDE.md satir 147'de yazan
 # kapinin aynisi kosuluyor:
 #     godot --headless --path . res://tests/testler.tscn
+#
+# Varsayilan dal 21 Eylul 2026'da master -> main olarak degistirildi
+# (dort oyun deposu ayni dal adini kullansin diye).
 # Cikis kodu 0 = gecti.
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
 
 permissions:
