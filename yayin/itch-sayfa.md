@@ -37,9 +37,16 @@ after you left the surface.
 - **Gold ghost** — race the bot's measured best run as a second target. Both
   ghosts are labelled, so yours never gets confused with it
 - **Death map** at the end of every level: your level, your deaths, marked with X
-- **Daily level** — one level picked from the date, with a twist (start upside
-  down, or the crystal is required to open the exit). Separate best time, never
+- **Daily level** — one level picked from the date, with a twist: start upside
+  down, the crystal is required to open the exit, or **race the gold ghost**
+  (the exit only counts if you get there first). Separate best time, never
   touches your main progress; everyone gets the same level on the same day
+- **Daily streak and share text** — consecutive days build a streak; at the end
+  a three-line summary (level, twist, time, deaths, flips, streak) is one
+  button away from your clipboard
+- Music changes with the level group: calm for 1–7, tense for 8–14, fast for 15–20
+- The exit and the crystal glow; the top HUD fades out when you walk on the
+  ceiling under it
 - Room-based camera: hazards are never off screen
 - Checkpoints in the longer levels
 - Instant respawn — death costs you 0.18 seconds, not your run
@@ -94,9 +101,14 @@ bastıysan da.
 - Bölüm başına altın / gümüş / bronz hedef süre + ayrı bir **"en az çevirme"** hedefi
 - **Hayalet yarış** — o bölümdeki en iyi koşun yanında koşar, rengi madalyası
 - **Ölüm haritası** — bölüm bitince bölümün planı ve öldüğün her nokta X ile
-- **Günün bölümü** — tarihten seçilen bir bölüm + küçük bir değiştirici (ters
-  başlangıç ya da kristal zorunlu). Ayrı en iyi süre, ana ilerlemeye dokunmaz;
-  aynı gün herkes aynı bölümü oynar
+- **Günün bölümü** — tarihten seçilen bir bölüm + küçük bir değiştirici: ters
+  başlangıç, kristal zorunlu ya da **altın hayaletle yarış** (kapı yalnız ondan
+  önce varılınca sayılır). Ayrı en iyi süre, ana ilerlemeye dokunmaz; aynı gün
+  herkes aynı bölümü oynar
+- **Seri ve paylaşım** — ardışık günler seriyi büyütür; bitişte üç satırlık özet
+  (bölüm, değiştirici, süre, ölüm, çevirme, seri) tek düğmeyle panoya
+- Müzik bölüm grubuyla değişir: 1–7 sakin, 8–14 gergin, 15–20 hızlı
+- Kapı ve kristal parıldar; tavanda yürürken üstündeki HUD şeridi solar
 - Oda tabanlı kamera: tehlike ekran dışında kalmaz
 - Uzun bölümlerde kontrol noktası
 - Anında yeniden doğma — ölüm 0,18 saniyeye mal olur, koşuna değil
@@ -130,7 +142,7 @@ Tarayıcıda oynanır; Windows sürümü de indirilebilir.
 | Alan | Değer |
 |---|---|
 | Başlık | Yerçekimi Çevir (Gravity Flip) |
-| Kısa açıklama | No jump button. One button: flip gravity. 20 levels of precision platforming + a daily level. |
+| Kısa açıklama | No jump button. One button: flip gravity. 20 levels of precision platforming + a daily level with streaks. |
 | Sınıflandırma | Game |
 | Tür | Platformer |
 | Etiketler | `precision-platformer`, `gravity`, `pixel-art`, `one-button`, `godot`, `speedrun`, `accessible`, `turkish` |
@@ -149,6 +161,9 @@ Copyright (c) 2003 by Bitstream, Inc. DejaVu changes are in public domain.
 
 - [ ] `build/web/` içeriğini zip'le (index.html kökte olmalı)
 - [ ] Web yapısını bir tarayıcıda aç, sesin geldiğini ve müziğin **ikinci tura girdiğini** doğrula
+      (v0.6'da döngü sonu düzeltildi: önceki sürümlerde müzik ~4 sn'de başa sarıyordu)
+- [ ] Tarayıcıda günün bölümünü bitirip **Paylaşım Metnini Kopyala** düğmesinin panoya
+      yazdığını doğrula (kopyalama düğmeye bağlı; otomatik kopyalama web'de çalışmaz)
 - [ ] Tarayıcıda HUD'a bak: `⟳` ve `●` simge olarak çıkıyor mu (v0.3.1 düzeltmesi,
       tarayıcıda görülmedi); telefon emülasyonunda eğitim metni dokunmaya çevrildi mi
 - [ ] Windows yapısını zip'le (`yercekimi-cevir.exe` + `.pck` birlikte)

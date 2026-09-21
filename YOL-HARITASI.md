@@ -141,6 +141,36 @@ Kaynak: `oyun-terminalleri/aktif/H11-yercekimi-cevir.md`.
 - [x] Testler 612 → **672 doğrulama**; ekran aracına tur 4 modu (`-6`);
       Windows + Web dışa aktarımı temiz; yayın paketi 0.5.0
 
+## Tur 6 — tavan HUD, seri, hayalet yarışı, müzik grupları, parıltı v0.6 (2026-09-21)
+
+Kaynak: `oyun-terminalleri/aktif/H14-yercekimi-cevir.md`.
+
+- [x] **Tavan–HUD çakışması:** oyuncu ya da hayalet üst şeridin dikdörtgenine
+      girince şerit (arka + yazıları) 0,15 sn'de alfa 0,25'e iner, çıkınca geri
+      gelir; girdiye dokunmaz. Ekran uzayında hesaplanıyor. Test:
+      `_hud_solma_testi`; kareler `docs/tur5/01-02`
+- [x] **Günün bölümü serisi:** ardışık gün sayacı `[gunluk]` kaydında
+      (`seri`, `seri_tarih`); bir gün atlanınca 1'e düşer, ay sınırında doğru;
+      yardım modunda da sayılır; menüde "seri N gün". Test: `_seri_testi`
+- [x] **Paylaşım metni:** bitişte panel (bölüm, değiştirici, süre, ölüm,
+      çevirme, seri) + **Paylaşım Metnini Kopyala** düğmesi
+      (`DisplayServer.clipboard_set`, düğmeye bağlı olduğu için web'de de çalışır)
+- [x] **3. değiştirici — hayalet yarışı:** altın hayalet rakip (ayar kapalıyken
+      de koşar); kapı yalnız hayaletten önce sayılır, geç kalınca "HAYALET
+      KAZANDI" ve bölüm baştan. Üç değiştirici 90 günde 27/30/33.
+      `_gunluk_testi` üçünü de bitişe kadar oynuyor
+- [x] **Bölüm grubu müziği:** 1–7 sakin, 8–14 gergin, 15–20 hızlı
+      (`Ses.bolum_parcasi`), menü müziği aynı; eski tek parça `_eski/audio/`.
+      Test: `_muzik_grubu_testi`
+- [x] **Parıltı:** kapı (64×48) ve kristal (48×12) 4 kareli sayfa, 0,15 sn/kare,
+      tek sayaç; HUD simgesi tek kare. Test: `_parilti_testi`; levha `docs/tur5/07`
+- [x] Ekran aracına tur 5 modu (`-7`) ve kayıt dosyası yedekleme; yayın paketi 0.6.0
+- [x] **İki eski hata düzeltildi** (bu turun ölçümleri yakaladı): müzik döngüsü
+      QOA yüzünden parçanın beşte birinde başa sarıyordu (`get_length()` ile
+      kuruldu, test `loop_end == uzunluk`); parallaks arka plan ikinci odada
+      sağ kenarda ve ilk odada sarsıntının negatif karelerinde sağ yarımda
+      açık kalıyordu (katman içeriği 640 px'e çıkarıldı, `_parallaks_testi`)
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
@@ -155,27 +185,32 @@ Kaynak: `oyun-terminalleri/aktif/H11-yercekimi-cevir.md`.
       yürümeyi bilmediği için 5 koşunun 4'ünde tavanda kaldı. İnsan geri
       yürür; ama elle oynanınca bu bitiş "haksız" geliyorsa deliği 1 sütun
       sola al.
-- [ ] **Tavanda yürüyen oyuncu üst HUD şeritlerinin arkasında kalıyor**
-      (x < 232 ve x > 398; şeritler yarı saydam). Ekran görüntülerinde
-      görüldü, oynanışta ne kadar rahatsız ettiği ölçülmedi.
-- [ ] Web yapısını tarayıcıda aç: sesin geldiğini ve müziğin **ikinci tura girdiğini**
-      doğrula (döngü kodla kuruluyor, tarayıcıda doğrulanmadı). v0.3.1'in simge
-      ve dokunmatik metin düzeltmesi de **tarayıcıda görülmedi**, yalnız
-      başsız testle ölçüldü.
+- [x] ~~Tavanda yürüyen oyuncu üst HUD şeritlerinin arkasında kalıyor~~ —
+      v0.6'da şerit soluyor; **gerçek oynanışta** 0,25'in yeterli olup olmadığı
+      (yazı hâlâ okunuyor mu, oyuncu yeterince görünüyor mu) elle denenmeli.
+- [ ] Web yapısını tarayıcıda aç: v0.5 bulutta açıldı (menü, günün bölümü,
+      dokunma etiketleri temiz) ama müziğin **ikinci tura girdiği** hâlâ
+      doğrulanmadı; v0.6'nın üç yeni parçası, pano kopyalama düğmesi ve
+      hayalet yarışı da tarayıcıda görülmedi.
+- [ ] **Hayalet yarışı elle oynanmalı:** altın hayalet botun ölümsüz koşusu,
+      ×1,35 altın payı bu değiştiricide YOK — insanın onu geçebilmesi için
+      hayalete küçük bir gecikme (ör. başlangıçta 0,5 sn) gerekebilir.
 
 ### Oynanış
 
 - [ ] Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform, dikey kaydırmalı bölüm
 - [ ] Bölüm başı tabelası / en iyi süre listesi ekranı
-- [ ] Günün bölümü: seri sayacı (ardışık gün), 3. değiştirici (ör. hayalet
-      yarışı zorunlu: altın hayaleti geç), günün sonucunu paylaşılabilir metin
-      olarak kopyala
+- [x] ~~Günün bölümü: seri sayacı, 3. değiştirici, paylaşılabilir metin~~ — v0.6
+- [ ] Günün bölümü: liste/karşılaştırma yok, yalnız kendi en iyin ve serin;
+      paylaşım metni bunun yerine geçiyor
 
 ### Görsel ve ses
 
-- [ ] Kapı ve kristal için 2–4 kareli parıldama animasyonu (şu an tek kare)
+- [x] ~~Kapı ve kristal için 2–4 kareli parıldama animasyonu~~ — v0.6 (4 kare)
 - [ ] Yürüme çevriminde kol sallanması (şu an yalnız bacaklar değişiyor)
-- [ ] Müziği bölüm grubuna göre değiştir (1–7 sakin, 8–14 gergin, 15–20 hızlı)
+- [x] ~~Müziği bölüm grubuna göre değiştir~~ — v0.6; parçalar dinlenmedi
+      (üreteç tohumları ilk denemede seçildi), beğenilmeyen grupta yalnız
+      `--tohum` değiştir
 
 ### Mobil
 

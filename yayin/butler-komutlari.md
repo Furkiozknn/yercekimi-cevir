@@ -34,7 +34,7 @@ Beklenen çıktı:
 
 ```
 build/windows/yercekimi-cevir.exe   ~109 MB
-build/windows/yercekimi-cevir.pck   ~498 KB   (exe ile birlikte dağıtılmalı)
+build/windows/yercekimi-cevir.pck   ~815 KB   (exe ile birlikte dağıtılmalı; v0.6'da 3 müzik parçası)
 build/web/index.html + index.wasm + index.pck + index.js + 2 worklet
 ```
 
@@ -42,10 +42,10 @@ build/web/index.html + index.wasm + index.pck + index.js + 2 worklet
 
 ```bash
 # Tarayıcıda oynanan sürüm
-butler push build/web     <kullanici>/yercekimi-cevir:html5   --userversion 0.5.0
+butler push build/web     <kullanici>/yercekimi-cevir:html5   --userversion 0.6.0
 
 # Windows
-butler push build/windows <kullanici>/yercekimi-cevir:windows --userversion 0.5.0
+butler push build/windows <kullanici>/yercekimi-cevir:windows --userversion 0.6.0
 ```
 
 `html5` kanalı itch.io tarafında otomatik olarak "oynanabilir" işaretlenir.

@@ -22,6 +22,8 @@ Arayüz ve tüm belgeler **Türkçe**.
 | İsabet kutusu | Öldüren şeyde görselden `DIKEN_PAY` (3 px) küçük, **basılan** yüzeyde birebir | küçük kutu affeder, küçük platform yalan söyler |
 | Web ses yolu | `audio/general/default_playback_type.web=2` (Stream) | Sample yolunda perde/döngü de bozuluyor (Godot #95850) |
 | WAV | 16 bit, 22050 Hz, mono | 8 bit WAV'lar içe aktarımda hata basıyor |
+| Müzik döngü sonu | `loop_end = get_length() * mix_rate` (`ses.gd`) | içe aktarma QOA sıkıştırıyor; `data.size()/2` beşte bire düşüyordu (tuzak 18) |
+| Üst HUD | `Arayuz/HudSol` ve `HudSag` grupları, tavandaki oyuncu girince alfa 0,25 | şeritleri daraltmak 640 px'te metni sığdırmıyor |
 | Simge yazı tipi | `assets/fonts/simgeler.ttf`, `Simgeler.kur()` `Ayarlar._ready()` içinde | gömülü Open Sans'ta `⟳ ●` yok; web'de sistem yazı tipi yedeği olmadığı için kutu çıkıyordu |
 | En-boy oranı | `keep` (siyah şerit) — `expand` **yapılmadı** | oda kamerası 640 px'lik odalara kilitli; geniş görüş alanı 40 sütunluk bölümlerde bölüm dışını gösterir |
 
@@ -35,8 +37,12 @@ scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet) · s
              rota_verisi.gd (ÜRETİLİR: madalya eşikleri + en az çevirme)
              altin_hayalet.gd (ÜRETİLİR: botun en iyi koşusunun yolu)
 scenes/      menu · bolum_sec · ayarlar_ekrani · oyun · oyuncu
-assets/      sprites/*.png (ÜRETİLİR) · audio/*.wav (ÜRETİLİR) · oyuncu_frames.tres
+assets/      sprites/*.png (ÜRETİLİR; kapi.png 4 kare 64×48, kristal.png tek kare = HUD
+             simgesi, kristal_parilti.png 4 kare = bölüm içi) · audio/*.wav (ÜRETİLİR;
+             muzik_{menu,sakin,gergin,hizli,bitis}) · oyuncu_frames.tres
              fonts/simgeler.ttf + LISANS-simgeler.txt (lisans gereği yanında kalmalı)
+_eski/       silinmeyen eskiler (.gdignore): audio/muzik_oyun.wav (v0.5 tek oyun parçası),
+             yayin-ekran-v0.x/
 tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · sesler.md
              bot.gd (madalya sürelerini ölçen bot) · gif_yap.py (bağımlılıksız GIF)
 arac/        uret_bolumler.py
@@ -63,12 +69,24 @@ Yeni bir ayar eklerken **üç yeri** birden güncelle: `var`, `yukle()`, `kaydet
 ve `tests/testler.gd` içindeki `_ayar_kayit_testi` bunu doğruluyor.
 
 **Günün bölümü** (`Ayarlar.gunluk_*`): tarihten seçilen bölüm + değiştirici
-(0 ters başlangıç, 1 kristal zorunlu), `[gunluk]` bölümünde **ayrı kayıt**.
-`Ayarlar.gunluk_mod` oturum bayrağı; `menu.gd` `_ready()` içinde kapatır, menü
-düğmesi açar. Oyun sahnesinde `gunluk_mod` açıkken `bolum_bitti()`,
-`kristal_topla()`, `hayalet_kaydet()`, `bolum_ac()` **çağrılmaz** —
-`_gunluk_testi` ana ilerlemenin el değmediğini ölçüyor. Tarihi test/ekran için
-`Ayarlar.tarih_zorla` ile sabitle (0 = sistem tarihi).
+(0 ters başlangıç, 1 kristal zorunlu, 2 hayalet yarışı), `[gunluk]` bölümünde
+**ayrı kayıt**. `Ayarlar.gunluk_mod` oturum bayrağı; `menu.gd` `_ready()`
+içinde kapatır, menü düğmesi açar. Oyun sahnesinde `gunluk_mod` açıkken
+`bolum_bitti()`, `kristal_topla()`, `hayalet_kaydet()`, `bolum_ac()`
+**çağrılmaz** — `_gunluk_testi` ana ilerlemenin el değmediğini üç
+değiştiricide de ölçüyor. Tarihi test/ekran için `Ayarlar.tarih_zorla` ile
+sabitle (0 = sistem tarihi). **Seri** (`gunluk_seri`, `gunluk_seri_tarih`)
+tarih değişince sıfırlanmaz; `gunluk_seri_al()` bugüne göre geçerli seriyi
+verir (son bitiş dün ya da bugün değilse 0). Bitişte menüye dönülmez:
+`_gunluk_panel()` paylaşım paneli açar, kopyalama `Kopyala` düğmesine bağlı
+(web'de pano yalnız kullanıcı dokunuşuyla yazılır). Hayalet yarışında
+`_altin_yol` ayara bakmadan yüklenir; hayaletin yolu bitince (`_hayalet_bitti`)
+`_durum = HAYALET` → 1 sn sonra `bolum_yukle(bolum_i)` (tam sıfırlama).
+
+**Müzik** bölüm grubuna göre: `Ses.bolum_parcasi(i)` (0–6 sakin, 7–13 gergin,
+14–19 hızlı); `oyun.gd` `bolum_yukle()` içinde çağırır. Tohumlar ve süreler
+`tools/sesler.md`. **Parıltı:** kapı ve kristal `hframes=4`, `Bolum._process`
+tek sayaçla (`PARILTI_ARALIGI` 0,15 sn) kareyi seçer; bot/test kareye bakmaz.
 
 **Hayalet kayıtları** `user://hayalet_<bolum>.dat` (PackedVector2Array).
 `Ayarlar.sifirla()` bunları da siler; silmezse önceki koşudan kalan kayıt
@@ -88,8 +106,15 @@ godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 5 -1 - insan
                                  # yalnız tablo basar — madalya çarpanı gerekçesi için
 python tools/uret_sprite.py      # assets/sprites/*.png + docs/varliklar.png
 python tools/uret_ses.py         # assets/audio/*.wav (rFXGen gerekir)
-godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_oyun.wav --ruh gizemli --tohum 5
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_sakin.wav  --ruh sakin  --tohum 7   # 1-7, 20,9 sn
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_gergin.wav --ruh gergin --tohum 3   # 8-14, 13,7 sn
+godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_hizli.wav  --ruh hizli  --tohum 11  # 15-20, 12,8 sn
+                                 # menü: --ruh sakin --tohum 2 (20,9 sn) · bitiş: --tur jingle --ruh neseli --tohum 1
 ```
+
+Müzik üreteci `-s` ile çalışırken autoload'lar da yükleniyor: `ses.gd`'deki
+`preload`'lar var olmayan bir WAV'a bakıyorsa üreteç hata basar. Yeni parça
+eklerken **önce üret, `--import` çalıştır, sonra `ses.gd`'ye ekle.**
 
 Sprite üretiminden sonra **`--import` çalıştır**, yoksa Godot eski PNG'yi kullanmayı sürdürür
 (bu bir kez ekran görüntüsünde yakalandı: dosya değişti, oyun eskisini gösteriyordu).
@@ -105,6 +130,7 @@ godot --path . res://tests/ekran.tscn -- -3 <klasör>    # tur 2 özellik deneti
 godot --path . res://tests/ekran.tscn -- -4 <klasör>    # tur 3: altın hayalet, platformlu iniş
 godot --path . res://tests/ekran.tscn -- -5 yayin/tanitim   # 3 sn tanıtım kareleri + kareler.raw
 godot --path . res://tests/ekran.tscn -- -6 <klasör>    # tur 4 (v0.5): solak alanlar, 19. bölüm, günün bölümü
+godot --path . res://tests/ekran.tscn -- -7 <klasör>    # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım paneli, parıltı
 python tools/gif_yap.py yayin/tanitim/kareler.raw yayin/tanitim/tanitim.gif 320 180 10
 python tools/gif_yap.py --dogrula                       # GIF kodlayıcısının öz denetimi
 godot --headless --path . --export-release "Windows Masaustu"
@@ -191,7 +217,29 @@ kararı Furki verir.
    bölümleri birer birer geriye sayıyordu (adım mod 20 = 19). `_gunluk_karma`
    32 bit karıştırıcı (`lowbias32` ailesi); `_gunluk_testi` 30 günde en az 10
    farklı bölüm ve en fazla 6 ardışık geçiş istiyor.
-17. **Günlük modda kapı testi sahneyi değiştirir.** `_sonraki()` günlük modda
-   `_menuye()` çağırır → `change_scene_to_file` test ağacını söker. Testte kapıya
-   değdikten sonra 1,0 sn dolmadan `queue_free()` et; `_kapiya_dokun` (1,6 sn
-   bekler) günlük modda **kullanılmaz**.
+17. **Günlük modda bitiş sahneyi değiştirmez (v0.6).** `_sonraki()` günlük modda
+   artık `_gunluk_panel()` açar (`_durum = BITTI`), menüye yalnız düğmeyle
+   dönülür; test paneli ve `Kopyala` düğmesini bekleyip ölçebilir. v0.5'te
+   `_menuye()` çağrılıyor ve `change_scene_to_file` test ağacını söküyordu.
+18. **`AudioStreamWAV.data.size()` bayt sayısı, örnek sayısı değil.** İçe aktarma
+   müziği QOA ile sıkıştırıyor (`compress/mode=2`, Godot'un varsayılanı);
+   `loop_end = data.size()/2` (16 bit varsayımı) parçanın beşte birine düşüyor
+   ve müzik ~4 sn'de başa sarıyordu — v0.5'e kadar **hiç fark edilmedi**, test
+   yalnız `loop_end > 0`'a bakıyordu. Doğrusu `get_length() * mix_rate`;
+   `_ses_testi` artık `loop_end == uzunluk` istiyor.
+19. **Ekran aracı ve bot `user://kayit.cfg`'yi yazabilir.** `tests/ekran.gd`
+   başta dosyayı yedekleyip çıkışta geri koyuyor (günlük bitişi `kaydet()`
+   çağırıyor); bot ayarları geri veriyor. Yeni bir araç bölüm bitirecekse aynı
+   yedeklemeyi yap.
+20. **Sprite sayfası ile tek kare simge aynı dosya olamaz.** `TextureRect`
+   4 kareli sayfayı bütün olarak basar (HUD kristal simgesi 4 kristal olurdu).
+   Bu yüzden `kristal.png` tek kare kaldı, bölüm içi sayfa `kristal_parilti.png`.
+21. **`ParallaxLayer` aynalaması TEK ek kopya çizer.** Katman konumu `(-M, 0]`
+   aralığına sarılır, kopya `+M`'de çizilir; içerik `W` px genişse örtü
+   `[konum, konum+W+M)`. 320 px içerik + 320 aynalama ile 640 px'lik ekran
+   ancak konum tam 0 iken örtülür: ikinci odada sağda ~15 px, ilk odada
+   sarsıntının **negatif** karelerinde sağ YARIM ekran temizleme rengi (gri)
+   kalıyordu — v0.2'den v0.5'e kadar kimse görmedi (sarsıntı 0,1–0,4 sn,
+   kareler sonra çekiliyordu). Kural: her katmanın içeriği ekran kadar geniş
+   (`Gorsel` + `Gorsel2`, 640) ve `motion_mirroring.x` içeriği aşmasın;
+   `_parallaks_testi` bunu ölçüyor. Yeni arka plan katmanı eklerken aynı düzen.

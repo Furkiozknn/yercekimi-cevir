@@ -55,17 +55,33 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
   X ile. "Burada takılıyorsun" demenin en kısa yolu.
 - **Günün bölümü.** Ana menüden: tarihten seçilen bir bölüm + küçük bir
   değiştirici — **ters başlangıç** (tavandan doğarsın; kontrol noktasından
-  dönüş normal) ya da **kristal zorunlu** (kapı kristal alınmadan açılmaz;
-  kristal ana oyunda toplanmış olsa da o gün yeniden yerinde). Aynı gün herkes
-  aynı bölümü oynar. Kaydı **ayrı**: günün en iyi süresi menüde yazar, gün
-  değişince sıfırlanır; madalya, hayalet, kristal sayacı ve açılan bölüm
-  **değişmez**. Hayaletler günlük modda kapalı (normal başlangıcın kaydı, ters
-  başlangıçta yalan söylerler).
+  dönüş normal), **kristal zorunlu** (kapı kristal alınmadan açılmaz;
+  kristal ana oyunda toplanmış olsa da o gün yeniden yerinde) ya da
+  **hayalet yarışı** (botun ölçülmüş altın hayaleti rakiptir; kapı yalnız
+  ondan önce varılınca sayılır, geç kalırsan "hayalet kazandı" ve bölüm
+  baştan). Aynı gün herkes aynı bölümü oynar. Kaydı **ayrı**: günün en iyi
+  süresi menüde yazar, gün değişince sıfırlanır; madalya, hayalet, kristal
+  sayacı ve açılan bölüm **değişmez**. Kendi hayaletin günlük modda kapalı
+  (normal başlangıcın kaydı, ters başlangıçta yalan söyler).
+- **Seri ve paylaşım.** Günün bölümünü ardışık günlerde bitirirsen seri büyür
+  ("seri 3 gün" menüde yazar); bir gün atlarsan sonraki bitiş 1'den başlatır.
+  Bitişte açılan panel bölüm adı, değiştirici, süre, ölüm, çevirme ve seriyi
+  üç satırlık bir metin olarak gösterir; **Paylaşım Metnini Kopyala** panoya
+  alır (web'de de çalışır — kopyalama bir düğmeye bağlı, çünkü tarayıcı panoya
+  yazmayı yalnız kullanıcı dokunuşunda kabul eder).
+- **Bölüm grubu müziği.** 1–7 sakin, 8–14 gergin, 15–20 hızlı; üçü de
+  `tools/muzik_uret.gd` ile üretilmiş döngüler, menü müziği ayrı. Grup
+  değişmediyse parça bölüm geçişinde kesilmez.
+- **Kapı ve kristal parıldar.** Dört kareli sayfalar (`tools/uret_sprite.py`),
+  0,15 sn'de bir kare; HUD ve menüdeki kristal simgesi tek kare kalır.
 
 ## Okunurluk ve yardım
 
 - **Oda tabanlı kamera.** Kamera seni izlemez, 640 px'lik odalar arasında atlar.
   Bir odadaki tehlikenin tamamı hep ekrandadır; ekran dışından gelen ölüm yok.
+- **Üst HUD şeritleri solar.** Tavanda yürürken sen (ya da bir hayalet) üst
+  şeridin dikdörtgenine girince o şerit yazılarıyla birlikte 0,15 sn'de
+  %25 opaklığa iner, çıkınca geri gelir; girdiye dokunmaz.
 - **Yerçekimi oku.** Yanındaki küçük ok hangi yöne çekildiğini gösterir —
   durum renkten değil biçimden okunur.
 - **İniş göstergesi.** Çevirme tuşunu basılı tutarsan karşı yüzeyde nereye ineceğin
@@ -99,6 +115,7 @@ godot --path . res://tests/ekran.tscn -- 2 <klasör>   # 3. bölümü sürüp ek
 godot --path . res://tests/ekran.tscn -- -1 <klasör>  # menü / bölüm seç / ayarlar
 godot --path . res://tests/ekran.tscn -- -2 <klasör>  # yayın paketi görselleri + kapak
 godot --path . res://tests/ekran.tscn -- -3 <klasör>  # tur 2 özelliklerinin denetim kareleri
+godot --path . res://tests/ekran.tscn -- -7 <klasör>  # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım, parıltı
 
 python arac/uret_bolumler.py     # 20 bölümü yeniden üret (çözülebilirliği doğrular)
 python tools/uret_sprite.py      # tüm pixel art'ı yeniden üret
@@ -113,13 +130,13 @@ Yayın paketi (yüklenmedi): `yayin/`.
 | Dosya | İş |
 |---|---|
 | `scripts/ayarlar.gd` | **Tüm denge sabitleri** + ilerleme kaydı + oyuncu ayarları. Ayar yapacaksan tek durak. |
-| `scripts/ses.gd` | Efekt havuzu ve müzik (autoload). Ses düzeyi AudioServer veriyolunda. |
+| `scripts/ses.gd` | Efekt havuzu ve müzik (autoload); bölüm grubuna göre parça seçimi. Ses düzeyi AudioServer veriyolunda. |
 | `scripts/bolumler.gd` | 20 bölüm, ASCII harita olarak. `arac/uret_bolumler.py` üretir. |
 | `scripts/bolum.gd` | ASCII haritayı çalışma anında çarpışma gövdesi + pixel art çizime çevirir. |
 | `scripts/oyuncu.gd` | Çevirme mekaniği (tampon + kojot), yerçekimi oku, ölüm, esneme-sıkışma. |
 | `scripts/oyun.gd` | Bölüm döngüsü, oda kamerası, hayalet, ölüm haritası, iniş göstergesi, yardım modu. |
 | `tools/` | Varlık üreticileri (pixel art, ses) + `sesler.md`. |
-| `tests/` | Headless otomatik test (464 doğrulama) + ekran görüntüsü aracı. |
+| `tests/` | Headless otomatik test (748 doğrulama) + ekran görüntüsü aracı. |
 
 Bölüm haritaları TileMapLayer yerine ASCII + kod üretimi: 20 bölüm tek dosyada
 düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
@@ -269,13 +286,67 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
   yürümeyi bilmiyor. İnsan geri yürür. Bölüm değiştirilmedi, yol haritasına
   yazıldı.
 
+## 6. turda verilen kararlar (v0.6 — tavan HUD, seri, hayalet yarışı, müzik grupları, parıltı)
+
+- **Şerit solar, oyuncu yer değiştirmez.** Tavandaki oyuncunun üst HUD
+  şeridinin arkasında kalması için iki seçenek vardı: şeritleri daraltmak ya
+  da oyuncu girince şeridi soldurmak. Daraltmak 640 px'te HUD metnini sığmaz
+  hale getiriyordu (hedef satırı zaten bir kez kısaltılmıştı). Soldurma
+  seçildi: şerit ve üzerindeki yazılar bir `Control` grubunda, grubun
+  `modulate.a` değeri her karede oyuncu/hayalet dikdörtgeniyle kesişime göre
+  0,25'e ya da 1,0'a doğru yürür (`Ayarlar.HUD_SOLUK`, `HUD_SOLMA_SURESI`).
+  Kesişim ekran uzayında hesaplanıyor (`get_canvas_transform()`), yani oda
+  kamerası ikinci odaya atlayınca da doğru.
+- **Seri bir rekor değil, oynama alışkanlığı.** Bu yüzden yardım modunda da
+  sayılıyor (süre kaydı orada tutulmuyor, seri tutuluyor) ve gün değişince
+  sıfırlanmıyor — yalnız bir gün atlanınca kırılıyor. Tarih farkı gün
+  sayısına çevrilerek bulunuyor (`Time.get_unix_time_from_datetime_dict`),
+  ay ve yıl sınırlarında "dün" doğru çıkıyor; test 30 Eylül → 1 Ekim'i ölçüyor.
+- **Paylaşım kopyalama düğmeye bağlı, otomatik değil.** Web'de pano yazımı
+  yalnız kullanıcı hareketinden tetiklenince çalışıyor; bitişte kendiliğinden
+  kopyalamak masaüstünde çalışır, tarayıcıda sessizce başarısız olurdu. Bu
+  yüzden günün bölümü artık bitişte menüye dönmek yerine bir panel açıyor:
+  metin görünür, altında **Paylaşım Metnini Kopyala** ve **Menüye Dön**.
+  Metin simgesiz ("⟳" yerine "çevirme"): panoya giden metin başka
+  uygulamaların yazı tipinde okunacak.
+- **Hayalet yarışında altın hayalet ayara bakmaz.** Değiştiricinin özü rakip
+  olduğu için `altin_hayalet` ayarı kapalı olsa da koşar. Bitiş ölçütü zaman:
+  hayaletin kaydı bitince (ekrandan kaybolduğu kare) kapıya varmış sayılır;
+  o andan sonra kapıya değmek sayılmaz, "HAYALET KAZANDI" gelir ve bölüm
+  **baştan** yüklenir (süre, ölüm ve hayalet birlikte sıfırlanır — kontrol
+  noktasından devam etmek hayaleti yakalanamaz kılardı).
+- **Üç değiştirici eşit dağılıyor.** Aynı 32 bit karıştırıcı, `mod 3`:
+  1 Eylül'den başlayan 90 takvim gününde 27 / 30 / 33. Test bunu gerçek
+  tarihlerle (ay sınırları dahil) ölçüyor.
+- **Müzik gruplara göre; eski tek parça `_eski/audio/` altında.** Üretecin
+  hazır ruh hâlleri kullanıldı (sakin / gergin / hızlı), tohumlar
+  `tools/sesler.md`'de. Menü parçası değişmedi. Parça seçimi `Ses.bolum_parcasi()`
+  ile tek yerde; oyun sahnesi her bölüm başında onu çağırıyor, aynı parçaysa
+  müzik kesilmiyor.
+- **Parıltı tek sayaçla.** Kapı ve kristal `AnimatedSprite2D` değil `hframes=4`
+  `Sprite2D`; `Bolum._process` tek sayaçtan kareyi seçiyor. Kapı artık `_draw`
+  ile değil kendi düğümüyle çiziliyor. HUD/menü/bölüm seç kristal simgesi tek
+  kare (`kristal.png`), bölüm içindeki sayfa ayrı (`kristal_parilti.png`) —
+  üç yerde `AtlasTexture` kurmaktan ucuz.
+- **Bu turun ekran görüntüleri iki eski hatayı ortaya çıkardı.** (1) Müzik
+  döngüsü parçanın beşte birinde başa sarıyordu: içe aktarma parçaları QOA ile
+  sıkıştırıyor, `ses.gd` döngü sonunu `data.size()/2` (16 bit PCM varsayımı)
+  ile kuruyordu — menü müziği 20,9 yerine 4,2 sn'de dönüyordu, test yalnız
+  `loop_end > 0`'a bakıyordu. Artık `get_length() * mix_rate`, test
+  `loop_end == uzunluk`. (2) Parallaks arka plan sağda açık kalıyordu: Godot
+  `ParallaxLayer` aynalaması tek ek kopya çizer, 320 px içerik 640 px ekranı
+  ancak kaydırma tam 320'nin katıyken örtüyor. İkinci odada sağ kenarda 15 px,
+  ilk odada sarsıntının negatif karelerinde sağ yarım ekran gri (temizleme
+  rengi) kalıyordu — "hayalet kazandı" karesi yakaladı. Her katmana ikinci
+  sprite kopyası (640 px) + aynalama 640; `_parallaks_testi` örtüyü ölçüyor.
+
 ## Durum
 
-**v0.5 — solak, fırtına, günün bölümü, insan payı.** v0.4'ün üstüne: solak
-ipucu düzeltildi, 18 ve 19. bölümler "gezen dikenin kaçış yüzeyi" kuralıyla
-yeniden kuruldu ve bot ölçümü yenilendi, günün bölümü (2 değiştirici, ayrı
-kayıt), madalya çarpanları insan tepki bandı ölçümüyle yükseltildi. 672
-doğrulama (v0.4'te 612). Yükleme yapılmadı. Sonraki adımlar: `YOL-HARITASI.md`.
+**v0.6 — tavan HUD, seri, hayalet yarışı, müzik grupları, parıltı.** v0.5'in
+üstüne: üst HUD şeritleri tavandaki oyuncuya yol veriyor, günün bölümünde seri
+sayacı ve panoya kopyalanan paylaşım metni, üçüncü değiştirici (hayalet
+yarışı), bölüm grubuna göre üç müzik parçası, parıldayan kapı ve kristal.
+Yükleme yapılmadı. Sonraki adımlar: `YOL-HARITASI.md`.
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta
 `%APPDATA%\Godot\app_userdata\Yerçekimi Çevir\kayit.cfg`).
