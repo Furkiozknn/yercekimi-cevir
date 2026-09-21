@@ -12,6 +12,8 @@ extends Node
 ##     <mod> = -5  : tanitim kare dizisi (3 sn, 10 kare/sn) + GIF icin ham veri
 ##     <mod> = -6  : tur 4 (v0.5): dokunma alanlari sag el / solak, 19. bolumun
 ##                   yeni duzeni, gunun bolumu (menu, ters baslangic, kristal zorunlu)
+##     <mod> = -7  : tur 5 (v0.6): tavan-HUD solmasi, gunluk hayalet yarisi,
+##                   paylasim paneli, menude seri, kapi/kristal parilti kareleri
 ##
 ## Yakalanan kareler 1280x720 (pencere boyutu). Kapak bu kareden 630x500
 ## kirpilarak uretilir — itch.io kapak olcusu.
@@ -34,6 +36,12 @@ func _ready() -> void:
 		_klasor = argumanlar[1]
 	DirAccess.make_dir_recursive_absolute(_klasor)
 
+	# Arac ilerleme uydurur (_sahte_ilerleme) ve bazi modlar bolum bitirir, yani
+	# Ayarlar.kaydet() cagrilir. Kullanicinin kayit.cfg'si bundan etkilenmesin:
+	# baslarken yedekle, cikarken geri koy (tools/bot.gd de ayarlari geri veriyor).
+	var kayit_vardi := FileAccess.file_exists(Ayarlar.KAYIT_YOLU)
+	var kayit_yedek := FileAccess.get_file_as_bytes(Ayarlar.KAYIT_YOLU) if kayit_vardi else PackedByteArray()
+
 	Ayarlar.sifirla()
 	_varsayilan_gorunum()
 	Ayarlar.acilan_bolum = Ayarlar.bolum_sayisi() - 1
@@ -49,8 +57,18 @@ func _ready() -> void:
 		await _tanitim_cek()
 	elif mod == -6:
 		await _tur4_cek()
+	elif mod == -7:
+		await _tur5_cek()
 	else:
 		await _oynanis_cek(mod)
+
+	if kayit_vardi:
+		var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
+		if f != null:
+			f.store_buffer(kayit_yedek)
+			f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Ayarlar.KAYIT_YOLU))
 	get_tree().quit(0)
 
 
@@ -506,6 +524,116 @@ func _tur4_cek() -> void:
 	Ayarlar.gunluk_en_iyi = 0.0
 	Ayarlar.gunluk_tarih = 0
 	await _bekle(0.3)
+
+
+## mod -7: tur 5'te (v0.6) eklenenler.
+func _tur5_cek() -> void:
+	_sahte_ilerleme()
+
+	# 1) Tavan-HUD solmasi: oyuncu tavanda once sol seridin, sonra sag seridin
+	#    altinda. Serit (arka + yazilari) 0,15 sn'de alfa 0,25'e iniyor.
+	await _oyunu_ac(2)                        # 3 — Tavan Yolu
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(120.0, float(Ayarlar.HUCRE) + Ayarlar.GOVDE.y * 0.5)
+	await _bekle(0.5)
+	print("TANI hud sol: sol=%.2f sag=%.2f" % [_oyun._hud_gruplari[0].modulate.a, _oyun._hud_gruplari[1].modulate.a])
+	await _cek("hud-solma-sol")
+	o.position.x = 520.0
+	await _bekle(0.5)
+	print("TANI hud sag: sol=%.2f sag=%.2f" % [_oyun._hud_gruplari[0].modulate.a, _oyun._hud_gruplari[1].modulate.a])
+	await _cek("hud-solma-sag")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 2) Gunluk hayalet yarisi: HUD satiri + altin hayalet rakip; sonra sure
+	#    ileri sarilip "hayalet kazandi" ekrani.
+	var t2 := 20260916
+	while Ayarlar.gunluk_degistirici(t2) != 2:
+		t2 += 1
+	Ayarlar.tarih_zorla = t2
+	Ayarlar.gunluk_mod = true
+	await _oyunu_ac(Ayarlar.gunluk_bolum())
+	Input.action_press("move_right")
+	await _bekle(0.5)
+	await _cek("gunluk-hayalet-yarisi")
+	Input.action_release("move_right")
+	_oyun.sure = 999.0
+	await _bekle(0.3)
+	await _cek("hayalet-kazandi")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 3) Gunluk bitis: paylasim paneli + kopyala dugmesi. Dun de bitirilmis
+	#    olsun ki panelde "seri 3 gun" yazsin.
+	var dun := Time.get_datetime_dict_from_unix_time(Time.get_unix_time_from_datetime_dict(
+		{"year": t2 / 10000, "month": (t2 / 100) % 100, "day": t2 % 100}) - 86400)
+	Ayarlar.gunluk_seri = 2
+	Ayarlar.gunluk_seri_tarih = int(dun["year"]) * 10000 + int(dun["month"]) * 100 + int(dun["day"])
+	await _oyunu_ac(Ayarlar.gunluk_bolum())
+	var o3: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	var kapi: Area2D = _oyun.get_node("Dunya/Bolum/Kapi")
+	o3.position = kapi.get_child(0).global_position
+	await _bekle(1.5)
+	print("TANI panel: %s" % _oyun.get_node("Arayuz/Bitis/Kutu/Metin").text.replace("\n", " | "))
+	await _cek("gunluk-paylasim-paneli")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+	# 4) Menu: gunun bolumu satirinda seri rozeti.
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(0.5)
+	await _cek("gunluk-seri-menu")
+	menu.queue_free()
+	Ayarlar.gunluk_mod = false
+	Ayarlar.tarih_zorla = 0
+	Ayarlar.sifirla()
+	_varsayilan_gorunum()
+	Ayarlar.acilan_bolum = Ayarlar.bolum_sayisi() - 1
+	await _bekle(0.3)
+
+	# 5) Parilti: kapi ve kristalin 4 karesi tek levhada (2x) + tam bir oyun karesi.
+	await _oyunu_ac(0)
+	await _parilti_levhasi()
+	await _cek("parilti-oyun")
+	_oyun.queue_free()
+	await _bekle(0.3)
+
+
+## Kapinin ve kristalin 4 karesini, cizildikleri anda ekrandan kirpip yan yana
+## 2x buyutulmus tek levhaya dizer. Kare numarasi cizimden SONRA okunur (o
+## karede cizilen kare odur); 4'u de toplanana kadar doner.
+func _parilti_levhasi() -> void:
+	var b: Bolum = _oyun.get_node("Dunya/Bolum")
+	var donusum := get_viewport().get_canvas_transform()
+	var merkezler: Array[Vector2] = [
+		donusum * (b._kapi_gorselleri[0] as Sprite2D).global_position,
+		donusum * b.kristal_konumu]
+	var yari := Vector2i(16, 32)            # dunya px; 1280x720 karede 2 kati
+	var hucre := yari * 2 * 4               # levhada 4 kat buyutulmus (128x256)
+	var levha := Image.create(8 * (hucre.x + 8) + 8, hucre.y + 16, false, Image.FORMAT_RGBA8)
+	levha.fill(Color(0.75, 0.79, 0.86))
+	var alinan := {}
+	var deneme := 0
+	while alinan.size() < 4 and deneme < 200:
+		deneme += 1
+		await RenderingServer.frame_post_draw
+		var k: int = (b._kapi_gorselleri[0] as Sprite2D).frame
+		if alinan.has(k):
+			continue
+		var g := get_viewport().get_texture().get_image()
+		g.convert(Image.FORMAT_RGBA8)
+		for m in 2:
+			var c: Vector2i = Vector2i(merkezler[m] * 2.0)
+			var parca := g.get_region(Rect2i(c - yari * 2, yari * 4))
+			parca.resize(hucre.x, hucre.y, Image.INTERPOLATE_NEAREST)
+			levha.blit_rect(parca, Rect2i(Vector2i.ZERO, hucre), Vector2i(8 + (m * 4 + k) * (hucre.x + 8), 8))
+		alinan[k] = true
+	_sira += 1
+	var yol := "%s/%02d-parilti-kareler.png" % [_klasor, _sira]
+	print("ekran: %s  %dx%d (kareler %s) -> %d" % [yol, levha.get_width(), levha.get_height(), str(alinan.keys()), levha.save_png(yol)])
 
 
 ## Kapak yazisi. Kirpma alani (325,110)-(955,610) mantiksal koordinatta

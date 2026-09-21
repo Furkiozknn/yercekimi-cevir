@@ -18,6 +18,8 @@ func _ready() -> void:
 	_madalya_testi()
 	print("— Ses ve veriyollari —")
 	_ses_testi()
+	print("— Bolum grubu muzigi —")
+	await _muzik_grubu_testi()
 	print("— Cevirme mantigi —")
 	await _cevirme_testi()
 	print("— Diken ve yeniden baslama —")
@@ -26,6 +28,8 @@ func _ready() -> void:
 	await _kristal_testi()
 	print("— Kontrol noktasi —")
 	await _kontrol_testi()
+	print("— Parilti (kapi ve kristal kareleri) —")
+	await _parilti_testi()
 	print("— Affetme: kojot cevirme —")
 	await _kojot_testi()
 	print("— Yeniden deneme suresi —")
@@ -34,6 +38,10 @@ func _ready() -> void:
 	await _isabet_testi()
 	print("— Oda tabanli kamera —")
 	await _kamera_testi()
+	print("— Tavan-HUD solmasi —")
+	await _hud_solma_testi()
+	print("— Parallaks ortusu —")
+	await _parallaks_testi()
 	print("— Inis gostergesi —")
 	await _inis_testi()
 	print("— En az cevirme hedefi —")
@@ -52,6 +60,8 @@ func _ready() -> void:
 	_gezgin_kacis_testi()
 	print("— Gunun bolumu —")
 	await _gunluk_testi()
+	print("— Gunluk seri ve paylasim metni —")
+	_seri_testi()
 	print("— Olculmus esikler (rota_verisi) —")
 	_olcum_testi()
 	print("— Altin hayalet —")
@@ -153,10 +163,16 @@ func _ses_testi() -> void:
 	for ad in ["cevir", "cevir_ters", "kristal", "kontrol", "olum", "bolum_sonu",
 			"madalya", "menu", "inis"]:
 		_dogrula(Ses.EFEKT.has(StringName(ad)), "efekt yuklendi: %s" % ad)
-	for ad in ["menu", "oyun"]:
+	for ad in ["menu", "sakin", "gergin", "hizli"]:
 		var s: AudioStreamWAV = Ses.MUZIK[StringName(ad)]
 		_dogrula(s.loop_mode == AudioStreamWAV.LOOP_FORWARD, "muzik donguye ayarli: %s" % ad)
-		_dogrula(s.loop_end > 0, "muzik dongu sonu kurulu: %s" % ad)
+		# loop_end ORNEK sayisidir ve parcanin SONUNDA olmali. data.size()/2 ile
+		# kurulunca (16 bit varsayimi) QOA sikistirmasinda parcanin beste birine
+		# dusuyordu ve muzik 4 sn'de basa sariyordu — "loop_end > 0" bunu gormedi.
+		var ornek := int(round(s.get_length() * s.mix_rate))
+		_dogrula(s.loop_end == ornek and ornek > 0,
+			"muzik dongusu parcanin sonunda: %s (%d / %d ornek)" % [ad, s.loop_end, ornek])
+		_dogrula(s.get_length() > 8.0, "parca 8 sn'den uzun: %s (%.1f sn)" % [ad, s.get_length()])
 	# Ses kapatildiginda veriyolu gercekten susuyor mu?
 	var onceki := Ayarlar.efekt_acik
 	Ayarlar.efekt_acik = false
@@ -676,7 +692,7 @@ func _simge_testi() -> void:
 	await get_tree().physics_frame
 	await get_tree().process_frame
 	var metin := ""
-	for ad in ["Ad", "Sayac", "Hedef", "Ipucu", "KristalYazi"]:
+	for ad in ["HudSol/Ad", "HudSag/Sayac", "HudSag/Hedef", "Ipucu", "HudSol/KristalYazi"]:
 		metin += (oyun.get_node("Arayuz/" + ad) as Label).text
 	_dogrula(Simgeler.eksikler(metin) == "",
 		"HUD metinlerinde eksik simge yok (eksik: '%s')" % Simgeler.eksikler(metin))
@@ -833,6 +849,20 @@ func _gunluk_testi() -> void:
 	_dogrula(ardisik <= 6, "ardisik gunler ardisik bolum vermiyor (%d/29)" % ardisik)
 	_dogrula(degistirici_hatasi == 0, "degistirici indeksi hep aralikta")
 	_dogrula(degistiriciler.size() == Ayarlar.GUNLUK_DEGISTIRICI.size(), "30 gunde her degistirici cikiyor")
+	# Uc degistirici GERCEK takvim gunlerinde (ay sinirlari dahil) esit dagilmali.
+	_dogrula(Ayarlar.GUNLUK_DEGISTIRICI.size() == 3, "uc degistirici var")
+	var sayim := {}
+	var bas_unix: int = Time.get_unix_time_from_datetime_dict({"year": 2026, "month": 9, "day": 1})
+	for g in 90:
+		var d := Time.get_datetime_dict_from_unix_time(bas_unix + g * 86400)
+		var t := int(d["year"]) * 10000 + int(d["month"]) * 100 + int(d["day"])
+		var m := Ayarlar.gunluk_degistirici(t)
+		sayim[m] = int(sayim.get(m, 0)) + 1
+	var en_seyrek := 999
+	for m in sayim:
+		en_seyrek = mini(en_seyrek, int(sayim[m]))
+	_dogrula(sayim.size() == 3 and en_seyrek >= 20,
+		"90 gunde her degistirici en az 20 kez (%s)" % str(sayim))
 
 	# 2) Ayri kayit yuvasi: yuvarlak seyahat ve tarih degisince sifirlanma
 	Ayarlar.tarih_zorla = 20260916
@@ -871,7 +901,7 @@ func _gunluk_testi() -> void:
 	_dogrula(oyun.bolum_i == b0, "gunun bolumu yuklendi (%d)" % (b0 + 1))
 	_dogrula(o.yercekimi_yonu < 0.0, "ters baslangic: yercekimi ters dogdu")
 	_dogrula(oyun._altin_yol.is_empty() and oyun._hayalet_yol.is_empty(), "gunluk modda hayalet yok")
-	_dogrula(String(oyun.get_node("Arayuz/Ad").text).contains("GÜNÜN"), "HUD gunun bolumunu soyluyor")
+	_dogrula(String(oyun.get_node("Arayuz/HudSol/Ad").text).contains("GÜNÜN"), "HUD gunun bolumunu soyluyor")
 	await get_tree().create_timer(1.0).timeout
 	_dogrula(o.position.y < 100.0 and o.is_on_floor(), "ters baslangic: tavana dustu ve durdu (y=%.0f)" % o.position.y)
 	var kapi: Area2D = oyun.get_node("Dunya/Bolum/Kapi")
@@ -924,9 +954,264 @@ func _gunluk_testi() -> void:
 	oyun.queue_free()
 	await get_tree().process_frame
 
+	# 5) Hayalet yarisi (2): altin hayalet ayar kapaliyken de kosar; kapi ondan
+	#    ONCE varilinca sayilir; bitiste menuye degil paylasim paneline gecilir.
+	var t2 := 20260916
+	while Ayarlar.gunluk_degistirici(t2) != 2:
+		t2 += 1
+	Ayarlar.sifirla()
+	Ayarlar.tarih_zorla = t2
+	Ayarlar.gunluk_mod = true
+	var altin_yedek := Ayarlar.altin_hayalet
+	Ayarlar.altin_hayalet = false
+	var b2 := Ayarlar.gunluk_bolum()
+	Ayarlar.secilen_bolum = b2
+	oyun = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	o = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	_dogrula(oyun._altin_yol.size() > 10,
+		"hayalet yarisi: altin hayalet ayar KAPALIYKEN de kosuyor (%d nokta)" % oyun._altin_yol.size())
+	_dogrula(oyun._hayalet_yol.is_empty(), "hayalet yarisi: kendi hayaletin yok")
+	_dogrula(String(oyun.get_node("Arayuz/HudSol/KristalYazi").text).contains("HAYALET"), "HUD hayalet yarisini soyluyor")
+	for i in 4:
+		await get_tree().process_frame
+	_dogrula(oyun.get_node("Dunya/AltinHayalet").visible, "altin hayalet ekranda")
+	kapi = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._durum == 2, "hayaletten ONCE kapi: bolum bitti")
+	_dogrula(Ayarlar.gunluk_bitis == 1 and Ayarlar.gunluk_seri_al() == 1,
+		"gunun kaydi ve seri yazildi (%d bitis, seri %d)" % [Ayarlar.gunluk_bitis, Ayarlar.gunluk_seri_al()])
+	await get_tree().create_timer(1.3).timeout
+	var panel: Panel = oyun.get_node("Arayuz/Bitis")
+	var kopyala: Button = oyun.get_node("Arayuz/Bitis/Kutu/Kopyala")
+	_dogrula(panel.visible and kopyala.visible, "bitiste paylasim paneli ve kopyala dugmesi acildi")
+	_dogrula(oyun._durum == 3, "panel acikken durum BITTI, sahne DEGISMEDI")
+	var metin: String = oyun.get_node("Arayuz/Bitis/Kutu/Metin").text
+	_dogrula(metin.contains(String(Ayarlar.bolum(b2)["ad"])) and metin.contains("hayalet yarışı")
+		and metin.contains("seri 1 gün"), "panel metni bolum, degistirici ve seriyi soyluyor")
+	_dogrula(metin == oyun.paylasim_metni() + "\n\nGÜNÜN REKORU!", "panel metni = paylasim metni + rekor satiri")
+	_dogrula(Simgeler.eksikler(metin) == "", "panel metninde eksik simge yok")
+	oyun._kopyala()
+	_dogrula(kopyala.text == "Kopyalandı", "kopyala dugmesi kopyaladigini soyluyor")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+	# 6) Gec kalinca: kapi SAYILMAZ, "hayalet kazandi", bolum bastan baslar.
+	oyun = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	o = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	oyun.sure = 999.0                       # hayalet coktan kapida
+	kapi = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._durum == 4, "hayaletten SONRA kapi: sayilmadi, hayalet kazandi (durum %d)" % oyun._durum)
+	_dogrula(String(oyun.get_node("Arayuz/Mesaj").text).begins_with("HAYALET KAZANDI"), "hayalet kazandi mesaji")
+	_dogrula(Ayarlar.gunluk_bitis == 1, "gec kalan bitis sayilmadi (%d)" % Ayarlar.gunluk_bitis)
+	await get_tree().create_timer(1.3).timeout
+	_dogrula(oyun._durum == 0 and oyun.sure < 1.0, "hayalet kazaninca bolum bastan (sure %.2f)" % oyun.sure)
+	oyun.sure = 999.0                       # kapiya hic dokunmadan da yaris biter
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_dogrula(oyun._durum == 4, "hayalet kapiya varinca kosu kendiliginden biter")
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.altin_hayalet = altin_yedek
+
 	Ayarlar.gunluk_mod = false
 	Ayarlar.tarih_zorla = tarih_yedek
 	Ayarlar.sifirla()
+
+
+## Seri: ardisik gunlerde bitirme sayisi; bir gun atlaninca 1'e duser; ay
+## sinirinda dogru sayar; yardim modunda da sayilir; kayda yazilir. Paylasim
+## metni bolum, degistirici, sure, olum, cevirme ve seriyi tasir.
+func _seri_testi() -> void:
+	Ayarlar.sifirla()
+	var yedek := Ayarlar.tarih_zorla
+	Ayarlar.tarih_zorla = 20260929
+	_dogrula(Ayarlar.gunluk_seri_al() == 0, "baslangicta seri 0")
+	Ayarlar.gunluk_bitti(7.0)
+	_dogrula(Ayarlar.gunluk_seri_al() == 1, "ilk bitis: seri 1 (%d)" % Ayarlar.gunluk_seri_al())
+	Ayarlar.gunluk_bitti(6.0)
+	_dogrula(Ayarlar.gunluk_seri_al() == 1, "ayni gun ikinci bitis seriyi buyutmez")
+	Ayarlar.tarih_zorla = 20260930
+	_dogrula(Ayarlar.gunluk_seri_al() == 1, "ertesi gun henuz oynanmadan seri hala 1 (yasiyor)")
+	Ayarlar.gunluk_bitti(7.0)
+	_dogrula(Ayarlar.gunluk_seri_al() == 2, "ardisik gun: seri 2")
+	Ayarlar.tarih_zorla = 20261001            # ay siniri: 30 Eylul -> 1 Ekim ardisik
+	Ayarlar.gunluk_bitti(7.0)
+	_dogrula(Ayarlar.gunluk_seri_al() == 3, "ay sinirinda ardisik gun: seri 3 (%d)" % Ayarlar.gunluk_seri_al())
+	Ayarlar.tarih_zorla = 20261003            # 2 Ekim atlandi
+	_dogrula(Ayarlar.gunluk_seri_al() == 0, "bir gun atlaninca seri gorunurde 0")
+	Ayarlar.gunluk_bitti(7.0)
+	_dogrula(Ayarlar.gunluk_seri_al() == 1, "atlanan gunden sonra bitis seriyi 1'e dusurur")
+	var yardim := Ayarlar.yardim_acik
+	Ayarlar.yardim_acik = true
+	Ayarlar.tarih_zorla = 20261004
+	Ayarlar.gunluk_bitti(7.0)
+	_dogrula(Ayarlar.gunluk_seri_al() == 2, "yardim modunda da seri artiyor")
+	_dogrula(Ayarlar.gunluk_bitis == 0, "yardim modunda bitis sayaci yine yazilmiyor")
+	Ayarlar.yardim_acik = yardim
+	Ayarlar.kaydet()
+	Ayarlar.gunluk_seri = 0
+	Ayarlar.gunluk_seri_tarih = 0
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.gunluk_seri == 2 and Ayarlar.gunluk_seri_tarih == 20261004,
+		"seri kayit.cfg uzerinden yuvarlak seyahat etti (%d, %d)" % [Ayarlar.gunluk_seri, Ayarlar.gunluk_seri_tarih])
+	var m := Ayarlar.gunluk_paylasim(9.87, 2, 6)
+	_dogrula(m.contains(String(Ayarlar.bolum(Ayarlar.gunluk_bolum())["ad"])), "paylasim: bolum adi var")
+	_dogrula(m.contains(Ayarlar.gunluk_degistirici_adi()), "paylasim: degistirici var")
+	_dogrula(m.contains("9.87 sn") and m.contains("2 ölüm") and m.contains("6 çevirme") and m.contains("seri 2 gün"),
+		"paylasim: sure, olum, cevirme, seri ('%s')" % m.replace("\n", " | "))
+	_dogrula(m.contains("04.10.2026"), "paylasim: tarih gg.aa.yyyy")
+	_dogrula(m.split("\n").size() == 3 and not m.contains("⟳"), "paylasim 3 satir, simgesiz")
+	Ayarlar.tarih_zorla = yedek
+	Ayarlar.sifirla()
+
+
+## Tavandaki oyuncu (ya da hayalet) ust HUD seridinin dikdortgenine girince
+## o serit soluyor, cikinca geri geliyor; oteki serit ve aradaki bosluk
+## etkilenmiyor; seritler girdi yutmuyor.
+func _hud_solma_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var sol: Control = oyun.get_node("Arayuz/HudSol")
+	var sag: Control = oyun.get_node("Arayuz/HudSag")
+	var soluk: float = Ayarlar.HUD_SOLUK + 0.05
+	await get_tree().create_timer(0.3).timeout
+	_dogrula(sol.modulate.a >= 0.99 and sag.modulate.a >= 0.99,
+		"zemindeyken iki serit de tam (%.2f / %.2f)" % [sol.modulate.a, sag.modulate.a])
+	o.yercekimi_yonu = -1.0
+	o.up_direction = Vector2.DOWN
+	o.position = Vector2(100.0, float(Ayarlar.HUCRE) + Ayarlar.GOVDE.y * 0.5)
+	await get_tree().create_timer(0.35).timeout
+	_dogrula(o.is_on_floor() and o.position.y < 40.0, "oyuncu tavanda (y=%.0f)" % o.position.y)
+	_dogrula(sol.modulate.a <= soluk, "sol seridin altinda: sol serit soldu (%.2f)" % sol.modulate.a)
+	_dogrula(sag.modulate.a >= 0.99, "sag serit dokunulmadi (%.2f)" % sag.modulate.a)
+	o.position.x = 315.0                    # seritlerin arasindaki bosluk (232..398)
+	await get_tree().create_timer(0.35).timeout
+	_dogrula(sol.modulate.a >= 0.99 and sag.modulate.a >= 0.99,
+		"aradaki boslukta iki serit de geri geldi (%.2f / %.2f)" % [sol.modulate.a, sag.modulate.a])
+	o.position.x = 500.0
+	await get_tree().create_timer(0.35).timeout
+	_dogrula(sag.modulate.a <= soluk and sol.modulate.a >= 0.99,
+		"sag seridin altinda: sag soldu, sol tam (%.2f / %.2f)" % [sag.modulate.a, sol.modulate.a])
+	o.yercekimi_yonu = 1.0
+	o.up_direction = Vector2.UP
+	o.position = (oyun.get_node("Dunya/Bolum") as Bolum).baslangic
+	await get_tree().create_timer(0.35).timeout
+	_dogrula(sol.modulate.a >= 0.99 and sag.modulate.a >= 0.99, "zemine dononce seritler geri geldi")
+	# Hayalet de solduruyor: oyuncu zeminde, altin hayalet tavanda sol seridin altinda.
+	var yol := PackedVector2Array()
+	for i in 600:
+		yol.append(Vector2(100.0, 26.0))
+	oyun._altin_yol = yol
+	oyun.sure = 0.0
+	await get_tree().create_timer(0.35).timeout
+	_dogrula(oyun.get_node("Dunya/AltinHayalet").visible, "altin hayalet ekranda")
+	_dogrula(sol.modulate.a <= soluk and sag.modulate.a >= 0.99,
+		"hayalet sol seridi solduruyor, sag tam (%.2f / %.2f)" % [sol.modulate.a, sag.modulate.a])
+	_dogrula(sol.get_node("Arka").mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and sag.get_node("Arka").mouse_filter == Control.MOUSE_FILTER_IGNORE, "seritler girdi yutmuyor")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Godot'un ParallaxLayer aynalamasi TEK ek kopya cizer (+mirroring). Katman
+## konumu (-M, 0] araligina sarildigi icin ekran [0, 640) ancak icerik genisligi
+## W >= 640 ve M <= W ise her kaydirmada ortulur. Icerik 320 px'ken (v0.2-v0.5)
+## ikinci odada sagda 15 px'lik, ilk odada sarsintinin negatif karelerinde sag
+## YARIM ekranlik temizleme rengi (gri) boslugu vardi — kimse fark etmedi.
+func _parallaks_testi() -> void:
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var ekran: float = float(ProjectSettings.get_setting("display/window/size/viewport_width"))
+	var kat_sayisi := 0
+	for kat in oyun.get_node("Arka").get_children():
+		if not (kat is ParallaxLayer):
+			continue
+		kat_sayisi += 1
+		var genislik := 0.0
+		for c in kat.get_children():
+			if c is Sprite2D and (c as Sprite2D).texture != null and not (c as Sprite2D).centered:
+				genislik = maxf(genislik, (c as Node2D).position.x + (c as Sprite2D).texture.get_width())
+		var m: float = (kat as ParallaxLayer).motion_mirroring.x
+		_dogrula(genislik >= ekran, "%s: icerik ekran kadar genis (%.0f >= %.0f)" % [kat.name, genislik, ekran])
+		_dogrula(m > 0.0 and m <= genislik, "%s: aynalama icerigi asmiyor (%.0f <= %.0f)" % [kat.name, m, genislik])
+	_dogrula(kat_sayisi == 3, "3 parallaks katmani var (%d)" % kat_sayisi)
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Bolum grubu muzigi: 1-7 sakin, 8-14 gergin, 15-20 hizli; menu parcasi ayri.
+func _muzik_grubu_testi() -> void:
+	var beklenen := {0: "sakin", 6: "sakin", 7: "gergin", 13: "gergin", 14: "hizli", 19: "hizli"}
+	for i in beklenen:
+		_dogrula(Ses.bolum_parcasi(i) == StringName(beklenen[i]),
+			"bolum %d -> %s (%s)" % [i + 1, beklenen[i], Ses.bolum_parcasi(i)])
+	_dogrula(Ses.MUZIK.has(&"menu") and not Ses.MUZIK.has(&"oyun"), "menu parcasi duruyor, eski tek oyun parcasi kalkti")
+	# Oyun sahnesi bolum basinda grubun parcasini secer; grup degisince parca degisir.
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	oyun.get_node("Dunya/Oyuncu").girdi_acik = false
+	_dogrula(Ses._calan == &"sakin", "1. bolumde sakin parca caliyor (%s)" % Ses._calan)
+	oyun.bolum_yukle(7)
+	_dogrula(Ses._calan == &"gergin", "8. bolume gecince gergin (%s)" % Ses._calan)
+	oyun.bolum_yukle(14)
+	_dogrula(Ses._calan == &"hizli", "15. bolume gecince hizli (%s)" % Ses._calan)
+	oyun.queue_free()
+	await get_tree().process_frame
+
+
+## Parilti: kapi ve kristal 4 kareli; kareler zamanla donuyor; HUD simgesi tek kare.
+func _parilti_testi() -> void:
+	var b := Bolum.new()
+	add_child(b)
+	b.kur(Bolumler.BOLUMLER[0])
+	_dogrula(b._kapi_gorselleri.size() == b.kapi_sayisi and b.kapi_sayisi >= 1,
+		"kapi gorseli kapi sayisi kadar (%d)" % b._kapi_gorselleri.size())
+	var kg: Sprite2D = b._kapi_gorselleri[0]
+	_dogrula(kg.hframes == 4 and kg.texture.get_width() == 64 and kg.texture.get_height() == 48,
+		"kapi 4 kareli 64x48 sayfa (%dx%d)" % [kg.texture.get_width(), kg.texture.get_height()])
+	var kr: Sprite2D = b.get_node("Kristal/Gorsel")
+	_dogrula(kr.hframes == 4 and kr.texture.get_width() == 48 and kr.texture.get_height() == 12,
+		"kristal 4 kareli 48x12 sayfa (%dx%d)" % [kr.texture.get_width(), kr.texture.get_height()])
+	var gorulen := {}
+	var basla := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - basla < 800:      # tam tur 0,6 sn
+		await get_tree().process_frame
+		gorulen[kg.frame] = true
+		_dogrula_sessiz(kg.frame == kr.frame)
+	_dogrula(gorulen.size() == 4, "0,8 sn icinde kapinin 4 karesi de goruldu (%d)" % gorulen.size())
+	_dogrula(_sessiz_hata == 0, "kapi ve kristal hep ayni kareyi gosteriyor")
+	var simge: Texture2D = load("res://assets/sprites/kristal.png")
+	_dogrula(simge.get_width() == 12 and simge.get_height() == 12, "HUD/menu kristal simgesi tek kare (12x12) kaldi")
+	b.queue_free()
+	await get_tree().process_frame
+
+
+var _sessiz_hata: int = 0
+
+## Dongu icinde yuzlerce satir basmamak icin: yalniz sayar, sonuc tek dogrulamayla okunur.
+func _dogrula_sessiz(kosul: bool) -> void:
+	if not kosul:
+		_sessiz_hata += 1
 
 
 ## Esikler TEK YERDEN: tools/bot.gd'nin urettigi scripts/rota_verisi.gd.
