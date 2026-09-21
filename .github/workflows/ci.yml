@@ -1,0 +1,58 @@
+name: CI
+
+# Depo 21 Eylul 2026'da GitHub'a tasindi ve hic is akisi yoktu: 841
+# dogrulama yalnizca elle calistirilinca kosuyordu.
+#
+# Burada yeni bir test komutu UYDURULMUYOR. CLAUDE.md satir 147'de yazan
+# kapinin aynisi kosuluyor:
+#     godot --headless --path . res://tests/testler.tscn
+# Cikis kodu 0 = gecti.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # project.godot: config/features = "4.7". Surum SABIT tutuluyor --
+  # "latest" kullanmak, motor guncellenince testlerin bizden habersiz
+  # kirmizi yanmasi demek olurdu.
+  GODOT_SURUM: 4.7.2-stable
+
+jobs:
+  testler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Varliklar Git LFS'te (.gitattributes'ta 4 kural). LFS
+          # cekilmezse checkout yalnizca isaretci dosyalari getirir ve
+          # sahneler "bozuk kaynak" diye duser.
+          lfs: true
+
+      - name: Godot ${{ env.GODOT_SURUM }} indir
+        run: |
+          set -euo pipefail
+          ad="Godot_v${GODOT_SURUM}_linux.x86_64"
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_SURUM}/${ad}.zip"
+          unzip -q godot.zip
+          chmod +x "$ad"
+          sudo mv "$ad" /usr/local/bin/godot
+          godot --version
+
+      # Ice aktarma SART ve ayri adim: bayat/eksik .godot onbellegi
+      # testin icerigiyle hic ilgisi olmayan "Identifier not declared"
+      # ayristirma hatalari uretiyor. Taze checkout'ta .godot hic yok.
+      - name: Projeyi ice aktar
+        run: godot --headless --path . --import
+
+      - name: Testler
+        run: godot --headless --path . res://tests/testler.tscn
