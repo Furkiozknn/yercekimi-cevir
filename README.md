@@ -1,3 +1,5 @@
+![Yercekimi Cevir - a precision platformer where one key flips gravity, 20 hand-built rooms, Godot 4](docs/banner.svg)
+
 # Yerçekimi Çevir
 
 *No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 841 headless checks.*
