@@ -58,6 +58,7 @@
   "docs": {
     "readme": "README.md",
     "changelog": null,
+    "version_history": null,
     "roadmap": "YOL-HARITASI.md",
     "security": null,
     "contributing": null,
