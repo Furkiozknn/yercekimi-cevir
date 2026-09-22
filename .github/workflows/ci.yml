@@ -3,8 +3,8 @@ name: CI
 # Depo 21 Eylul 2026'da GitHub'a tasindi ve hic is akisi yoktu: 841
 # dogrulama yalnizca elle calistirilinca kosuyordu.
 #
-# Burada yeni bir test komutu UYDURULMUYOR. CLAUDE.md satir 147'de yazan
-# kapinin aynisi kosuluyor:
+# Burada yeni bir test komutu UYDURULMUYOR. CLAUDE.md "Komutlar" bolumundeki
+# test kapisinin aynisi kosuluyor:
 #     godot --headless --path . res://tests/testler.tscn
 #
 # Varsayilan dal 21 Eylul 2026'da master -> main olarak degistirildi

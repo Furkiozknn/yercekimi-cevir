@@ -194,6 +194,27 @@ Kaynak: `oyun-terminalleri/aktif/H16-yercekimi-cevir.md`.
 - [x] ~~20 — Son Kapı'nın bitişi~~ — `_` platform son deliğin üstünde; bot
       5/5 bitiriyor, ortanca 9,23 → 9,15 sn
 
+## v0.8 adayları (dondurulan tur dosyasından taşındı)
+
+- [ ] Yasak bölge ve tek yönlü platform daha çok bölümde (şu an 9, 14, 16, 20)
+- [ ] Dikey kaydırmalı bölüm çifti (kamera bugün yalnız yatay)
+- [ ] Hayalet başlangıç gecikmesi
+- [ ] Günün bölümü özeti
+
+## Tur 8 — v0.7.1 / v0.7.2: depo hijyeni (2026-09-21/22)
+
+- [x] MIT `LICENSE`
+- [x] GitHub deposu **public** (`Furkiozknn/yercekimi-cevir`, dal `main`), `v0.7.2` etiketi ve Release
+- [x] GitHub Actions: 841 doğrulama her `main` push'unda ve her PR'da (Godot 4.7.2 sabit,
+      Git LFS çekilerek); README'de rozet
+- [x] `*.gif` Git LFS'e alındı (`.gitattributes` kuralı artık gerçekten tutuyor)
+- [x] Makineye özel yollar belgelerden ve betiklerden çıkarıldı
+- [x] İki tur bağımsız belge denetimi: yanlış bir "bilinen sınır" kaldırıldı (bölüm başı ipucu HUD ile
+      çakışmıyor: sahnede y 96-114, HUD y 0-39), kırık README görseli, yazı tipi
+      simge sayısı 34 → 32, ses efektleri 6 ön ayardan 10, dışa aktarma ön ayarının
+      aksansız adı; oyun sonu bitiş özeti ekranı ilk kez belgelendi
+- [x] Varsayılan dal `master` → `main`
+
 ## Sonraki tur
 
 ### Önce bunlar (gerçek oyuncu gerektiren)
@@ -214,10 +235,10 @@ Kaynak: `oyun-terminalleri/aktif/H16-yercekimi-cevir.md`.
 - [x] ~~Tavanda yürüyen oyuncu üst HUD şeritlerinin arkasında kalıyor~~ —
       v0.6'da şerit soluyor; **gerçek oynanışta** 0,25'in yeterli olup olmadığı
       (yazı hâlâ okunuyor mu, oyuncu yeterince görünüyor mu) elle denenmeli.
-- [ ] Web yapısını tarayıcıda aç: v0.5 bulutta açıldı (menü, günün bölümü,
-      dokunma etiketleri temiz) ama müziğin **ikinci tura girdiği** hâlâ
-      doğrulanmadı; v0.6'nın üç yeni parçası, pano kopyalama düğmesi ve
-      hayalet yarışı da tarayıcıda görülmedi.
+- [ ] Web yapısında **sesi açık** dene: Playwright koşusu sayfa/konsol hatasına bakıyor,
+      sese bakmıyor. Müziğin ikinci tura girdiği, üç parçanın geçişi ve hayalet yarışı
+      kulakla doğrulanmadı. (Sayfa tarafı v0.7.2'de masaüstü + telefon emülasyonunda
+      konsol hatasız açıldı.)
 - [ ] **Hayalet yarışı elle oynanmalı:** altın hayalet botun ölümsüz koşusu,
       ×1,35 altın payı bu değiştiricide YOK — insanın onu geçebilmesi için
       hayalete küçük bir gecikme (ör. başlangıçta 0,5 sn) gerekebilir.

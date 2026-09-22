@@ -18,6 +18,7 @@ satırlık İngilizce tanıtım, GitHub'da ilk bakışta anlaşılsın diye).
 | Piksel oturtma | `snap_2d_transforms_to_pixel` + `snap_2d_vertices_to_pixel` açık | titreme olmasın |
 | Taban çözünürlük | 640×360, pencere 1280×720, stretch `canvas_items` / `keep` | 16×16 ızgara tam oturuyor (22 satır = 352 px) |
 | Dosya kodlaması | **BOM'suz UTF-8, LF** | `.gitattributes` zorluyor |
+| İkili varlıklar | **Git LFS** (png/wav/ogg/ttf/gif) | klonda `git lfs pull` yapılmazsa işaretçi gelir, sahneler "bozuk kaynak" der; CI `lfs: true` ile checkout eder |
 | Ses düzeyi | `AudioServer.set_bus_volume_db()` — oynatıcıda **değil** | web'de Sample yolunda `volume_db` sessizce yok sayılıyor |
 | Kamera | **Oda tabanlı**, oyuncunun çocuğu değil (`Dunya/Kamera`) | tehlike ekran dışında kalmasın; izleyen kamera bunu garanti etmiyor |
 | İsabet kutusu | Öldüren şeyde görselden `DIKEN_PAY` (3 px) küçük, **basılan** yüzeyde birebir | küçük kutu affeder, küçük platform yalan söyler |
@@ -126,7 +127,7 @@ godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 5 -1 - insan
                                  # "insan" tepki bandı (0,18-0,35 sn): DOSYA YAZMAZ,
                                  # yalnız tablo basar — madalya çarpanı gerekçesi için
 python tools/uret_sprite.py      # assets/sprites/*.png + docs/varliklar.png
-python tools/uret_ses.py         # assets/audio/*.wav (rFXGen gerekir)
+RFXGEN=<rfxgen yolu> python tools/uret_ses.py   # assets/audio/*.wav (rFXGen yerel kurulum, depoda yok)
 godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_sakin.wav  --ruh sakin  --tohum 7   # 1-7, 20,9 sn
 godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_gergin.wav --ruh gergin --tohum 3   # 8-14, 13,7 sn
 godot --headless --path . -s res://tools/muzik_uret.gd -- --cikti res://assets/audio/muzik_hizli.wav  --ruh hizli  --tohum 11  # 15-20, 12,8 sn
@@ -167,17 +168,9 @@ Dışa aktarmadan önce `build/windows` ve `build/web` klasörleri **var olmalı
 
 ## Godot kilidi
 
-Aynı anda birden çok oyun oturumu çalışabiliyor, RAM dar. Godot çalıştırmadan önce:
-
-```bash
-# Yalnız yerel geliştirme makinesinde; CI'da gerekmez. Yolu düzenine göre ayarla:
-KILIT="${GODOT_KILIT:-$HOME/.godot-kilit}"
-[ -f "$KILIT" ] || echo "yercekimi-cevir" > "$KILIT"
-# ... iş bitince
-rm -f "$KILIT"
-```
-
-Kilit varsa ve 15 dakikadan yeniyse 30 sn bekle. Açık Godot süreci bırakma.
+Aynı anda iki Godot süreci çalıştırma (RAM dar) ve açık süreç bırakma. Depoların ortak
+üst klasöründe `.godot-kilit` dosyası varsa ve 15 dakikadan yeniyse 30 sn bekle; hâlâ
+duruyorsa bayat say. CI'da bu kuralın karşılığı yok, tek koşucu var.
 
 ## Yayın
 
@@ -199,9 +192,7 @@ kararı Furki verir.
 4. **Kapanışta müzik.** Godot ağacı alttan yukarı söküyor: `_exit_tree()` çalıştığında
    oynatıcı zaten ağaçtan çıkmış oluyor. `Ses.kapat()` çıkmadan **önce** çağrılmalı,
    üstüne bir karıştırma turu beklenmeli — yoksa "resource still in use at exit".
-5. **`--quit-after` ile yapılan duman testleri** müzik çalarken süreci öldürdüğü için
-   bu uyarıyı basar; gerçek çıkış yolu ve test paketi temizdir.
-6. **Arka planda yatay çizgi yapma.** İlk turda arka plandaki uyarı şeridi
+5. **Arka planda yatay çizgi yapma.** İlk turda arka plandaki uyarı şeridi
    platform sanılıyordu; arka plan artık yalnız dikey öğeler içeriyor.
 7. **Heredoc ters bölüyü yutuyor.** Bu makinede `bash <<'PY'` ile Python yamaları
    yazarken `\t` / `\n` kaçışları sessizce bozulabiliyor — yama uygulanmış
