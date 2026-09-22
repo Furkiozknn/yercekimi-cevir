@@ -494,3 +494,14 @@ headless, Git LFS çekilerek). Son ölçüm: **841 doğrulama, 0 hata**.
 
 İçe aktarma ayrı bir adım çünkü taze bir klonda `.godot` önbelleği hiç
 yok; onsuz testin içeriğiyle ilgisi olmayan ayrıştırma hataları alınır.
+
+---
+
+## Bu ekosistemden başka projeler
+
+- **[tek-tus-kosu](https://github.com/Furkiozknn/tek-tus-kosu)** — tek tuş, müziğin vuruş ızgarasına dizilmiş engeller
+- **[derin-kazi](https://github.com/Furkiozknn/derin-kazi)** — kaz, sat, geliştir; asıl sayaç yakıt
+- **[kanca](https://github.com/Furkiozknn/kanca)** — tavana kanca at, salın, tam zamanında bırak
+- **[godot-refcheck](https://github.com/Furkiozknn/godot-refcheck)** — Godot projelerindeki kırık referansları ve ölü sinyalleri bulur, onarır
+
+<sub>Hepsi tek bir aranabilir sayfada: **[furkiozknn.github.io](https://furkiozknn.github.io/)** — her kart, o deponun kendi <code>project-meta.json</code> dosyasından üretiliyor.</sub>
