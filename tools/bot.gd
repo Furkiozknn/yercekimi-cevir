@@ -1,11 +1,19 @@
 extends Node
 ## Madalya surelerini FORMULDEN degil OLCUMDEN cikaran bot.
 ##
-##   godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- [kosu] [bolum] [iz] [insan]
+##   godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- [kosu] [bolum] [iz] [insan] [denetle]
 ##
 ##   "insan": tepki gecikmesi 0,18-0,35 sn (insan gorsel tepki suresi bandi;
 ##   bot 0,05-0,20 ile olcer). Bu modda DOSYA YAZILMAZ, yalniz tablo basilir —
 ##   amaci botun insani ne kadar gectigini olcmek (madalya carpani gerekcesi).
+##
+##   "denetle": DOSYA YAZMAZ, yazilmis olani SINAR. Esikler scripts/rota_verisi.gd
+##   icinde duruyor ve testler onlari o dosyaya karsi dogruluyor — yani dosyayi
+##   kendisine karsi. Bir bolumun geometrisi degisirse dosya eski kalir, testler
+##   yine yesil yanar, ve bolum cozulemez ya da altin ulasilamaz hale gelmis
+##   olabilir. Bu kip botu YENIDEN kosturup iki seyi soruyor: her bolum hala
+##   bitiyor mu, ve yayimlanan altin esigi botun BUGUNKU ortancasindan buyuk mu.
+##   Ikisinden biri tutmazsa cikis kodu 1.
 ##
 ## Nasil calisir — iki asama:
 ##
@@ -95,6 +103,7 @@ var _fren: bool = false                ## cevirme guvenli olana kadar hizi kesiy
 var _donma: int = 0                    ## cevirmeden sonra girdinin dondugu kare sayisi
 var _iz: bool = false                  ## tek bolum tanilamasi: her karari yaz
 var _insan: bool = false               ## insan tepki bandi, dosya yazilmaz
+var _denetle: bool = false             ## yazilmis esikleri yeniden olcup sinar, dosya yazmaz
 var _tepki_az: float = TEPKI_EN_AZ
 var _tepki_cok: float = TEPKI_EN_COK
 var _kare_no: int = 0
@@ -116,6 +125,9 @@ func _ready() -> void:
 	var tek: int = int(arg[1]) if arg.size() > 1 else -1
 	_iz = arg.size() > 2 and String(arg[2]) == "iz"
 	_insan = arg.has("insan")
+	_denetle = arg.has("denetle")
+	if _denetle:
+		print("DENETIM MODU: dosya yazilmaz, yazilmis esikler yeniden olculup sinanir")
 	if _insan:
 		_tepki_az = INSAN_TEPKI_EN_AZ
 		_tepki_cok = INSAN_TEPKI_EN_COK
@@ -146,8 +158,11 @@ func _ready() -> void:
 			kayit.append(null)
 			continue
 		kayit.append(await _bolumu_olc(i, kosu))
+	var kod := 0
 	if _insan:
 		_insan_tablosu(kayit)
+	elif _denetle:
+		kod = _denetim_tablosu(kayit)
 	else:
 		_yaz(kayit)
 
@@ -159,7 +174,7 @@ func _ready() -> void:
 
 	Ses.kapat()
 	await get_tree().create_timer(0.25).timeout
-	get_tree().quit(0)
+	get_tree().quit(kod)
 
 
 # --- olcum -------------------------------------------------------------------
@@ -481,6 +496,48 @@ func _ortanca(dizi: Array) -> float:
 
 
 # --- cikti -------------------------------------------------------------------
+
+## Yazilmis esikleri BUGUNKU kosuya karsi sinar. Donus: cikis kodu.
+##
+## Iki soru, ikisi de dosyaya degil kosuya bakiyor:
+##   1. Her bolum hala bitiyor mu? (rota_verisi\'ndeki "biten" bir kayit, bir olcum degil.)
+##   2. Yayimlanan altin esigi, botun bugunku ortancasindan buyuk mu? Kucukse
+##      altin botun bile ulasamayacagi bir sureye kaymistir.
+##
+## Esik burada DEGISTIRILMEZ: bu kip yalniz olcer ve soyler. Duzeltme, botun
+## normal kipini kosturup uretilen dosyayi commit etmektir.
+func _denetim_tablosu(kayit: Array) -> int:
+	var hata := 0
+	var bitmeyen := 0
+	print("\n--- denetim: yayimlanan esik vs bugunku kosu ---")
+	print("%-4s %-18s %8s %8s %8s  %s" % ["no", "bolum", "altin", "bugun", "pay", "durum"])
+	for i in Ayarlar.bolum_sayisi():
+		var k: Variant = kayit[i] if i < kayit.size() else null
+		var ad: String = String(Ayarlar.bolum(i)["ad"])
+		if k == null:
+			continue
+		var altin: float = float(Ayarlar.esik(i)["altin"])
+		if int(k["biten"]) == 0:
+			bitmeyen += 1
+			hata += 1
+			print("%-4d %-18s %8.2f %8s %8s  BITIREMEDI (%d kosu)" % [
+				i + 1, ad, altin, "-", "-", int(k["kosu"])])
+			continue
+		var bugun: float = float(k["sure"])
+		var pay := altin - bugun
+		var durum := "ok"
+		if bugun > altin:
+			durum = "ALTIN ULASILAMAZ"
+			hata += 1
+		print("%-4d %-18s %8.2f %8.2f %8.2f  %s" % [i + 1, ad, altin, bugun, pay, durum])
+	if hata == 0:
+		print("\ndenetim temiz: %d bolumun hepsi bitiyor, yayimlanan altin esigi botun bugunku kosusunu kaldiriyor." % Ayarlar.bolum_sayisi())
+		return 0
+	print("\nDENETIM BASARISIZ: %d bulgu (%d bolum bitirilemedi)." % [hata, bitmeyen])
+	print("Esikler scripts/rota_verisi.gd icinde ve elle duzeltilmez: botu normal")
+	print("kipte kosturup uretilen dosyayi commit et.")
+	return 1
+
 
 func _yaz(kayit: Array) -> void:
 	# Olcek = oranlarin ORTANCASI (toplam/toplam degil): tek bir kotu bolum

@@ -191,7 +191,7 @@ Yayın paketi (yüklenmedi): `yayin/`.
 | `scripts/oyuncu.gd` | Çevirme mekaniği (tampon + kojot), yerçekimi oku, ölüm, esneme-sıkışma. |
 | `scripts/oyun.gd` | Bölüm döngüsü, oda kamerası, hayalet, ölüm haritası, iniş göstergesi, yardım modu. |
 | `tools/` | Varlık üreticileri (pixel art, ses) + `sesler.md`. |
-| `tests/` | Headless otomatik test (841 doğrulama) + ekran görüntüsü aracı. |
+| `tests/` | Headless otomatik test (841 doğrulama) + ekran görüntüsü aracı. Eşiklerin hâlâ doğru olup olmadığını `tools/bot.gd --  ... denetle` soruyor. |
 
 Bölüm haritaları TileMapLayer yerine ASCII + kod üretimi: 20 bölüm tek dosyada
 düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
@@ -491,6 +491,21 @@ godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
 `main`'e her push'ta ve her pull request'te **aynı komut** GitHub Actions'ta
 koşuyor (Godot 4.7.2, Linux
 headless, Git LFS çekilerek). Son ölçüm: **841 doğrulama, 0 hata**.
+
+**Bir de bot koşuyor.** Madalya eşikleri `scripts/rota_verisi.gd` içinde duruyor
+ve 841 doğrulamanın ilgili kısmı onları o dosyaya karşı sınıyor — yani dosyayı
+kendisine karşı. Bir bölümün haritası değişirse dosya eski kalır, testler yine
+yeşil yanar, ve bölüm çözülemez ya da altın ulaşılamaz hale gelmiş olabilir.
+Bunu görebilecek tek şey botu yeniden koşturmaktır; bot zaten `tools/bot.gd`
+içinde duruyordu, yalnızca CI'da hiç koşmuyordu. Artık her push'ta **20 bölüm ×
+3 koşu** (yaklaşık 6 sn) koşuyor ve iki şeyi soruyor: her bölüm hâlâ bitiyor mu,
+ve yayımlanan altın eşiği botun bugünkü ortancasından büyük mü. Denetim dosya
+yazmaz — yazsaydı CI'da üretilen bir eşik sessizce doğru sayılırdı — ve ayrı bir
+adım çalışma ağacının temiz kaldığını doğruluyor.
+
+```bash
+godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 3 -1 - denetle
+```
 
 İçe aktarma ayrı bir adım çünkü taze bir klonda `.godot` önbelleği hiç
 yok; onsuz testin içeriğiyle ilgisi olmayan ayrıştırma hataları alınır.

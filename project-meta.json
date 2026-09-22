@@ -36,7 +36,8 @@
     "No jump button: one key flips gravity and you fall onto the ceiling",
     "20 hand-built precision rooms, each with its own medal times",
     "Ghost race, level-of-the-day and streak tracking built on recorded runs",
-    "Left-handed layout, storm mode and readability options as first-class settings"
+    "Left-handed layout, storm mode and readability options as first-class settings",
+    "Medal thresholds are measured by a bot that really plays the level, and CI re-runs that bot on every push: the published gold time has to still be reachable and every one of the 20 rooms has to still finish, so a map edit cannot leave a stale threshold or an unsolvable room behind a green suite"
   ],
   "media": {
     "hero": "docs/banner.svg",

@@ -60,6 +60,30 @@ jobs:
       - name: Testler
         run: godot --headless --path . res://tests/testler.tscn
 
+      # Esikler scripts/rota_verisi.gd icinde duruyor ve testler onlari o
+      # dosyaya karsi dogruluyor -- yani dosyayi kendisine karsi. Bir bolumun
+      # geometrisi degisirse dosya eski kalir, 841 dogrulama yine yesil yanar,
+      # ve bolum cozulemez ya da altin ulasilamaz hale gelmis olabilir. Bunu
+      # gorebilecek tek sey botu yeniden kosturmaktir; bot zaten burada,
+      # yalnizca CI'da hic kosmuyordu.
+      #
+      # Kosu sayisi 3 (uretim 5): denetimin sorusu "esik tam olarak dogru mu"
+      # degil, "bolum bitiyor mu ve altin hala botun ulasabildigi bir sure mi".
+      - name: Bolumler hala cozulebiliyor mu (bot, 20 bolum x 3 kosu)
+        run: godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 3 -1 - denetle
+
+      # Denetim dosya yazmamali: yazsaydi CI'da uretilen bir esik sessizce
+      # dogru sayilirdi. Calisma agaci temiz kalmali.
+      - name: Denetim hicbir dosyayi degistirmedi
+        run: |
+          set -eu
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "denetim calisma agacini degistirdi:"
+            git status --porcelain
+            exit 1
+          fi
+          echo "calisma agaci temiz"
+
   referanslar:
     name: Kaynak referanslari saglam mi
     runs-on: ubuntu-latest
