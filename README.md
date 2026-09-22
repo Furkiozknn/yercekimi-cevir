@@ -136,6 +136,19 @@ dağıtılır, bildirim `assets/fonts/LISANS-simgeler.txt` dosyasındadır.
 
 ## Nasıl çalıştırılır
 
+### Godot kurmadan bir paket indir
+
+Depoda **Yapi** adında, yalnızca elle tetiklenen bir iş akışı var. Actions
+sekmesinden bir kez çalıştırdığında sabit Godot 4.7.2-stable ile Windows ve
+Web paketlerini üretip *Artifacts* altına bırakır — oynamak için Godot
+kurmak, dışa aktarma şablonu indirmek gerekmiyor.
+
+Son koşuda ölçülen: web `index.pck` **830.332 bayt**, web paketi ~10 MB,
+Windows paketi ~38 MB.
+
+İş akışı hiçbir şey yayımlamaz: ne release varlığı ekler, ne Pages'e
+gönderir. Yayın kararı paket oynandıktan sonra verilir.
+
 ```bash
 godot --path .                                        # oyunu aç
 godot --headless --path . res://tests/testler.tscn    # otomatik testler (çıkış kodu 0 = geçti)
