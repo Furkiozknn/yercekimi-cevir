@@ -422,8 +422,17 @@ Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
 
 ## Durum
 
-**v0.7.1 — MIT lisans dosyası, her push'ta CI, README görsel düzeltmesi.**
-v0.7'nin üstüne yalnız depo işleri girdi; oynanış aynı.
+**v0.7.2 — MIT lisans dosyası, her push'ta CI, 21 belge düzeltmesi.**
+v0.7'nin üstüne yalnız depo işleri girdi; oynanış aynı. `main`'e her push ve her
+PR'da **841 doğrulama** koşuyor (Godot 4.7.2, Linux, Git LFS); varsayılan dal
+`master` → `main` oldu; `*.gif` Git LFS'e alındı. En önemli belge düzeltmesi
+yanlış bir "bilinen sınır"ın kaldırılması oldu: README bölüm başı ipucu metninin
+HUD ile çakıştığını söylüyordu — sahnede metin y 96–114, HUD şeritleri y 0–39;
+ilk commit'ten beri çakışma yok.
+
+Yeniden dışa aktarımda web paketi bayt bayt aynı çıktı (827.904 bayt, aynı
+SHA256): yayın paketi depodaki kaynakla birebir aynı. Güncel sürümün notları
+[Releases](https://github.com/Furkiozknn/yercekimi-cevir/releases) sayfasında.
 
 **v0.7 — çevirme yasağı bölgesi, tek yönlü platform, tabela, süre listesi, kol
 sallanması.** v0.6'nın üstüne: iki yeni mekanik (9, 14, 16 ve 20. bölümlerde),
