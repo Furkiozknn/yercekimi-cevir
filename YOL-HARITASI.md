@@ -194,13 +194,6 @@ Kaynak: `oyun-terminalleri/aktif/H16-yercekimi-cevir.md`.
 - [x] ~~20 — Son Kapı'nın bitişi~~ — `_` platform son deliğin üstünde; bot
       5/5 bitiriyor, ortanca 9,23 → 9,15 sn
 
-## v0.8 adayları (dondurulan tur dosyasından taşındı)
-
-- [ ] Yasak bölge ve tek yönlü platform daha çok bölümde (şu an 9, 14, 16, 20)
-- [ ] Dikey kaydırmalı bölüm çifti (kamera bugün yalnız yatay)
-- [ ] Hayalet başlangıç gecikmesi
-- [ ] Günün bölümü özeti
-
 ## Tur 8 — v0.7.1 / v0.7.2: depo hijyeni (2026-09-21/22)
 
 - [x] MIT `LICENSE`
@@ -247,12 +240,13 @@ Kaynak: `oyun-terminalleri/aktif/H16-yercekimi-cevir.md`.
 
 - [x] ~~Yeni mekanik: çevirmeyi engelleyen bölge, tek yönlü platform~~ — v0.7
 - [ ] Dikey kaydırmalı bölüm (oda kamerası dikeyde de atlamalı)
+- [ ] Hayalet başlangıç gecikmesi (dondurulan v0.8 tur dosyasından)
 - [ ] Yasak bölge ve tek yönlü platformu daha çok bölümde kullan (şimdi 4 bölümde);
       insan bandındaki botla (`bot.gd -- … insan`) yeniden ölç — altın çarpanı
       yeni mekaniklerde doğrulanmadı
 - [x] ~~Bölüm başı tabelası / en iyi süre listesi ekranı~~ — v0.7
 - [x] ~~Günün bölümü: seri sayacı, 3. değiştirici, paylaşılabilir metin~~ — v0.6
-- [ ] Günün bölümü: liste/karşılaştırma yok, yalnız kendi en iyin ve serin;
+- Karar (v0.6): günün bölümünde liste/karşılaştırma yok, yalnız kendi en iyin ve serin;
       paylaşım metni bunun yerine geçiyor
 
 ### Görsel ve ses
