@@ -24,7 +24,12 @@
     "game-development",
     "gdscript",
     "godot",
-    "godot4"
+    "godot4",
+    "gravity",
+    "indie-game",
+    "precision-platformer",
+    "puzzle-platformer",
+    "turkce"
   ],
   "summary": "No jump button - one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms in Godot 4. Turkish UI.",
   "key_features": [
