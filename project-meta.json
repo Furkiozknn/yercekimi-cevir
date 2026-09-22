@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0.0",
+  "id": "yercekimi-cevir",
+  "owner": "Furkiozknn",
+  "repository": "https://github.com/Furkiozknn/yercekimi-cevir",
+  "homepage": null,
+  "releases": "https://github.com/Furkiozknn/yercekimi-cevir/releases",
+  "status": "active",
+  "category": "game",
+  "platform": [
+    "windows",
+    "web"
+  ],
+  "primary_language": "GDScript",
+  "technologies": [
+    "Godot 4.7",
+    "GDScript",
+    "GL Compatibility renderer"
+  ],
+  "version": "0.7.2",
+  "license": "MIT",
+  "topics": [
+    "2d-game",
+    "game-development",
+    "gdscript",
+    "godot",
+    "godot4"
+  ],
+  "summary": "No jump button - one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms in Godot 4. Turkish UI.",
+  "key_features": [
+    "No jump button: one key flips gravity and you fall onto the ceiling",
+    "20 hand-built precision rooms, each with its own medal times",
+    "Ghost race, level-of-the-day and streak tracking built on recorded runs",
+    "Left-handed layout, storm mode and readability options as first-class settings"
+  ],
+  "media": {
+    "hero": "docs/01-menu.png",
+    "screenshots": [
+      "docs/01-menu.png",
+      "yayin/ekran/07-cevirme.png",
+      "docs/02-bolum-sec.png",
+      "docs/03-ayarlar.png"
+    ],
+    "gifs": [],
+    "videos": []
+  },
+  "tests": {
+    "count": 841,
+    "source": "CI log: `841 dogrulama, 0 hata` / `TESTLER GECTI`",
+    "measured": "2026-09-22"
+  },
+  "ci": {
+    "workflows": [
+      "ci.yml"
+    ],
+    "badge": "https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml/badge.svg"
+  },
+  "docs": {
+    "readme": "README.md",
+    "changelog": null,
+    "roadmap": "YOL-HARITASI.md",
+    "security": null,
+    "contributing": null,
+    "license_file": "LICENSE"
+  },
+  "social": {
+    "headline": "There is no jump button. There is only which way is down.",
+    "hashtags": [
+      "godot",
+      "godot4",
+      "indiedev",
+      "gamedev",
+      "precisionplatformer"
+    ],
+    "primary_link": "https://github.com/Furkiozknn/yercekimi-cevir"
+  },
+  "provenance": {
+    "generated_at": "2026-09-22",
+    "generator": "ghcc/gen_meta.py",
+    "rule": "mechanical fields read from the repository and the GitHub API; editorial fields hand-written and reviewed; no field is generated from a guess"
+  }
+}
