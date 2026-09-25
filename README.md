@@ -9,8 +9,27 @@
 Zıplama yok: tek tuşla yerçekimini ters çevirip tavana "düşerek" dikenlerden kaçtığın
 kısa ve zor bir hassas platform oyunu. **20 bölüm**, her bölüm 1–2 ekran.
 
-![Ana menü](docs/01-menu.png)
-![Çevirme anı](yayin/ekran/07-cevirme.png)
+<img src="yayin/tanitim/tanitim.gif" width="640" alt="4. bölüm Diken: oyuncu yerçekimini çevirip zemindeki dikenlerin üstünden geçiyor">
+
+<sub>Oyunun kendisinden çekilmiş 3 saniyelik kayıt (`tests/ekran.tscn` kip `-5`, 320×180, 10 kare/sn) — 4. bölüm "Diken".</sub>
+
+**Amaç:** her bölümün sonundaki yeşil **kapıya** ölmeden var. Kapıya varınca
+bölüm biter, süren ve madalyan kaydedilir, sıradaki bölüm açılır. Dikene
+değmek ya da ekran dışına düşmek öldürür; 0,18 sn sonra bölüm başından (ya da
+kontrol noktasından) yeniden başlarsın. Yan hedefler: gizli kristal, madalya
+süresi, en az çevirme.
+
+## Nasıl oynarım?
+
+| Yol | Durum |
+|---|---|
+| **Tarayıcıda (GitHub Pages)** | Henüz yayında **değil**. Web paketi hazır ([Yapi](.github/workflows/yapi.yml) üretiyor), Pages'e ilk yayın depo sahibinin bir kez yapacağı iş. |
+| **İndirilebilir paket** | [Releases](https://github.com/Furkiozknn/yercekimi-cevir/releases)'ta henüz ekli dosya yok. GitHub'a giriş yaptıysan [Actions → Yapi](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/yapi.yml) altındaki son başarılı koşunun *Artifacts* bölümünden `yercekimi-cevir-windows` ya da `yercekimi-cevir-web` zip'ini indirebilirsin (artifact'lar 90 gün saklanır). |
+| **Kaynaktan** | Godot 4.7 ve Git LFS ile — aşağıda [Kaynaktan çalıştır](#kaynaktan-çalıştır). |
+
+Web paketini indirdiysen `index.html`'e çift tıklamak yetmez (tarayıcı
+`file://` altında WebAssembly yüklemez); klasörde bir yerel sunucu aç:
+`python3 -m http.server 8000`, sonra `http://localhost:8000`.
 
 ## Kontroller
 
@@ -134,51 +153,128 @@ dağıtılır, bildirim `assets/fonts/LISANS-simgeler.txt` dosyasındadır.
 
 | | |
 |---|---|
+| ![Çevirme anı](yayin/ekran/07-cevirme.png) | ![Ana menü](docs/01-menu.png) |
 | ![Bölüm Seç](docs/02-bolum-sec.png) | ![Ayarlar](docs/03-ayarlar.png) |
 
-## Nasıl çalıştırılır
+Hepsi `tests/ekran.tscn` ile oyunun kendisinden çekildi (1280×720); sürüm
+sürüm özellik kareleri `docs/tur*/` altında.
 
-### Godot kurmadan bir paket indir
+## Platform ve performans
 
-Depoda **Yapi** adında, yalnızca elle tetiklenen bir iş akışı var. Actions
-sekmesinden bir kez çalıştırdığında sabit Godot 4.7.2-stable ile Windows ve
-Web paketlerini üretip *Artifacts* altına bırakır — oynamak için Godot
-kurmak, dışa aktarma şablonu indirmek gerekmiyor.
+- **Hedefler:** Windows (`Windows Masaustu`) ve Web (`Web (HTML5)`) —
+  `export_presets.cfg`'de tanımlı iki ön ayar. Linux/macOS/Android paketi yok;
+  kaynaktan her masaüstü sistemde Godot 4.7 ile açılır.
+- **Girdi:** klavye, gamepad, dokunmatik (tarayıcıda telefon dahil).
+- **Renderer:** GL Compatibility — tümleşik GPU (Intel UHD sınıfı) hedefleniyor,
+  web'de de tek yol. Taban çözünürlük 640×360, pencere 1280×720, pixel art
+  `nearest` filtreyle.
+- **Web yapısı tek iş parçacıklı** (`thread_support=false`): COOP/COEP başlığı
+  ya da SharedArrayBuffer gerekmez, sıradan bir statik sunucu yeter.
+- **Paket boyutları** — Yapi koşusunun kendi günlüğünden (22 Eylül 2026,
+  Godot 4.7.2):
 
-Son koşuda ölçülen: web `index.pck` **830.332 bayt**, web paketi ~10 MB,
-Windows paketi ~38 MB.
+  | | açılmış | artifact zip |
+  |---|---|---|
+  | Web | 39 MB — `index.wasm` 39.514.754 bayt (motor), `index.pck` 830.332 bayt (oyunun kendisi) | 10,9 MB |
+  | Windows | 105 MB — `.exe` 109.147.136 bayt, `.pck` 830.332 bayt | 39,6 MB |
 
-Varsayılanı hiçbir şey yayımlamamaktır. Oynayıp "yayınlanabilir" dediğinde
-aynı pencerede **`sayfaya_yayinla`** kutusunu işaretlemen yeterli: o zaman
-web paketi GitHub Pages'e gider ve oyun tarayıcıdan oynanır hâle gelir.
-Kutu işaretlenmedikçe Pages'e dokunulmaz.
+  Web'de ilk açılışın ağırlığı neredeyse tamamen motorun `.wasm`'ı; oyunun
+  kendi verisi 1 MB'ın altında.
+- **Kare hızı ölçülmüş bir değer değil:** depoda FPS ölçümü yok, bu yüzden
+  burada bir sayı yazılmıyor. Fizik 60 Hz; bot denetimi `--fixed-fps 60` ile koşuyor.
+
+## Kaynaktan çalıştır
+
+Gerekenler: **Godot 4.7** (CI 4.7.2-stable kullanıyor), **Git LFS**
+(tüm `.png` / `.wav` / `.ttf` / `.gif` LFS'te).
 
 ```bash
-godot --path .                                        # oyunu aç
+git lfs install                       # bir kez, makine başına
+git clone https://github.com/Furkiozknn/yercekimi-cevir.git
+cd yercekimi-cevir
+git lfs pull                          # LFS kancası kurulu değilken klonladıysan
+godot --headless --path . --import    # bir kez: .godot önbelleğini kur
+godot --path .                        # oyunu aç (ana sahne: menü)
+```
+
+LFS olmadan klonlarsan görseller ve sesler ~130 baytlık metin işaretçileri
+olarak gelir ve Godot sahneleri "bozuk kaynak" diye açamaz. Kontrol:
+`file docs/01-menu.png` → `PNG image data` demeli, `ASCII text` değil.
+
+İçe aktarma ayrı adım, çünkü taze bir klonda `.godot` önbelleği yok; onsuz
+oyunla ilgisiz ayrıştırma hataları çıkar (CI da aynı sırayla koşuyor).
+
+### Elle duman testi (2 dakika)
+
+Yeni bir yapıyı ya da bir değişikliği elle doğrulamanın en kısa yolu:
+
+1. Menü açılıyor, menü müziği çalıyor; **Başla** açılmış en yüksek bölümü
+   başlatıyor (temiz bir kayıtta 1. bölüm).
+2. `A`/`D` ile yürü, `Boşluk` ile çevir: karakter tavana düşüyor, yanındaki
+   yerçekimi oku yön değiştiriyor. Havadayken ikinci çevirme **olmuyor**.
+3. Bir dikene bilerek değ: kısa bir an sonra bölüm başındasın; süre sayacı
+   sıfırlanmıyor, sağ üstteki ölüm sayacı artıyor.
+4. Kapıya var: "BÖLÜM TAMAM" mesajı süre ve madalyayla çıkıyor, öldüğün
+   yerler ölüm haritasında X ile; menüye dönünce Bölüm Seç'te 2. bölüm açık.
+5. `Esc` oyunu duraklatıyor, tekrar basınca devam ediyor.
+
+Otomatik karşılığı aşağıda [Test ve CI](#test-ve-ci)'de: 841 doğrulama +
+20 bölümü gerçekten oynayan bot.
+
+### Geliştirici komutları
+
+```bash
 godot --headless --path . res://tests/testler.tscn    # otomatik testler (çıkış kodu 0 = geçti)
 godot --path . res://tests/ekran.tscn -- 2 <klasör>   # 3. bölümü sürüp ekran görüntüsü al
 godot --path . res://tests/ekran.tscn -- -1 <klasör>  # menü / bölüm seç / ayarlar
 godot --path . res://tests/ekran.tscn -- -2 <klasör>  # yayın paketi görselleri + kapak
-godot --path . res://tests/ekran.tscn -- -3 <klasör>  # tur 2 özelliklerinin denetim kareleri
-godot --path . res://tests/ekran.tscn -- -7 <klasör>  # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım, parıltı
-godot --path . res://tests/ekran.tscn -- -8 <klasör>  # tur 6 (v0.7): yasak bölge, tek yönlü platform, tabela, süre listesi
+godot --path . res://tests/ekran.tscn -- -3 <klasör>  # v0.3 özelliklerinin denetim kareleri
+godot --path . res://tests/ekran.tscn -- -5 <klasör>  # 3 sn tanıtım kareleri (GIF için ham veri)
+godot --path . res://tests/ekran.tscn -- -7 <klasör>  # v0.6: HUD solması, hayalet yarışı, paylaşım, parıltı
+godot --path . res://tests/ekran.tscn -- -8 <klasör>  # v0.7: yasak bölge, tek yönlü platform, tabela, süre listesi
 
-python arac/uret_bolumler.py     # 20 bölümü yeniden üret (çözülebilirliği doğrular)
-python tools/uret_sprite.py      # tüm pixel art'ı yeniden üret
-python tools/uret_ses.py         # tüm ses efektlerini yeniden üret
+python3 arac/uret_bolumler.py       # 20 bölümü yeniden üret (çözülebilirliği doğrular)
+python3 tools/uret_sprite.py        # tüm pixel art'ı yeniden üret (yalnız standart kütüphane)
+python3 tools/uret_ses.py           # ses efektlerini yeniden üret — rFXGen v5.0 gerekir, bkz. alt not
+python3 tools/gif_yap.py --dogrula  # GIF kodlayıcısının öz denetimi
 ```
 
-Dışa aktarma çıktısı `build/windows/yercekimi-cevir.exe` ve
-`build/web/index.html` yollarına yazılır — **yapı dosyaları depoda yok**
-(`.gitignore`), önce klasörleri oluşturup dışa aktarman gerekir:
+İki Python üreticisi deterministik: `uret_bolumler.py` ve `uret_sprite.py`
+temiz bir klonda çalıştırıldığında `git status` boş kalıyor — depodaki
+`scripts/bolumler.gd` ve `assets/sprites/*.png` bayt bayt onların çıktısı.
+`uret_ses.py` ise depoda olmayan **rFXGen v5.0**'ı çağırıyor; yolunu `RFXGEN`
+ortam değişkeniyle ver, yoksa betik `rFXGen bulunamadi` yazıp 1 ile çıkar.
+Müzik ayrı: `tools/muzik_uret.gd` (Godot içinde).
+
+### Dışa aktarma
+
+Çıktılar `build/` altına yazılır ve depoda tutulmaz (`.gitignore`). Dışa
+aktarma şablonları (4.7.2) kurulu olmalı; komutlar Yapi iş akışındakiyle aynı:
 
 ```bash
 mkdir -p build/windows build/web
-godot --headless --path . --export-release "Windows Masaustu"
-godot --headless --path . --export-release "Web (HTML5)"
+godot --headless --path . --export-release "Windows Masaustu" "build/windows/yercekimi-cevir.exe"
+godot --headless --path . --export-release "Web (HTML5)" "build/web/index.html"
 ```
 
-Yayın paketi (yüklenmedi): `yayin/`.
+Ön ayar adları `export_presets.cfg`'deki gibi **aksansız** yazılmalı.
+
+### Godot kurmadan paket üretmek (depo sahibi)
+
+**Yapi** iş akışı yalnızca elle tetiklenir (Actions → Yapi → *Run workflow*;
+depoya yazma yetkisi gerekir). Sabit Godot 4.7.2-stable ile Windows ve Web
+paketlerini üretip *Artifacts* altına bırakır. Varsayılanı hiçbir şey
+yayımlamamaktır. Oynayıp "yayınlanabilir" dediğinde aynı pencerede
+**`sayfaya_yayinla`** kutusunu işaretlemen yeterli: o zaman web paketi GitHub
+Pages'e gider ve oyun tarayıcıdan oynanır hâle gelir. Kutu işaretlenmedikçe
+Pages'e dokunulmaz.
+
+İlk yayından önce Pages'in depoda **bir kez elle** açılması gerekiyor:
+Settings → Pages → Source: **GitHub Actions**. İş akışının kendi anahtarı
+Pages sitesi oluşturamıyor; açılmamışsa yayın adımı "Resource not accessible
+by integration" hatasıyla durur.
+
+itch.io paketi hazır ama yüklenmedi: `yayin/`.
 
 ## Kod düzeni
 
@@ -198,282 +294,34 @@ düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
 çözülebilirliğini doğruluyor — çevirme penceresi yeterince geniş mi, aynı sütunda
 hem zemin hem tavan tehlikesi var mı, kristal kaçamağı ölümcül mü.
 
-## 1. turda verilen kararlar (v0.2 — ilk yayına hazır sürüm)
-
-- **Zorluk:** prototip raporunda 9–12 arası "insan için fazla zor olabilir" dendi.
-  Bölüm sayısı 20'ye çıkarıldı ve araya kolay bölümler serpiştirilmek yerine
-  **eğri baştan kuruldu**: her yeni öğe (çevirme, tavan yürüyüşü, zemin dikeni,
-  tavan dikeni, hareketli platform, gezgin diken) önce tek başına ve güvenli bir
-  bölümde tanıtılıyor. Kapı çarpışma kutusu da büyütüldü (tam hücre genişliği,
-  3 hücre boy) — yukarıdan inen oyuncu kapıyı ıskalamıyor.
-- **Madalya süreleri elle değil geometriden:** yol uzunluğu / yürüme hızı + bant
-  başına bir çevirme bedeli. Bölüm değişince süreler kendiliğinden güncelleniyor,
-  20 bölüm elle ayarlanmıyor. **Bu karar v0.4'te değişti:** eşikler artık
-  ölçülmüş bot koşusundan geliyor (`scripts/rota_verisi.gd`, 20 bölümün 20'sinde
-  `"tahmin": false`) — bkz. "4. turda verilen kararlar".
-- **Kristal yeri de otomatik:** ana rotanın dışında ve her tehlike bandından en az
-  8 sütun uzakta — beceriksiz bir kaçamak ölümle bitmesin diye.
-- **Pixel art kodla üretiliyor.** Bu makinede GUI çizim aracı ve Pillow yok;
-  `tools/uret_sprite.py` saf Python'la (zlib + struct, 20 satırlık PNG yazıcı)
-  üretiyor. Tek palet: Endesga 32.
-- **Ses efektleri perde kaydırmayla çeşitlendirildi.** rFXGen v5.0'ın komut satırı
-  ön ayarları deterministik — aynı ön ayar hep aynı dosyayı veriyor. 6 ön ayardan
-  10 ayrı efekt çıkarmak için yeniden örnekleme kullanıldı (`tools/sesler.md`).
-- **Oyun hissi kapatılabilir.** Sarsıntı, parçacık ve çevirme izi tek bir ayarla
-  kapanıyor; rahatsız eden oyuncu mekaniği kaybetmeden kapatabilsin.
-
-## 2. turda verilen kararlar (v0.3 — rakip analizinden)
-
-Kaynak: ayrı bir rakip analizi çalışması, depoda değil (VVVVVV,
-Gravity Guy, Gravity Duck, G-Switch 3, Celeste, Super Meat Boy incelemeleri).
-
-- **Türün en sık şikâyeti "haksız ölüm".** Üç yerden aynı anda saldırıldı: kojot
-  çevirme + giriş tamponu (zamanlama), öldürücü şeylerin isabet kutusunun
-  görselden 3 px küçük olması (uzamsal), oda tabanlı kamera (görünürlük).
-  Basılan platformda böyle bir pay **yok** — orada kutu görselle aynı olmalı,
-  yoksa oyuncu havada duruyormuş gibi görünür.
-- **Yardım modu Celeste'inki gibi kurgulandı**, çünkü şikâyet "zor" değil
-  "bitiremiyorum". Açıkken bölüm yine açılır ve kristal yine sayılır; yalnız
-  süre/madalya/çevirme kaydı tutulmaz. Metin suçlayıcı değil, ayar bir itiraf
-  değil: "oyunu senin hızına uydurur ... istediğin an kapatabilirsin".
-- **"En az çevirme" ikinci hedefi geometriden hesaplanıyor.** Her sütunun zorunlu
-  yüzeyi çıkarılıp yüzey değişimleri sayılıyor. Hareketli platformlar sayılmıyor,
-  gezen dikenler tehlike sayılıyor — ikisi de hedefi yukarı yuvarlar, yani hedef
-  imkânsız olamaz. Ulaşılamayan bir hedef koymaktansa fazla cömert olsun.
-- **Hayalet, ayrı bir "altın koşu" verisi değil, senin en iyi koşun.** Elde
-  kaydedilmiş bir altın koşu yok; madalya süreleri formülden geliyor. Bu yüzden
-  tek hayalet var ve rengi o koşunun madalyası. **Bu karar da v0.4'te değişti:**
-  `scripts/altin_hayalet.gd` içinde 20 bölümün ölçülmüş altın koşusu duruyor ve
-  ikinci bir hayalet olarak koşuyor (ayarlardan kapatılabilir).
-- **İniş göstergesi tuşu basılı tutunca çıkar.** Çevirme tuşa BASINCA olduğu için
-  "önce bak sonra çevir" mümkün değil; basılı tutmak "şimdi nereye iniyorum"
-  sorusunu havadayken canlı yanıtlıyor.
-
-## 3. turda verilen kararlar (v0.3.1 — web düzeltmesi)
-
-- **Simgeler için ayrı bir yedek yazı tipi.** `⟳` ve `●` web yapısında kutu
-  çıkıyordu: Godot'nun gömülü yazı tipinde yoklar, masaüstünde sistem yazı tipi
-  örttüğü için Windows ekran görüntülerinde hiç görünmemişti. Simgeleri metinden
-  atmak yerine 4 KB'lık bir DejaVu alt kümesi (`assets/fonts/simgeler.ttf`)
-  yedek olarak eklendi; sayaç ve madalya satırı olduğu gibi kaldı.
-- **Klavye metinleri dokunmatikte çevriliyor.** "A / D ile yürü" telefonda yalan.
-  Bölüm ipuçları üretilen `bolumler.gd` içinde durduğu için metinler orada
-  değiştirilmedi; `Ayarlar.kontrol_metni()` küçük bir terim tablosundan geçiriyor.
-  Dokunmatik, cihaz bildirmese bile **ilk ekran dokunuşunda** açılır ve dokunma
-  alanları o anda görünür olur.
-- **Geniş telefonlardaki siyah şeritler kaldı** (`stretch/aspect=keep`).
-  `expand` görüş alanını yatayda büyütür; oda tabanlı kamera 640 px'lik odalara
-  kilitli olduğu için 40 sütunluk (= tam bir oda) bölümlerde bölümün dışındaki
-  boşluk görünür, dokunma alanları da 640 px'e göre yerleştiği için sağda ölü
-  şerit kalırdı. Siyah şerit, bölüm dışını göstermekten iyidir.
-
-## 4. turda verilen kararlar (v0.4 — ölçüm turu)
-
-- **Madalya eşikleri formülden ölçüme geçti.** Eski formül (`temel × 1,15 +
-  bant × 0,45`) hiçbir koşuyla karşılaştırılmamıştı ve **ortalama 1,35 kat
-  gevşekti**: 13. bölümde altın 11,1 sn diyordu, bot bölümü 7,28 sn'de
-  bitiriyor. Artık `tools/bot.gd` 20 bölümü gerçek fizikte oynuyor ve eşikler
-  ölçülen ortancadan geliyor (altın ×1,15, gümüş ×1,50, bronz ×2,00).
-- **"En az çevirme" hedefleri ölçümle DOĞRULANDI, değişmedi.** 2. turun
-  şüphesi ("gezen dikenler tehlike sayıldığı için hedef gerçek en iyiden
-  yüksek olabilir") ölçümde çıkmadı: yalnız zorunda kaldığında çeviren bot
-  20 bölümün 20'sinde de geometri hedefinin tam sayısını kullandı. Nedeni
-  ölçülebilir — gezen diken 62 px/sn, oyuncu 125 px/sn; arkadan yetişmek
-  çarpışmak demek, yani gezen diken gerçekten bir çevirmeyi zorunlu kılıyor.
-- **Bu oyunda tepki süresi saniye değil PENCERE kaybettiriyor.** 5 koşunun
-  yayılımı 20 bölümün 13'ünde %0,4'ün altında: çevirme yatay ilerlemeyi
-  durdurmadığı için geç basmak süreyi uzatmıyor. Kaybettiğinde ise koşu
-  tamamen değişiyor (18 ve 19. bölümde birer koşu 6 yerine 10 çevirme ve bir
-  ölümle bitti). Ölçüm bu yüzden ortanca + "en iyinin 1,5 katından kötü koşu
-  sayılmaz" kuralıyla yapılıyor.
-- **Frenin bedeli ölçüldü: çevirme başına ~1,0–1,2 sn.** Tam hızda çevirirsen
-  karşı yüzeye varana kadar ~7 hücre süzülürsün; bantlar 3 hücre arayla
-  kurulduğu için dar pencerelerde hızı kesmek ZORUNLU ve neredeyse dik inersin.
-  Madalya bandının anlamı bu: altın "gerektiği yerde fren, gerekmediği yerde
-  hiç durma", gümüş "her çevirmeden önce dur" koşusu.
-- **İniş göstergesi artık gövdeyle ve zamanla çalışıyor.** İki ayrı hata vardı:
-  tehlike tek bir "ayak" noktasıyla aranıyordu (çevirdikten sonra o nokta baş
-  oluyor, gövdenin geri kalanı dikenin içinden geçerken tahmin "temiz" diyordu),
-  ve hareketli parçalar hiç sayılmıyordu.
-
-## 5. turda verilen kararlar (v0.5 — solak, fırtına, günün bölümü, insan payı)
-
-- **Solak ipucu metni tarafı söylüyor.** Dokunma alanları solak ayarıyla yer
-  değiştiriyordu ama ipucu "Sol alttaki iki alanla yürü" sabitti. Metin artık
-  `{h}`/`{c}` yer tutucularıyla tablodan geçiyor ve `kontrol_metni()` tarafı
-  ayara göre dolduruyor. Alan harfleri (`<` `>` `ÇEVİR`) zaten alanla birlikte
-  taşınıyordu; iki modun ekran görüntüsü `docs/tur4/01-02`.
-- **19 — Fırtına yeniden kuruldu; kök neden bir üreteç kuralı eksikliğiydi.**
-  Gezen dikenin menzili (32–38) tavan dikeniyle (34–39) üst üsteydi: o
-  sütunlarda iki yüzey de öldürüyordu ve tek çözüm tam hızda süzülmekti —
-  oyunun geri kalanının öğrettiği "dar yerde fren" refleksinin tersi. Üreteçteki
-  3 hücrelik pencere kuralı bunu **yakalamıyordu**, çünkü gezen dikenler
-  bant değil. Yeni kural (`arac/uret_bolumler.py` + `_gezgin_kacis_testi`):
-  *gezen dikenin menzilindeki her sütunda karşı yüzey güvenli olmalı.* Kural
-  **18 — Koridor'u da yakaladı** (gezgin 32–38, tavan dikeni 35–40); ikisi de
-  aynı desenle düzeltildi: gezen diken tavanı temiz bir koridora alındı, tavan
-  dikeni onun ardına kaydı. Bot yeni Fırtına'yı 5/5 koşuda ölümsüz bitiriyor
-  (eski düzende 5 koşunun biri 14,85 sn'lik bir kazaydı); süresi 7,33 → 8,23 sn,
-  yani bölüm **daha yavaş ama artık frenle geçiliyor**. Fırtına hissi (gezen
-  diken + platformlu delik + 6 çevirme) korundu.
-- **Günün bölümü ayrı bir mod, ayrı bir yuva.** Tarihten 32 bit karıştırıcıyla
-  bölüm + değiştirici seçiliyor (Knuth çarpımsal karma denendi, ardışık günler
-  bölümleri birer geriye sayıyordu). İki değiştirici: ters başlangıç (tavandan
-  doğarsın; kontrol noktasından dönüş normal) ve kristal zorunlu (kapı kristal
-  alınmadan açılmaz). Kayıt `[gunluk]` bölümünde: yalnız o günün en iyi süresi
-  ve bitiş sayısı, gün değişince sıfırlanır. Ana ilerlemeye (madalya, en iyi,
-  kristal, en az çevirme, hayalet, açılan bölüm) **hiç yazılmıyor** ve
-  `_gunluk_testi` bunu her iki değiştiricide bitişe kadar oynayarak ölçüyor.
-  Hayaletler günlük modda kapalı: normal başlangıcın kaydı, ters başlangıçta
-  yanlış yolu gösterirler. Günlük mod açıkken duraklatmadaki "Bölümü Atla"
-  gizli (ana ilerlemeyi açıyor).
-- **Altın ×1,15 → ×1,35; gümüş ×1,50 → ×1,75; bronz ×2,00 → ×2,40.** Gerekçe
-  ölçüm: aynı bot `insan` modunda (tepki 0,18–0,35 sn; basit görsel tepki
-  süresinin insan bandı) koşturuldu. 20 bölümün 9'unda süre **hiç değişmedi**
-  (tepki penceresi olan yerde yavaşlamak gerekmiyor), ortanca oran 1,02;
-  ama 6, 7 ve 15'te gecikme bir zorunlu fren doğurdu ve süre %26–30 uzadı.
-  ×1,15 ile insan bandındaki bot 3 bölümde altın **alamıyordu** — yani insan
-  için ulaşılmaz altın vardı. ×1,35 ölçülen en kötü oranı (1,297) %4 payla
-  örtüyor. Gümüş bir ölüm (ölüm ≈ 0,18 sn + geri yürüme ≈ +%55 kısa bölümde),
-  bronz iki ölüm demek. Kanca'daki 1,45'ten düşük kaldı çünkü bu oyunda bot
-  insanın yapamadığı bir hile bilmiyor; tek farkı tepki süresi ve onun bedeli
-  ölçüldü.
-- **İnsan bandında 20 — Son Kapı'yı bot 5 koşunun 1'inde bitirdi** (diğerleri
-  90 sn tavanda bekledi, ölüm yok). Bölüm hatası değil, bot sınırı: son delikten
-  (54–57) kapı önündeki 2 hücreye (58–59) inmesi gerekiyor; gecikmeyle kapıyı
-  geçince "kapının ötesine inme" kuralı çevirmeyi yasaklıyor ve bot geri
-  yürümeyi bilmiyor. İnsan geri yürür. Bölüm değiştirilmedi, yol haritasına
-  yazıldı.
-
-## 6. turda verilen kararlar (v0.6 — tavan HUD, seri, hayalet yarışı, müzik grupları, parıltı)
-
-- **Şerit solar, oyuncu yer değiştirmez.** Tavandaki oyuncunun üst HUD
-  şeridinin arkasında kalması için iki seçenek vardı: şeritleri daraltmak ya
-  da oyuncu girince şeridi soldurmak. Daraltmak 640 px'te HUD metnini sığmaz
-  hale getiriyordu (hedef satırı zaten bir kez kısaltılmıştı). Soldurma
-  seçildi: şerit ve üzerindeki yazılar bir `Control` grubunda, grubun
-  `modulate.a` değeri her karede oyuncu/hayalet dikdörtgeniyle kesişime göre
-  0,25'e ya da 1,0'a doğru yürür (`Ayarlar.HUD_SOLUK`, `HUD_SOLMA_SURESI`).
-  Kesişim ekran uzayında hesaplanıyor (`get_canvas_transform()`), yani oda
-  kamerası ikinci odaya atlayınca da doğru.
-- **Seri bir rekor değil, oynama alışkanlığı.** Bu yüzden yardım modunda da
-  sayılıyor (süre kaydı orada tutulmuyor, seri tutuluyor) ve gün değişince
-  sıfırlanmıyor — yalnız bir gün atlanınca kırılıyor. Tarih farkı gün
-  sayısına çevrilerek bulunuyor (`Time.get_unix_time_from_datetime_dict`),
-  ay ve yıl sınırlarında "dün" doğru çıkıyor; test 30 Eylül → 1 Ekim'i ölçüyor.
-- **Paylaşım kopyalama düğmeye bağlı, otomatik değil.** Web'de pano yazımı
-  yalnız kullanıcı hareketinden tetiklenince çalışıyor; bitişte kendiliğinden
-  kopyalamak masaüstünde çalışır, tarayıcıda sessizce başarısız olurdu. Bu
-  yüzden günün bölümü artık bitişte menüye dönmek yerine bir panel açıyor:
-  metin görünür, altında **Paylaşım Metnini Kopyala** ve **Menüye Dön**.
-  Metin simgesiz ("⟳" yerine "çevirme"): panoya giden metin başka
-  uygulamaların yazı tipinde okunacak.
-- **Hayalet yarışında altın hayalet ayara bakmaz.** Değiştiricinin özü rakip
-  olduğu için `altin_hayalet` ayarı kapalı olsa da koşar. Bitiş ölçütü zaman:
-  hayaletin kaydı bitince (ekrandan kaybolduğu kare) kapıya varmış sayılır;
-  o andan sonra kapıya değmek sayılmaz, "HAYALET KAZANDI" gelir ve bölüm
-  **baştan** yüklenir (süre, ölüm ve hayalet birlikte sıfırlanır — kontrol
-  noktasından devam etmek hayaleti yakalanamaz kılardı).
-- **Üç değiştirici eşit dağılıyor.** Aynı 32 bit karıştırıcı, `mod 3`:
-  1 Eylül'den başlayan 90 takvim gününde 27 / 30 / 33. Test bunu gerçek
-  tarihlerle (ay sınırları dahil) ölçüyor.
-- **Müzik gruplara göre; eski tek parça `_eski/audio/` altında.** Üretecin
-  hazır ruh hâlleri kullanıldı (sakin / gergin / hızlı), tohumlar
-  `tools/sesler.md`'de. Menü parçası değişmedi. Parça seçimi `Ses.bolum_parcasi()`
-  ile tek yerde; oyun sahnesi her bölüm başında onu çağırıyor, aynı parçaysa
-  müzik kesilmiyor.
-- **Parıltı tek sayaçla.** Kapı ve kristal `AnimatedSprite2D` değil `hframes=4`
-  `Sprite2D`; `Bolum._process` tek sayaçtan kareyi seçiyor. Kapı artık `_draw`
-  ile değil kendi düğümüyle çiziliyor. HUD/menü/bölüm seç kristal simgesi tek
-  kare (`kristal.png`), bölüm içindeki sayfa ayrı (`kristal_parilti.png`) —
-  üç yerde `AtlasTexture` kurmaktan ucuz.
-- **Bu turun ekran görüntüleri iki eski hatayı ortaya çıkardı.** (1) Müzik
-  döngüsü parçanın beşte birinde başa sarıyordu: içe aktarma parçaları QOA ile
-  sıkıştırıyor, `ses.gd` döngü sonunu `data.size()/2` (16 bit PCM varsayımı)
-  ile kuruyordu — menü müziği 20,9 yerine 4,2 sn'de dönüyordu, test yalnız
-  `loop_end > 0`'a bakıyordu. Artık `get_length() * mix_rate`, test
-  `loop_end == uzunluk`. (2) Parallaks arka plan sağda açık kalıyordu: Godot
-  `ParallaxLayer` aynalaması tek ek kopya çizer, 320 px içerik 640 px ekranı
-  ancak kaydırma tam 320'nin katıyken örtüyor. İkinci odada sağ kenarda 15 px,
-  ilk odada sarsıntının negatif karelerinde sağ yarım ekran gri (temizleme
-  rengi) kalıyordu — "hayalet kazandı" karesi yakaladı. Her katmana ikinci
-  sprite kopyası (640 px) + aynalama 640; `_parallaks_testi` örtüyü ölçüyor.
-
-## 7. turda verilen kararlar (v0.7 — yeni mekanikler, tabela, süre listesi, kol sallanması)
-
-- **Yasak bölge yüzeye bağlı, tam boy değil.** Görev "içindeyken çevrilemeyen
-  bölge" diyordu; iki okuma vardı. Tam boy bölge iki yüzeyi birden bağlar ve
-  "karşı yüzeydeki diken bölgenin altında" desenini (16'daki tavan bölgesi:
-  dikeni tavandan geçerken bölge bitene kadar inemezsin) yasaklardı. Yüzeye
-  bağlı bölge daha zengin ve "bölge boyunca o yüzeyde ölümcül engel olmasın"
-  kuralına birebir oturuyor. Bölgede basılan tuş **yutulur** (tampon silinir):
-  aksi hâlde bölgeden çıkar çıkmaz bekleyen çevirme patlıyor ve oyuncu
-  "ben basmadım" diyordu.
-- **Tek yönlü platformun katı yüzü sabit.** İlk okuma "yerçekimi yönünden
-  katı" idi; ama oyuncu hep yerçekimi yönünde düştüğü için o platform hiç
-  geçilmez, sıradan ince platform olurdu. Sabit yüz (`_` üst, `~` alt) iki
-  yerçekiminde farklı davranıyor: 14'te `~` köprü zeminden çevirince tutuyor
-  (altında delik, üstünde diken — tek yol), 20'de `_` tavandan düşünce tutuyor,
-  zeminden çevirince içinden geçiliyor. 20'nin v0.5'ten beri açık "haksız bitiş"
-  notu (delik 54–57'den kapı önündeki 2 hücreye iniş) bu platformla kapandı:
-  tavandan tam hızda çevirip platforma inip yürüyorsun.
-- **Yeni mekanikler mevcut bölümlere sığdı, bölüm sayısı 20 kaldı.** 9'da diken
-  bandı 2 hücre sağa kaydı (29–33 → 32–33, önünde bölge 29–31); 16 sekiz banttan
-  yediye indi (iki bölge araya girince 3 hücrelik pencereler yetmedi), ölçülen
-  süre 9,30 → 8,25 sn ve en az çevirme 8 → 6; 14'te hareketli platformun yerini
-  `~` köprü aldı ve deliğin üstüne tavan dikeni geldi; 20'de son hareketli
-  platform `_`'ya döndü. Botun 20/20 bölümü 5/5 ölümsüz bitirmesi ölçüt.
-- **Üreteç kuralları önce, sonra bölüm.** Bölge: kendi yüzeyinde engel yok,
-  bağlayıcıysa (ardında kendi yüzeyi ölümcül) önünde 3 hücre pencere, içinde
-  karşı yüzey ölümcül olamaz. Platform: ilk 3 sütununda yaklaşma yüzeyi temiz,
-  bitişinde taban yüzeyi 6 hücre temiz ya da karşı yüzeye çevrilebilir; köprülediği
-  sütunlarda iki yüzey birden ölümcül olabilir (başka yerde olamaz). Bot da
-  bölge kuralını koşudan önce bir daha ölçüyor.
-- **Tabela sayacı durdurmuyor.** Kart bilgidir, mola değil; hızlı oyuncu ilk tuşla
-  kapatıyor. Ölümde açılmaz (yeniden doğuş bölüm başı değil).
-- **Süre listesi ızgaranın yanına değil yerine.** 640×360'ta ikisi sığmıyor; tek
-  düğme iki görünümü değiştiriyor, 20 satır iki sütun × 10.
-- **Test paketi kayıt dosyasını yedekliyor.** Yarıda kalan bir koşu yardım modu
-  ve solak ayarını diske yazdı; 27 test "açıklanamaz" kaldı. Testler artık ekran
-  aracı gibi başta yedekleyip çıkışta geri koyuyor (CLAUDE.md tuzak 22).
-
 ## Durum
 
-**v0.7.2 — MIT lisans dosyası, her push'ta CI, 21 belge düzeltmesi.**
-v0.7'nin üstüne yalnız depo işleri girdi; oynanış aynı. `main`'e her push ve her
-PR'da **841 doğrulama** koşuyor (Godot 4.7.2, Linux, Git LFS); varsayılan dal
-`master` → `main` oldu; `*.gif` Git LFS'e alındı. En önemli belge düzeltmesi
-yanlış bir "bilinen sınır"ın kaldırılması oldu: README bölüm başı ipucu metninin
-HUD ile çakıştığını söylüyordu — sahnede metin y 96–114, HUD şeritleri y 0–39;
-ilk commit'ten beri çakışma yok.
+**Son sürüm: v0.7.2** (22 Eylül 2026) — v0.7'nin oynanışı + MIT lisans, her
+push'ta CI, belge düzeltmeleri. v0.7 çevirme yasağı bölgesi, tek yönlü
+platform, bölüm başı tabelası, süre listesi ve kol sallanmasını getirdi.
 
-Yeniden dışa aktarımda web paketi bayt bayt aynı çıktı (827.904 bayt, aynı
-SHA256): yayın paketi depodaki kaynakla birebir aynı. Güncel sürümün notları
-[Releases](https://github.com/Furkiozknn/yercekimi-cevir/releases) sayfasında.
-
-**v0.7 — çevirme yasağı bölgesi, tek yönlü platform, tabela, süre listesi, kol
-sallanması.** v0.6'nın üstüne: iki yeni mekanik (9, 14, 16 ve 20. bölümlerde),
-bölüm başı kartı, Bölüm Seç'te iki sütunlu süre listesi ve menüde madalya
-sayısı, yürüyüşte sallanan kollar. Yükleme yapılmadı. Sonraki adımlar:
-`YOL-HARITASI.md`.
+Sürüm sürüm ne değişti ve **neden öyle karar verildi** (zorluk eğrisi, haksız
+ölüm, madalya eşiklerinin ölçümle belirlenmesi, solak düzen, günün bölümü…):
+[CHANGELOG.md](CHANGELOG.md). Yayımlanmış notlar
+[Releases](https://github.com/Furkiozknn/yercekimi-cevir/releases)'ta,
+sonraki adımlar [YOL-HARITASI.md](YOL-HARITASI.md)'de.
 
 İlerleme ve ayarlar `user://kayit.cfg` dosyasında (Windows'ta
 `%APPDATA%\Godot\app_userdata\Yerçekimi Çevir\kayit.cfg`).
-
 
 ## Bilinen sınırlar
 
 Hepsi ölçüldü veya yapılandırmadan doğrulandı — tahmin yok.
 
-- **Yalnızca Windows ve Web.** `export_presets.cfg` iki hedef tanımlıyor:
-  `Windows Masaustu` ve `Web (HTML5)` — adlar `export_presets.cfg`'de aksansız,
-  `--export-release` ile birebir böyle yazılmalı. Linux, macOS ve Android dışarı
-  aktarımı yok.
+- **Yalnızca Windows ve Web paketi.** Linux, macOS ve Android dışa aktarımı
+  yok (bkz. [Platform ve performans](#platform-ve-performans)).
+- **Canlı demo henüz yok.** Pages yayını ve Releases'a paket ekleme depo
+  sahibinin elle yapacağı işler (bkz. [Nasıl oynarım?](#nasıl-oynarım)).
 - **Arayüz yalnızca Türkçe.** `project.godot` içinde çeviri/locale girdisi
   bulunmuyor; metinler sahnelere ve betiklere doğrudan gömülü
   (`scenes/*.tscn` + `scripts/*.gd`), çeviri katmanı yok.
-- **Web yapısı tek iş parçacıklı** (`thread_support=false`). itch.io'ya
-  yüklerken **SharedArrayBuffer kutusu işaretlenmemeli**.
+- **itch.io'ya yüklerken SharedArrayBuffer kutusu işaretlenmemeli** — web
+  yapısı tek iş parçacıklı (`thread_support=false`).
 - **Bölüm başı ipucu metni bölümün üzerine biniyor.** Ekranın ortasında,
   üstten 96 px'te duruyor (`scenes/oyun.tscn` → `Ipucu`); HUD şeritlerinin
   (y 0–39) altında kalıyor ama haritanın 5-6. satırındaki karoların üzerine
@@ -491,6 +339,24 @@ godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
 `main`'e her push'ta ve her pull request'te **aynı komut** GitHub Actions'ta
 koşuyor (Godot 4.7.2, Linux
 headless, Git LFS çekilerek). Son ölçüm: **841 doğrulama, 0 hata**.
+
+**Çıkış kodu tek başına yetmiyor.** Bir test fonksiyonundaki çalışma zamanı
+hatası (null erişimi, eksik metot) yalnızca o fonksiyonu keser: motor
+`SCRIPT ERROR` yazar, kalan doğrulamalar sayılmaz ve takım yine
+`0 hata` / `TESTLER GECTI` ile 0 döner (gerçek motorla denendi: 831
+doğrulama, çıkış 0). CI bu yüzden günlüğü `tests/kapi.sh`'a veriyor:
+`N dogrulama, 0 hata` ve `TESTLER GECTI` satırları olmalı, N tabanın
+(`ci.yml` → `TEST_TABANI`, şu an 841) altına düşmemeli, günlükte
+`SCRIPT ERROR` / `Parse Error` olmamalı. Bot denetimi de aynı kapıdan
+geçiyor (`--bot`, `denetim temiz: 20 bolumun ...` satırı, `BOLUM_TABANI`).
+Kapının kendisi `tests/kapi_sinama.sh` ile örnek günlüklerde sınanıyor
+(Godot'suz: `bash tests/kapi_sinama.sh`). **Test ekleyince `TEST_TABANI`'nı
+da yükselt**; düşürmek, bir bölümün sessizce kaybolduğunu kabul etmektir.
+
+```bash
+godot --headless --path . res://tests/testler.tscn 2>&1 | tee test.log
+bash tests/kapi.sh test.log 841                       # CI'daki kapının aynısı
+```
 
 **Bir de bot koşuyor.** Madalya eşikleri `scripts/rota_verisi.gd` içinde duruyor
 ve 841 doğrulamanın ilgili kısmı onları o dosyaya karşı sınıyor — yani dosyayı
@@ -523,7 +389,7 @@ yani testler yeşilken de orada durabilir.
 CI'da ayrı bir iş bunu arıyor: aynı hesaptaki
 [godot-refcheck](https://github.com/Furkiozknn/godot-refcheck), motoru
 indirmeden projeyi tarıyor ve bulguları SARIF olarak kod taramaya yüklüyor.
-Şu an temiz: **252 dosya, 75 referans, sıfır bulgu.**
+Şu an temiz: **253 dosya, 75 referans, sıfır bulgu** (CHANGELOG.md eklendikten sonra; dosya sayısı depoyla birlikte değişir, bulgu sayısının sıfır kalması kapı).
 
 ## Bu ekosistemden başka projeler
 
