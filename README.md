@@ -340,6 +340,24 @@ godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
 koşuyor (Godot 4.7.2, Linux
 headless, Git LFS çekilerek). Son ölçüm: **841 doğrulama, 0 hata**.
 
+**Çıkış kodu tek başına yetmiyor.** Bir test fonksiyonundaki çalışma zamanı
+hatası (null erişimi, eksik metot) yalnızca o fonksiyonu keser: motor
+`SCRIPT ERROR` yazar, kalan doğrulamalar sayılmaz ve takım yine
+`0 hata` / `TESTLER GECTI` ile 0 döner (gerçek motorla denendi: 831
+doğrulama, çıkış 0). CI bu yüzden günlüğü `tests/kapi.sh`'a veriyor:
+`N dogrulama, 0 hata` ve `TESTLER GECTI` satırları olmalı, N tabanın
+(`ci.yml` → `TEST_TABANI`, şu an 841) altına düşmemeli, günlükte
+`SCRIPT ERROR` / `Parse Error` olmamalı. Bot denetimi de aynı kapıdan
+geçiyor (`--bot`, `denetim temiz: 20 bolumun ...` satırı, `BOLUM_TABANI`).
+Kapının kendisi `tests/kapi_sinama.sh` ile örnek günlüklerde sınanıyor
+(Godot'suz: `bash tests/kapi_sinama.sh`). **Test ekleyince `TEST_TABANI`'nı
+da yükselt**; düşürmek, bir bölümün sessizce kaybolduğunu kabul etmektir.
+
+```bash
+godot --headless --path . res://tests/testler.tscn 2>&1 | tee test.log
+bash tests/kapi.sh test.log 841                       # CI'daki kapının aynısı
+```
+
 **Bir de bot koşuyor.** Madalya eşikleri `scripts/rota_verisi.gd` içinde duruyor
 ve 841 doğrulamanın ilgili kısmı onları o dosyaya karşı sınıyor — yani dosyayı
 kendisine karşı. Bir bölümün haritası değişirse dosya eski kalır, testler yine

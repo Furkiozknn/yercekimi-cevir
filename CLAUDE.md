@@ -51,7 +51,7 @@ _eski/       silinmeyen eskiler (.gdignore): audio/muzik_oyun.wav (v0.5 tek oyun
 tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · sesler.md
              bot.gd (madalya sürelerini ölçen bot) · gif_yap.py (bağımlılıksız GIF)
 arac/        uret_bolumler.py
-tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı)
+tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı) · kapi.sh (CI günlük kapısı) + kapi_sinama.sh
 yayin/       itch.io paketi (yüklenmemiş) · yayin/tanitim/ 3 sn tanıtım GIF'i + kareler
 docs/        README görselleri · varliklar.png (sprite denetim levhası)
 build/       dışa aktarma çıktısı — `.gdignore` var, SİLME
@@ -149,6 +149,9 @@ Sprite üretiminden sonra **`--import` çalıştır**, yoksa Godot eski PNG'yi k
 ```bash
 godot --headless --path . --import                      # 0 hata vermeli
 godot --headless --path . res://tests/testler.tscn      # çıkış kodu 0 = geçti
+# CI aynı komutun günlüğünü tests/kapi.sh'a verir (taban: ci.yml → TEST_TABANI, şu an 841;
+# SCRIPT ERROR olursa kırmızı). Test ekleyince TEST_TABANI'nı yükselt; kapının sınaması:
+bash tests/kapi_sinama.sh                               # Godot gerektirmez
 godot --path . res://tests/ekran.tscn -- -2 <klasör>    # yayın paketi görselleri
 godot --path . res://tests/ekran.tscn -- -1 <klasör>    # menü / bölüm seç / ayarlar
 godot --path . res://tests/ekran.tscn -- -3 <klasör>    # tur 2 özellik denetim kareleri
