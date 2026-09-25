@@ -55,8 +55,8 @@ tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı)
 yayin/       itch.io paketi (yüklenmemiş) · yayin/tanitim/ 3 sn tanıtım GIF'i + kareler
 docs/        README görselleri · varliklar.png (sprite denetim levhası)
 build/       dışa aktarma çıktısı — `.gdignore` var, SİLME
-.github/     workflows/ci.yml — `main` push ve PR'larında testler (Godot 4.7.2, Linux)
-kök          LICENSE (MIT) · YOL-HARITASI.md (sonraki adımlar)
+.github/     workflows/ci.yml — `main` push ve PR'larında testler (Godot 4.7.2, Linux); yapi.yml — elle tetiklenen Windows+Web paketi (+ isteğe bağlı Pages)
+kök          LICENSE (MIT) · YOL-HARITASI.md (sonraki adımlar) · CHANGELOG.md (sürüm notları + kararların gerekçesi)
 ```
 
 **Madalya eşikleri ve "en az çevirme" hedefi tek yerde:** üretilen
