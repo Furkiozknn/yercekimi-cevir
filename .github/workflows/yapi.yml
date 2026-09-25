@@ -41,7 +41,7 @@ jobs:
     name: Windows + Web disa aktar
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Varliklar Git LFS'te; cekilmezse sahneler "bozuk kaynak" duser.
           lfs: true
@@ -86,13 +86,13 @@ jobs:
           ls -l build/windows
           du -sh build/web build/windows
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: yercekimi-cevir-web
           path: build/web
           if-no-files-found: error
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: yercekimi-cevir-windows
           path: build/windows
@@ -111,7 +111,7 @@ jobs:
       name: github-pages
       url: ${{ steps.dagit.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: yercekimi-cevir-web
           path: web
@@ -122,13 +122,13 @@ jobs:
       # accessible by integration" ile duser (ayni is akisi tek-tus-kosu'da
       # 25 Eylul 2026'da tam burada dustu). Bir kez acildiktan sonra bu adim
       # yalnizca dogrular.
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         with:
           enablement: true
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: web
 
       - id: dagit
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

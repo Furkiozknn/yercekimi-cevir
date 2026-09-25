@@ -33,7 +33,7 @@ jobs:
   testler:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Varliklar Git LFS'te (.gitattributes'ta 4 kural). LFS
           # cekilmezse checkout yalnizca isaretci dosyalari getirir ve
@@ -91,13 +91,13 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Kirik bir kaynak referansi motoru her zaman durdurmuyor: eksik bir
       # .tscn ya da silinmis bir .png, sahne o kod yolu calisana kadar
       # sessiz kalabiliyor -- yani testler yesilken de var olabiliyor.
       # Bu kontrol motoru indirmeden, ayni hesaptaki godot-refcheck ile
-      # yapiliyor; su an temiz (252 dosya, 75 referans, sifir
+      # yapiliyor; su an temiz (253 dosya, 75 referans, sifir
       # bulgu) ve bu commit'ten sonra oyle kalmasi garanti.
       - name: godot-refcheck
         uses: Furkiozknn/godot-refcheck@b083e3d2998ca0d5101289b106c76794c6de866d  # v0.2.0 + the clean-project fix
@@ -108,7 +108,7 @@ jobs:
 
       - name: SARIF raporunu kod taramaya yukle
         if: always() && hashFiles('refcheck.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: refcheck.sarif
           category: godot-refcheck
