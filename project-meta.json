@@ -47,7 +47,9 @@
       "docs/02-bolum-sec.png",
       "docs/03-ayarlar.png"
     ],
-    "gifs": [],
+    "gifs": [
+      "yayin/tanitim/tanitim.gif"
+    ],
     "videos": []
   },
   "tests": {
@@ -64,7 +66,7 @@
   },
   "docs": {
     "readme": "README.md",
-    "changelog": null,
+    "changelog": "CHANGELOG.md",
     "version_history": null,
     "roadmap": "YOL-HARITASI.md",
     "security": null,
