@@ -11,3 +11,6 @@
 # Yardimci betikler dil istatistiginden cikarilir: bu bir Godot oyunu, "Python" degil.
 arac/** linguist-detectable=false
 docs/** linguist-documentation
+
+# README tanitim videosu (docs/ .gdignore altinda, oyun varligi degil): normal git'te kalir.
+docs/reel/*.gif -filter -diff -merge -text
