@@ -96,7 +96,8 @@ CLAUDE.md tuzak 21).
   hâlâ `tools/uret_sprite.py` ile kodla üretiliyor, artık düz renk ve 4×4 alt
   örneklemeli kenar. Eski karo/diken/tek-yönlü dosyaları
   `_eski/sprites-v0.9/` altında.
-- **Sahne geçişi**: `scripts/gecis.gd` (autoload `Gecis`), `Gecis.git(yol)`.
+- **Sahne geçişi**: `scripts/gecis.gd` (autoload `Gecis`) + `assets/gecis.gdshader`; sekiz
+  geçiş ailesi, tema paleti, hareket azaltmada anında (bkz. bölüm 7).
 - **Menü animasyonu**: `scripts/ui.gd` (`UI.sirayla_gir`, `UI.dugmeleri_bagla`).
 - **TR/EN**: `scripts/ceviri.gd`. Kaynak dil Türkçe: `tr("Türkçe metin")` ya da
   sahnedeki metnin kendisi anahtar; İngilizce tablo `Ceviri.EN`. Varsayılan dil
@@ -165,3 +166,92 @@ vektör çizim); en kötü %1'lik kare bile 16,7 ms bütçenin yarısının alt�
   kaynağı doğrulanmadı.
 - Ödül rengi (`#ffc21a`) hem kapı hem kristal için kullanılıyor; ikisi şekilden
   ayrılıyor (uzun sarı çubuk / küçük elmas), renk tek başına yetmez.
+
+## 7. Günlük video imkânlarından alınanlar
+
+Ek istek (29 Eylül 2026): günlük videolarda kullanılan renk ve geçiş imkânları
+oyuna da girdi. **Oyunun kendi kimliği ağır bastı:** tanıtım videosundaki düz
+renk dünya (üç tema, tehlike `#e94f36`, oyuncu `#4585bd`) **değişmedi**; akış
+paletleri ve geçişler yalnız geçişlerde, sayaç chip'inde ve rekor damgasında.
+
+**Kaynaklar:** `sosyal/uret/tema.mjs` → `TEMALAR` (palet: `akis.vurgular`,
+`yazilar`; geçiş aileleri: `gecis`), `sosyal/uret/sahne.js` → `GECIS` (her ailenin
+hareketi), `tema.mjs` → `ESIK` (okunurluk kuralı). Canlı örnek olarak
+`videolar/*/_yapim/kontak-*.jpg` bakıldı.
+
+| Oyun teması | Video teması (palet + geçiş havuzu) | Vurgu renkleri (sırayla döner) | Geçiş havuzu |
+|---|---|---|---|
+| Gece (bölüm 8–14) | **klasik** (siyah/krem/sarı) | `#ffc21a #19d3e6 #ff7a1a #ff4d6d #f1ece2` | glitch, flaş, itme, bloklar (klasik `gergin`/`enerjik`) |
+| Pembe kâğıt (15–20) | **limon** (doygun limon/eflatun akış) | `#c2006b #3a1cff #0b1f6b #0b5d1e` | bloklar, zoom, perde, iris (limon + klasik zoom + neon iris) |
+| Kâğıt (1–7) | **kâğıt** (risograf mürekkepleri) | `#c1121f #1f45c9 #13632f #6a1b9a #9a3a00` | perde, itme, kararma, zoom (kâğıt `perde/yatay/kararma` + klasik `sakin` zoom) |
+
+Neden bu üçü: oyunun üç teması zaten bir koyu, bir pembe-açık, bir krem kâğıt;
+klasik koyu zeminle, limon pembe kâğıtla, kâğıt teması krem kâğıtla aynı ruhu
+taşıyor. Diğer altı tema (neon, arcade, fosfor, harita, poster, uzay) **alınmadı**:
+neon/arcade/fosfor koyu-doygun zeminleri düz renk dünyayı boğardı. Yalnız menü
+açılışı ve oyun sonu için neon/uzay ailesinin **iris**'i alındı.
+
+**Geçiş aileleri** (hepsi tek `canvas_item` shader'ı, GL Compatibility'de çalışır;
+`p` 0→1 örtme, 1→0 açma; ekran dokusu yalnız glitch ve zoom'da okunur):
+
+| Aile | Video karşılığı (`sahne.js`) | Godot'ta |
+|---|---|---|
+| iris | `iris` (ortadan büyüyen daire) | daire maskesi, kenarında ikinci renk halka |
+| glitch | `glitch` (x kayması + skew) | 28 yatay dilim 30 Hz'de kayar, RGB ayrışır, dilimler palet rengine döner |
+| bloklar | `bloklar` (renkli şeritler) | 12×7 kare ızgara, kareler rastgele gecikmeyle ortadan büyür |
+| itme | `itme`/`yatay` | eğik bant soldan girer, önünde ikinci renk şerit |
+| perde | `perde` (eğik perde + şerit) | eğik kenar, önünde şerit |
+| flaş | `flas` | tek vuruş, açık renk |
+| kararma | `kararma` | koyu renge alfa |
+| zoom | `zoom` | ekran dokusu büyür ve renge erir |
+
+`kes` (video: geçişsiz kesme) ayrı aile değil; hareket azaltma zaten bunu yapıyor.
+Ortme 260 ms (ease-out cubic), açma 200 ms (ease-in cubic): stil rehberi süreleri.
+Tür seçimi videodaki `gecisHavuz` gibi: havuzu sırayla gezer, art arda tekrar
+yok (`Gecis.sec`); renk çifti (`renk`, `renk2`) paletten iki kaydırmalı alınır.
+
+**Kullanım yerleri**
+
+| Yer | Ne oluyor |
+|---|---|
+| Menü açılışı | İlk açılışta iris ortadan açılır (`Gecis.acilis`); geri dönüşlerde sahne geçişinin kendi açması yeter |
+| Sahne geçişleri (menü/ayar/bölüm seç/oyun) | Menü ailesi (gece paleti) ya da çıkılan bölümün teması; havuzdan sıradaki aile |
+| Bölüm geçişi | `Gecis.kapat` → `bolum_yukle` → `Gecis.ac` (await yok: oyun açılırken başlar). Eski `Karartma` bandı ve `_karart` silindi, tek uygulama |
+| Bölüm sonu | Tek flaş vuruşu (en çok %50 alfa) + kart girişi; **yeni rekorda** kartın köşesine palet renginde dönen "YENİ REKOR" damgası (90 ms adım, sonra ilk renkte durur, 1,5 ölçekten oturur: rehberdeki damga istisnası) |
+| Oyun sonu | Bitiş kartı iris ile ortadan açılır |
+| Süre/skor sayacı | Her çevirmede ve kristalde sağ chip bir palet rengine **adımla** döner (ara renk yok), 0,30 sn sonra blok rengine döner; en çok ~3 renk değişimi/sn |
+| Duraklatma | Perde ailesi kart üstünden açılır (oyun durmuşken de çalışır: `Gecis` `PROCESS_MODE_ALWAYS`) |
+| Dil değişimi | Menü ve Ayarlar'da glitch örtüsünün altında metin/sahne yenilenir (`Gecis.ara`) |
+
+**Okunurluk.** Yazı rengi vurgunun üzerinde kodla seçilir (`Tema.yazi_rengi`:
+açık ya da koyu, hangisi daha yüksek kontrastlıysa). Ara renk üretilmez (mürekkep
+ile krem arasındaki orta tonlarda kontrast 4,06'ya düşer), bu yüzden palet adım
+adım döner. Ölçülen en düşük çift **5,89:1**; eşik **4,5:1** (WCAG AA metin;
+videodaki 5:1'in biraz altında, çünkü burada doku/vinyet payı yok). Test tüm paletleri doğruluyor.
+
+**Hareket azaltma.** Ayarlar'daki "oyun hissi" kapalıysa **ya da** tarayıcıda
+`prefers-reduced-motion: reduce` varsa (`JavaScriptBridge`, yalnız web) geçişler
+**anında**: shader hiç açılmaz, bekleme yok, sayaç vurgusu ve damga animasyonu
+kapalı. Yüksek kontrast açıkken sayaç vurgusu da kapalı. Kayıtlı ayara
+dokunulmaz.
+
+**Performans (Intel UHD, `tools/fps.gd`, vsync kapalı, 10. bölüm, 600 kare):**
+
+| | Önce (geçişsiz, renk bandı) | Sonra |
+|---|---|---|
+| Oynanış karesi | ort. 2,35 / 2,27 ms, %99 5,23 / 5,06 ms (iki koşu) | ort. 2,56 / 2,33 ms, %99 5,87 / 5,87 ms (iki koşu) |
+| Geçiş süren kareler (`fps.gd ... gecis`, 16 geçiş, 8 aile x 3 tema) | yok (bant ~ aynı) | ort. 3,63 ms (≈276 FPS), %99 7,92 ms, **tek en kötü kare 135 ms** |
+| `index.pck` | 1.077.440 bayt | 1.085.440 bayt (+8.000: shader) |
+
+Oynanış karesi fark yok (koşular arası ±%10). Geçiş karelerinde bile 16,7 ms
+bütçenin çok altı; **tek istisna ilk kullanımdaki shader derlemesi** (135 ms,
+yalnız ilk geçiş karesi): menü açılışı bu maliyeti oyuna girmeden, örtünün
+altında ödüyor. Bölüm yükleme süresi değişmedi: bölüm geçişi artık `await
+Gecis.kapat` (260 ms) ve `Gecis.ac`; önceki `create_timer(0.26)` ile aynı sürede,
+hareket azaltmada bekleme sıfır. Ölçüm ortamında başka Godot süreçleri de
+çalışıyordu (sayılar bu yüzden ±).
+
+**Test.** `_gecis_testi`: palet okunurluğu, havuz/tekrar, shader uniform'ları,
+her ailenin örtüp açması, süre, `ara`, hareket azaltma, sayaç vurgusu, duraklat
+perdesi, rekor damgası (963 doğrulama, 48 yeni). Kanıt kareleri:
+`kanit/yercekimi-cevir/sonra/19-…35-*.png` (`tests/ekran.tscn -- -10`).

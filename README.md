@@ -6,7 +6,7 @@
 <p align="center"><sub>Oyunun kendisinden ham kayıt (arayüz gizli, 14 sn, `tools/bot.gd ... kayit`): insan tepki bandındaki bot, 6. ve 7. odalar (bilinçli bir yanlış adımla ölüp yeniden doğuyor).</sub></p>
 <h3 align="center"><a href="https://furkiozknn.github.io/yercekimi-cevir/">Tarayıcıda oyna → furkiozknn.github.io/yercekimi-cevir</a></h3>
 
-*No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish and English UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 915 headless checks.*
+*No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish and English UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 963 headless checks.*
 
 [![CI](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml/badge.svg)](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml)
 
@@ -239,7 +239,7 @@ Yeni bir yapıyı ya da bir değişikliği elle doğrulamanın en kısa yolu:
    yerler ölüm haritasında X ile; menüye dönünce Bölüm Seç'te 2. bölüm açık.
 5. `Esc` oyunu duraklatıyor, tekrar basınca devam ediyor.
 
-Otomatik karşılığı aşağıda [Test ve CI](#test-ve-ci)'de: 915 doğrulama +
+Otomatik karşılığı aşağıda [Test ve CI](#test-ve-ci)'de: 963 doğrulama +
 20 bölümü gerçekten oynayan bot.
 
 ### Geliştirici komutları
@@ -312,11 +312,11 @@ itch.io paketi hazır ama yüklenmedi: `yayin/`.
 | `scripts/bolum.gd` | ASCII haritayı çalışma anında çarpışma gövdesi + düz renk vektör çizime çevirir. |
 | `scripts/tema.gd` | Video dünyasının renkleri: üç tema, tehlike/oyuncu/ödül renkleri, bölüm → tema. |
 | `scripts/ceviri.gd` | Türkçe (kaynak) → İngilizce çeviri tablosu; `tr()` anahtarı Türkçe metnin kendisi. |
-| `scripts/gecis.gd`, `scripts/ui.gd` | Sahne geçişi renk bandı (autoload `Gecis`); menü girişi ve düğme basışı hareketleri. |
+| `scripts/gecis.gd`, `assets/gecis.gdshader`, `scripts/ui.gd` | Sahne ve bölüm geçişleri: sekiz shader ailesi + tema paleti (autoload `Gecis`, hareket azaltmada anında); menü girişi ve düğme basışı hareketleri. |
 | `scripts/oyuncu.gd` | Çevirme mekaniği (tampon + kojot), yerçekimi oku, ölüm, esneme-sıkışma. |
 | `scripts/oyun.gd` | Bölüm döngüsü, oda kamerası, hayalet, ölüm haritası, iniş göstergesi, yardım modu. |
 | `tools/` | Varlık üreticileri (sprite, ses, tema) + `sesler.md`; `fps.gd`, `his_olc.gd` ölçüm araçları. |
-| `tests/` | Headless otomatik test (915 doğrulama) + ekran görüntüsü aracı. Eşiklerin hâlâ doğru olup olmadığını `tools/bot.gd --  ... denetle` soruyor. |
+| `tests/` | Headless otomatik test (963 doğrulama) + ekran görüntüsü aracı. Eşiklerin hâlâ doğru olup olmadığını `tools/bot.gd --  ... denetle` soruyor. |
 
 Bölüm haritaları TileMapLayer yerine ASCII + kod üretimi: 20 bölüm tek dosyada
 düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
@@ -367,7 +367,7 @@ godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
 
 `main`'e her push'ta ve her pull request'te **aynı komut** GitHub Actions'ta
 koşuyor (Godot 4.7.2, Linux
-headless, Git LFS çekilerek). Son yerel ölçüm: **915 doğrulama, 0 hata**.
+headless, Git LFS çekilerek). Son yerel ölçüm: **963 doğrulama, 0 hata**.
 
 **Çıkış kodu tek başına yetmiyor.** Bir test fonksiyonundaki çalışma zamanı
 hatası (null erişimi, eksik metot) yalnızca o fonksiyonu keser: motor
@@ -375,7 +375,7 @@ hatası (null erişimi, eksik metot) yalnızca o fonksiyonu keser: motor
 `0 hata` / `TESTLER GECTI` ile 0 döner (gerçek motorla denendi: 831
 doğrulama, çıkış 0). CI bu yüzden günlüğü `tests/kapi.sh`'a veriyor:
 `N dogrulama, 0 hata` ve `TESTLER GECTI` satırları olmalı, N tabanın
-(`ci.yml` → `TEST_TABANI`, şu an 915) altına düşmemeli, günlükte
+(`ci.yml` → `TEST_TABANI`, şu an 963) altına düşmemeli, günlükte
 `SCRIPT ERROR` / `Parse Error` olmamalı. Bot denetimi de aynı kapıdan
 geçiyor (`--bot`, `denetim temiz: 20 bolumun ...` satırı, `BOLUM_TABANI`).
 Kapının kendisi `tests/kapi_sinama.sh` ile örnek günlüklerde sınanıyor
@@ -384,7 +384,7 @@ da yükselt**; düşürmek, bir bölümün sessizce kaybolduğunu kabul etmektir
 
 ```bash
 godot --headless --path . res://tests/testler.tscn 2>&1 | tee test.log
-bash tests/kapi.sh test.log 915                       # CI'daki kapının aynısı
+bash tests/kapi.sh test.log 963                       # CI'daki kapının aynısı
 ```
 
 **Bir de bot koşuyor.** Madalya eşikleri `scripts/rota_verisi.gd` içinde duruyor

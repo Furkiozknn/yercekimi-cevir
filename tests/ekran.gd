@@ -16,6 +16,8 @@ extends Node
 ##                   paylasim paneli, menude seri, kapi/kristal parilti kareleri
 ##     <mod> = -9  : v1.0 arayuz yenilemesi: menu/bolum sec/ayarlar (TR+EN), uc tema,
 ##                   cevirme, duraklat, bolum sonu karti, olum haritasi, bitis karti
+##     <mod> = -10 : gunluk video imkanlari: sekiz gecis ailesi ortu ortasinda (uc tema),
+##                   sayac renk akisi, yeni rekor damgasi, duraklat perdesi, dil glitch'i
 ##     <mod> = -8  : tur 6 (v0.7): cevirme yasagi bolgesi (rozet, reddedilen
 ##                   cevirme, tavan/zemin bolgeleri), tek yonlu platformlar,
 ##                   bolum basi tabelasi, sure listesi, menude madalya, kol kareleri
@@ -68,6 +70,8 @@ func _ready() -> void:
 		await _tur6_cek()
 	elif mod == -9:
 		await _v1_cek()
+	elif mod == -10:
+		await _gecis_cek()
 	else:
 		await _oynanis_cek(mod)
 
@@ -906,3 +910,89 @@ func _v1_cek() -> void:
 	o.position = kapi.get_child(0).global_position
 	await _bekle(2.2)
 	await _cek("bitis-tr")
+
+
+## Gecis karesi: Gecis'i elle kurar ve ortuyu p'de dondurur (kare dosyasi icin).
+func _gecis_dondur(tur: StringName, tema: int, p: float) -> void:
+	Gecis._kur(tur, tema)
+	Gecis._kaplama.visible = true
+	Gecis._p_yaz(p)
+	await _bekle(0.1)
+	Gecis._p_yaz(p)
+
+
+func _gecis_kapat() -> void:
+	Gecis._kaplama.visible = false
+
+
+## mod -10: gunluk video imkanlari kanit kareleri. Numara 19'dan devam eder.
+func _gecis_cek() -> void:
+	_sira = 18
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	# Sekiz gecis ailesi, yarim ortu; her ailenin kendi temasi/paletiyle gercek oyun uzerinde.
+	var plan := [[&"perde", 0], [&"itme", 0], [&"kararma", 0], [&"zoom", 0],
+		[&"glitch", 8], [&"flas", 8], [&"bloklar", 15], [&"iris", 15]]
+	var acik := -1
+	for pl in plan:
+		var bolum: int = pl[1]
+		if bolum != acik:
+			if _oyun != null:
+				_oyun.queue_free()
+				await _bekle(0.2)
+			await _oyunu_ac(bolum)
+			await _bekle(0.4)
+			acik = bolum
+		var tema: int = Tema.bolum_temasi(bolum)
+		await _gecis_dondur(pl[0], tema, 0.55)
+		await _cek("gecis-%s" % pl[0])
+		_gecis_kapat()
+	# Ayni ailenin tam ortulu hali: bloklar + iris (palet gorunsun)
+	await _gecis_dondur(&"bloklar", 1, 0.85)
+	await _cek("gecis-bloklar-pembe-yogun")
+	_gecis_kapat()
+	# Sayac chip'i renk akisi (uc tema, uc renk)
+	for k in 3:
+		_oyun._sayac_vurgula()
+		await _bekle(0.05)
+		await _cek("sayac-akis-%d" % (k + 1), Rect2i(640, 0, 640, 60))
+		await _bekle(0.4)
+	# Duraklat: perde acilirken (yarim)
+	var olay := InputEventAction.new()
+	olay.action = &"duraklat"
+	olay.pressed = true
+	_oyun._unhandled_input(olay)
+	await _bekle(0.05)
+	await _gecis_dondur(&"perde", Tema.bolum_temasi(15), 0.5)
+	await _cek("duraklat-perde")
+	_gecis_kapat()
+	_oyun._devam()
+	_oyun.queue_free()
+	await _bekle(0.2)
+	# Yeni rekor damgasi + flas vurusu (Ayarlar sifir: ilk bitis = rekor)
+	Ayarlar.sifirla()
+	_varsayilan_gorunum()
+	await _oyunu_ac(0)
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	var kapi: Area2D = _oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	await _bekle(0.05)
+	await _cek("bolum-sonu-flas")
+	await _bekle(0.8)                     # 1 sn'lik bekleme bitmeden (sonraki bolum ortusu baslamadan)
+	await _cek("yeni-rekor-damga")
+	_oyun.queue_free()
+	await _bekle(0.2)
+	# Dil degisimi: menude glitch ortusu
+	Ayarlar.sifirla()
+	_varsayilan_gorunum()
+	Gecis.acilis_yapildi = true
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(1.0)
+	await _gecis_dondur(&"glitch", 0, 0.5)
+	await _cek("dil-glitch")
+	_gecis_kapat()
+	await _gecis_dondur(&"iris", 0, 0.6)
+	await _cek("menu-acilis-iris")
+	_gecis_kapat()
+	menu.queue_free()

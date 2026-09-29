@@ -493,12 +493,3 @@ text = ">"
 [node name="Cevir" type="Button" parent="Arayuz/Dokunmatik"]
 theme_override_font_sizes/font_size = 24
 text = "ÇEVİR"
-
-[node name="Gecis" type="CanvasLayer" parent="."]
-layer = 20
-
-[node name="Karartma" type="ColorRect" parent="Gecis"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0.913725, 0.309804, 0.211765, 1)
-mouse_filter = 2

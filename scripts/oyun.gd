@@ -11,8 +11,8 @@ enum { OYNA, OLDU, TAMAM, BITTI, HAYALET }   ## HAYALET: gunluk hayalet yarisi k
 const TAMAM_BEKLEME: float = 1.00   ## bolum bitisinde sonraki boluma gecmeden once
 const TAMAM_HARITA: float = 2.40    ## olum haritasi varsa: okumaya yetecek kadar
 const HAYALET_BEKLEME: float = 1.00 ## "hayalet kazandi" mesaji bu kadar kalir, sonra bolum bastan
-const GECIS_SURESI: float = 0.26    ## renk bandi orteni (Gecis.ORTME ile ayni dil)
-const GECIS_ACMA: float = 0.20
+const VURGU_SURESI: float = 0.30    ## sayac chip'i renk akisi vurgusu (kacinci cevirme/kristal)
+const VURGU_ARALIK: float = 0.12    ## vurgu bitmeden tekrar tetiklenmez (saniyede ~3 renk degisimi en fazla)
 const A := preload("res://scripts/ayarlar.gd")
 const ODA: float = float(A.ODA_GENISLIGI)
 
@@ -56,6 +56,12 @@ var _tema_i: int = 2
 var _zemin: Color = Color("f1ede5")
 var _blok: Color = Color("14121a")
 var _chip_stil: StyleBoxFlat = null
+var _chip_stil_sag: StyleBoxFlat = null   ## sayac chip'i: vurguda video akis renginde
+var _vurgu_kalan: float = 0.0
+var _akis_i: int = 0
+var _damga: Panel = null                  ## bolum sonu "yeni rekor" damgasi
+var _damga_yazi: Label = null
+var _damga_tween: Tween = null
 var _sayac_uzunluk: int = -1
 
 @onready var _dunya: Node2D = $Dunya
@@ -91,7 +97,6 @@ var _sayac_uzunluk: int = -1
 @onready var _kopyala_dugme: Button = $Arayuz/Bitis/Kutu/Kopyala
 @onready var _tekrar_dugme: Button = $Arayuz/Bitis/Kutu/Tekrar
 @onready var _dokunmatik: Control = $Arayuz/Dokunmatik
-@onready var _karartma: ColorRect = $Gecis/Karartma
 @onready var _kilit_hud: Control = $Arayuz/Kilit          ## "ÇEVİRME KİLİTLİ" rozeti (seritlerin arasinda)
 @onready var _tabela: Panel = $Arayuz/Tabela
 @onready var _tabela_metin: Label = $Arayuz/Tabela/Metin
@@ -119,17 +124,16 @@ func _ready() -> void:
 	_chip_stil = StyleBoxFlat.new()
 	_chip_stil.set_corner_radius_all(3)
 	_chip_stil.anti_aliasing = true
+	_chip_stil_sag = _chip_stil.duplicate()
 	_chip_sol.add_theme_stylebox_override("panel", _chip_stil)
-	_chip_sag.add_theme_stylebox_override("panel", _chip_stil)
+	_chip_sag.add_theme_stylebox_override("panel", _chip_stil_sag)
 	UI.dugmeleri_bagla($Arayuz/Duraklat)
 	UI.dugmeleri_bagla($Arayuz/Bitis)
 	_dokunmatik_kur()
 	Ayarlar.dokunmatik_degisti.connect(_dokunmatik_acildi)
 	_hayalet.modulate = Ayarlar.HAYALET_RENGI
 	_altin.modulate = Ayarlar.ALTIN_HAYALET_RENGI
-	bolum_yukle(Ayarlar.secilen_bolum)
-	_karartma.position.x = 0.0        # sahne renk bandinin ALTINDAN acilir
-	_karart(false)
+	bolum_yukle(Ayarlar.secilen_bolum)    # sahne Gecis'in ortusunun ALTINDAN acilir
 
 
 func _exit_tree() -> void:
@@ -202,6 +206,7 @@ func _tema_uygula(zemin: Color, blok: Color) -> void:
 	if _bolum != null:
 		_bolum.blok_rengi = blok
 	_chip_stil.bg_color = blok
+	_chip_stil_sag.bg_color = blok
 	for l in [_ad, _hedef]:
 		(l as Label).add_theme_color_override("font_color", zemin)
 	for l in [_sayac, _kristal_yazi]:
@@ -216,6 +221,27 @@ func _tema_uygula(zemin: Color, blok: Color) -> void:
 		var d: Button = _dokunmatik.get_node(ad)
 		for r in ["font_color", "font_pressed_color", "font_hover_color", "font_focus_color"]:
 			d.add_theme_color_override(r, blok)
+	if _vurgu_kalan > 0.0:
+		_sayac_boya()
+
+
+## Sayac chip'ine video renk akisindan siradaki vurgu rengi (Tema.AKIS): yazi rengi
+## vurgunun uzerinde kodla secilir (>= 4,5:1). Ara renk yok, palet adim adim doner.
+## Oyun hissi kapaliyken ve yuksek kontrastta calismaz.
+func _sayac_vurgula() -> void:
+	if not Ayarlar.oyun_hissi or Ayarlar.yuksek_kontrast or _vurgu_kalan > VURGU_SURESI - VURGU_ARALIK:
+		return
+	_akis_i += 1
+	_vurgu_kalan = VURGU_SURESI
+	_sayac_boya()
+
+
+func _sayac_boya() -> void:
+	var v: Color = Tema.akis_rengi(_tema_i, _akis_i)
+	var y: Color = Tema.yazi_rengi(v, _tema_i)
+	_chip_stil_sag.bg_color = v
+	_hedef.add_theme_color_override("font_color", y)
+	_sayac.add_theme_color_override("font_color", y)
 
 
 ## Yercekimi yonune gore renk cifti: ters yercekiminde zemin ve blok yer degistirir
@@ -435,6 +461,10 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	_sarsinti_isle(delta)
 	_hud_solma(delta)
+	if _vurgu_kalan > 0.0:
+		_vurgu_kalan -= delta
+		if _vurgu_kalan <= 0.0:
+			_tema_uygula(_zemin, _blok)     # chip blok rengine doner
 	if get_tree().paused:
 		return
 	_tabela_isle(delta)
@@ -640,22 +670,6 @@ func _parcacik(p: CPUParticles2D, konum: Vector2) -> void:
 	p.emitting = true
 
 
-## Bolum gecisi bandi: kapali=true renk bandi soldan gelip ekrani orter, false ise
-## saga cekilir (ortme 260 ms ease-out, acma 200 ms ease-in; Gecis ile ayni dil).
-func _karart(kapali: bool) -> void:
-	var t := create_tween()
-	if not Ayarlar.oyun_hissi:
-		_karartma.position.x = 0.0 if kapali else 700.0
-		return
-	if kapali:
-		_karartma.position.x = -660.0
-		t.tween_property(_karartma, "position:x", 0.0, GECIS_SURESI) \
-			.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	else:
-		t.tween_property(_karartma, "position:x", 660.0, GECIS_ACMA) \
-			.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
-
-
 # --- olaylar -----------------------------------------------------------------
 
 func _cevirdi(yeni_yon: float) -> void:
@@ -663,6 +677,7 @@ func _cevirdi(yeni_yon: float) -> void:
 	Ses.cal((&"cevir" if yeni_yon < 0.0 else &"cevir_ters"))
 	sars(Ayarlar.SARSINTI_CEVIR)
 	_arka_ton(yeni_yon)
+	_sayac_vurgula()
 	_titret()
 	# Cevirme patlamasi: kalkis yuzeyinden odaya dogru camgobegi kirintilar
 	# (parcacik ucuz: intel-uhd-2d-tavani, GPU parcacik 4000 = 0,42 ms).
@@ -719,6 +734,7 @@ func _kristal() -> void:
 		Ayarlar.kristal_topla(bolum_i)
 	Ses.cal(&"kristal")
 	_parcacik(_toplama, _bolum.kristal_konumu)
+	_sayac_vurgula()
 	_kristal_guncelle()
 
 
@@ -765,11 +781,13 @@ func _kapi() -> void:
 
 
 ## Bolum sonu karti: kagit kart, buyuk sure, altinda madalya/rekor satiri.
-func _karti_goster(etiket: String, sure_metni: String, satir: String) -> void:
+func _karti_goster(etiket: String, sure_metni: String, satir: String, rekor: bool = false) -> void:
 	$Arayuz/BolumKarti/Etiket.text = Tema.buyuk(etiket)
 	$Arayuz/BolumKarti/Sure.text = sure_metni
 	$Arayuz/BolumKarti/Satir.text = satir
 	_bolum_karti.visible = true
+	Gecis.acilis(&"flas", _tema_i, 0.22, 0.5)      # tek vurus: bolum bitti
+	_damga_goster(rekor)
 	if Ayarlar.oyun_hissi:
 		_bolum_karti.modulate.a = 0.0
 		_bolum_karti.scale = Vector2(0.96, 0.96)
@@ -781,6 +799,49 @@ func _karti_goster(etiket: String, sure_metni: String, satir: String) -> void:
 	else:
 		_bolum_karti.modulate.a = 1.0
 		_bolum_karti.scale = Vector2.ONE
+
+
+## "Yeni rekor" damgasi: kartin ust kosesinde, video renk akisinda (vurgu renkleri
+## 90 ms adimla doner, sonra ilk renkte durur). Yazi rengi her adimda >= 4,5:1.
+func _damga_goster(rekor: bool) -> void:
+	if _damga == null:
+		_damga = Panel.new()
+		_damga.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_damga.add_theme_stylebox_override("panel", _chip_stil.duplicate())
+		_damga_yazi = Label.new()
+		_damga_yazi.theme_type_variation = &"Vurgu"
+		_damga_yazi.add_theme_font_size_override("font_size", 9)
+		_damga_yazi.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_damga_yazi.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_damga_yazi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_damga.add_child(_damga_yazi)
+		_bolum_karti.add_child(_damga)
+	_damga.visible = rekor
+	if _damga_tween != null and _damga_tween.is_valid():
+		_damga_tween.kill()
+	if not rekor:
+		return
+	_damga_yazi.text = Tema.buyuk(tr("YENİ REKOR"))
+	var w: float = _damga_yazi.get_minimum_size().x + 16.0
+	_damga.size = Vector2(w, 18.0)
+	_damga.position = Vector2(_bolum_karti.size.x - w - 8.0, -9.0)
+	_damga_yazi.size = _damga.size
+	_damga.pivot_offset = _damga.size * 0.5
+	_damga_boya(0)
+	if not Ayarlar.oyun_hissi:
+		return
+	_damga.scale = Vector2(1.5, 1.5)
+	_damga_tween = create_tween()
+	_damga_tween.tween_property(_damga, "scale", Vector2.ONE, 0.16).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	for k in range(1, 7):
+		_damga_tween.tween_callback(_damga_boya.bind(k)).set_delay(0.09)
+	_damga_tween.tween_callback(_damga_boya.bind(0)).set_delay(0.09)
+
+
+func _damga_boya(k: int) -> void:
+	var v: Color = Tema.akis_rengi(_tema_i, k)
+	(_damga.get_theme_stylebox("panel") as StyleBoxFlat).bg_color = v
+	_damga_yazi.add_theme_color_override("font_color", Tema.yazi_rengi(v, _tema_i))
 
 
 ## Gunun bolumu bitti: AYRI kayit yuvasi, madalya/hayalet/acilan bolum yok.
@@ -795,7 +856,7 @@ func _gunluk_bitti() -> void:
 	var satir: String = tr("%d çevirme · seri %d gün") % [cevirme, int(sonuc["seri"])]
 	if _gunluk_ek != "":
 		satir += "\n" + _gunluk_ek
-	_karti_goster(tr("Günün bölümü tamam"), tr("%.2f sn") % sure, satir)
+	_karti_goster(tr("Günün bölümü tamam"), tr("%.2f sn") % sure, satir, bool(sonuc["rekor"]) and not bool(sonuc["yardim"]))
 
 
 ## Gunun bolumu bitince menuye donmek yerine paylasim paneli. Panoya kopyalama
@@ -816,6 +877,7 @@ func _gunluk_panel() -> void:
 func _bitis_ac() -> void:
 	_perde.visible = true
 	_bitis.visible = true
+	Gecis.acilis(&"iris", _tema_i, 0.45)          # oyun sonu: kart ortadan acilir
 	_karti_sigdir(_bitis)
 	_tekrar_dugme.grab_focus()
 	if Ayarlar.oyun_hissi:
@@ -883,7 +945,7 @@ func _ana_bitti() -> void:
 	var l2: String = tr("En iyi %s") % Ayarlar.en_iyi_metin(bolum_i) + "  ·  " + tr("%d çevirme") % cevirme
 	if bool(sonuc["az_rekor"]):
 		l2 += "  ·  " + tr("EN AZ ÇEVİRME")
-	_karti_goster(etiket, sure_metni, l1 + "\n" + l2)
+	_karti_goster(etiket, sure_metni, l1 + "\n" + l2, bool(sonuc["rekor"]))
 
 
 ## Olum haritasi: bolumun kucultulmus plani ve oldugun her nokta X ile.
@@ -942,10 +1004,9 @@ func _sonraki() -> void:
 		_gunluk_panel()              # gunun bolumu tek bolumdur, zincir yok
 		return
 	if bolum_i + 1 < Ayarlar.bolum_sayisi():
-		_karart(true)
-		await get_tree().create_timer(GECIS_SURESI).timeout
+		await Gecis.kapat(&"", _tema_i)       # video gecis ailesi + palet; hareket azaltmada bekleme yok
 		bolum_yukle(bolum_i + 1)
-		_karart(false)
+		Gecis.ac()                            # oyun acilirken sure (await yok)
 	else:
 		_durum = BITTI
 		_bolum_karti.visible = false
@@ -993,6 +1054,7 @@ func _unhandled_input(olay: InputEvent) -> void:
 			_karti_sigdir(_duraklat)
 			$Arayuz/Duraklat/Kutu/Devam.grab_focus()
 			Ses.cal(&"menu")
+			Gecis.acilis(&"perde", _tema_i, 0.22)      # duraklatma: perde acilir
 			if Ayarlar.oyun_hissi:
 				UI.sirayla_gir($Arayuz/Duraklat/Kutu.get_children())
 
@@ -1032,11 +1094,11 @@ func _ayarlara() -> void:
 	get_tree().paused = false
 	Ayarlar.secilen_bolum = bolum_i
 	Ayarlar.donus_sahnesi = "res://scenes/oyun.tscn"
-	Gecis.git("res://scenes/ayarlar_ekrani.tscn")
+	Gecis.git("res://scenes/ayarlar_ekrani.tscn", _tema_i)
 
 
 func _menuye() -> void:
 	Ses.cal(&"menu")
 	get_tree().paused = false
 	Ayarlar.zaman_sifirla()
-	Gecis.git("res://scenes/menu.tscn")
+	Gecis.git("res://scenes/menu.tscn", _tema_i)

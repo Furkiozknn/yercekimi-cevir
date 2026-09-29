@@ -35,7 +35,7 @@ tanıtım). Oyun arayüzü **Türkçe + İngilizce** (v1.0): kaynak dil Türkçe
 ## Klasör yapısı
 
 ```
-scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet + dil) · ses.gd, gecis.gd (autoload)
+scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet + dil) · ses.gd, gecis.gd (autoload; assets/gecis.gdshader ile 8 geçiş ailesi, Tema.AKIS paleti, hareket azaltmada anında)
              tema.gd (renkler, bölüm→tema) · ceviri.gd (TR→EN tablo) · ui.gd (giriş/basış hareketi)
              simgeler.gd (web'de eksik simgeler için yedek yazı tipi; ortak dosya)
              bolum.gd (ASCII harita -> sahne) · oyuncu.gd · oyun.gd · menu.gd
@@ -154,7 +154,7 @@ Sprite üretiminden sonra **`--import` çalıştır**, yoksa Godot eski PNG'yi k
 ```bash
 godot --headless --path . --import                      # 0 hata vermeli
 godot --headless --path . res://tests/testler.tscn      # çıkış kodu 0 = geçti
-# CI aynı komutun günlüğünü tests/kapi.sh'a verir (taban: ci.yml → TEST_TABANI, şu an 915;
+# CI aynı komutun günlüğünü tests/kapi.sh'a verir (taban: ci.yml → TEST_TABANI, şu an 963;
 # SCRIPT ERROR olursa kırmızı). Test ekleyince TEST_TABANI'nı yükselt; kapının sınaması:
 bash tests/kapi_sinama.sh                               # Godot gerektirmez
 godot --path . res://tests/ekran.tscn -- -2 <klasör>    # yayın paketi görselleri
@@ -166,9 +166,10 @@ godot --path . res://tests/ekran.tscn -- -6 <klasör>    # tur 4 (v0.5): solak a
 godot --path . res://tests/ekran.tscn -- -7 <klasör>    # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım paneli, parıltı
 godot --path . res://tests/ekran.tscn -- -8 <klasör>    # tur 6 (v0.7): yasak bölge, tek yönlü platform, tabela, süre listesi, kol kareleri
 godot --path . res://tests/ekran.tscn -- -9 <klasör>    # v1.0: menü/ayarlar TR+EN, üç tema, duraklat, bölüm sonu, bitiş
-godot --path . -s res://tools/fps.gd -- 9 600            # kare süresi (SceneTree betiği: sahneyi load() ile açar, autoload adı derlenmez)
+godot --path . res://tests/ekran.tscn -- -10 <klasör>   # video imkânları: geçiş aileleri, sayaç akışı, rekor damgası
+godot --path . -s res://tools/fps.gd -- 9 600 [gecis]   # kare süresi (gecis: geçiş karelerini ayrıca ölçer) (SceneTree betiği: sahneyi load() ile açar, autoload adı derlenmez)
 godot --headless --path . res://tools/his_olc.tscn -- 100  # tuş olayı → çevirme gecikmesi
-godot --path . --write-movie kayit.avi --fixed-fps 60 res://tools/bot.tscn -- 1 -1 - kayit  # yazısız kayıt; sonra ffmpeg ile 1080x1920
+godot --path . --write-movie kayit.avi --fixed-fps 60 res://tools/bot.tscn -- 1 -1 - kayit [b=N k=N]  # yazısız kayıt (b=N: N. bölümden geçiş kaydı); sonra ffmpeg ile 1080x1920
 godot --headless --path . -s res://tools/tema_uret.gd    # assets/tema.tres (sonra --import)
 python tools/gif_yap.py yayin/tanitim/kareler.raw yayin/tanitim/tanitim.gif 320 180 10
 python tools/gif_yap.py --dogrula                       # GIF kodlayıcısının öz denetimi

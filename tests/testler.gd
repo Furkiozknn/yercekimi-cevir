@@ -102,6 +102,8 @@ func _ready() -> void:
 	await _bolum_sonu_testi()
 	print("— Tema (duz renk dunya) —")
 	await _tema_testi()
+	print("— Gunluk video gecisleri ve renk akisi —")
+	await _gecis_testi()
 	print("— Erken cevirme (girdi gecikmesi) —")
 	await _erken_cevirme_testi()
 	print("%d dogrulama, %d hata" % [_sayi, _hata])
@@ -2124,3 +2126,127 @@ func _erken_cevirme_testi() -> void:
 	o.queue_free()
 	b.queue_free()
 	await get_tree().process_frame
+
+
+## Gunluk video imkanlari: renk akisi paleti (okunurluk >= 4,5:1), gecis aileleri
+## (shader), art arda tekrar yok, hareket azaltmada aninda gecis, sayac vurgusu,
+## rekor damgasi, duraklatma perdesi.
+func _gecis_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.oyun_hissi = true
+	# --- palet: her vurgu rengi uzerinde yazi >= 4,5:1 (kodla secilir) ---
+	var en_dusuk := 99.0
+	for t in 3:
+		var a: Dictionary = Tema.AKIS[t]
+		_dogrula(a["vurgu"].size() >= 4 and String(a["kaynak"]) != "", "tema %d akis paleti (%s, %d renk)" % [t, a["kaynak"], a["vurgu"].size()])
+		for v in a["vurgu"]:
+			en_dusuk = minf(en_dusuk, Tema.kontrast(v, Tema.yazi_rengi(v, t)))
+		_dogrula(Tema.kontrast(a["acik"], a["koyu"]) >= 10.0, "tema %d acik/koyu yazi cifti" % t)
+	_dogrula(en_dusuk >= Tema.ESIK, "akis renkleri uzerinde yazi en az %.1f:1 (en dusuk %.2f)" % [Tema.ESIK, en_dusuk])
+	_dogrula(is_equal_approx(Tema.kontrast(Color.BLACK, Color.WHITE), 21.0), "kontrast hesabi: siyah/beyaz 21:1")
+	_dogrula(Tema.akis_rengi(0, 0).is_equal_approx(Tema.akis_rengi(0, 5)), "akis rengi sarmal doner")
+	# --- gecis aileleri havuzda, shader'da, art arda tekrarsiz ---
+	var shader_ad: Array = []
+	for u in Gecis.SHADER.get_shader_uniform_list():
+		shader_ad.append(String(u["name"]))
+	_dogrula("tur" in shader_ad and "p" in shader_ad and "renk" in shader_ad and "renk2" in shader_ad, "gecis shader'i uniform'lari var")
+	for t in 3:
+		var havuz: Array = Tema.AKIS[t]["gecis"]
+		var hepsi := true
+		for g in havuz:
+			hepsi = hepsi and g in Tema.GECIS_TURLERI
+		_dogrula(hepsi and havuz.size() >= 3, "tema %d gecis havuzu shader ailesinden (%s)" % [t, havuz])
+		var onceki: StringName = &""
+		var tekrar := 0
+		var disari := 0
+		var gorulen: Dictionary = {}
+		for i in 40:
+			var g: StringName = Gecis.sec(t)
+			if g == onceki:
+				tekrar += 1
+			if not g in havuz:
+				disari += 1
+			gorulen[g] = true
+			onceki = g
+			Gecis.son_tur = g
+			Gecis._sayac += 1
+		_dogrula(tekrar == 0 and disari == 0 and gorulen.size() == havuz.size(), "tema %d: 40 secimde tekrar yok, hepsi havuzda, hepsi kullanildi" % t)
+	# --- her aile ortuyor ve aciliyor ---
+	for tur in Tema.GECIS_TURLERI:
+		await Gecis.kapat(tur, 0, 0.05)
+		var p: float = Gecis._mat.get_shader_parameter("p")
+		_dogrula(Gecis._kaplama.visible and is_equal_approx(p, 1.0) and Gecis.son_tur == tur, "%s: tam ortuyor (p=%.2f)" % [tur, p])
+		await Gecis.ac(0.05)
+		_dogrula(not Gecis._kaplama.visible, "%s: aciliyor, kaplama gizli" % tur)
+	# --- sure: ortme ~260 ms ---
+	var t0 := Time.get_ticks_msec()
+	await Gecis.kapat(&"itme", 1)
+	var ms := Time.get_ticks_msec() - t0
+	_dogrula(ms >= 240 and ms < 500, "ortme %d ms (rehber ~260)" % ms)
+	await Gecis.ac()
+	# --- ara(): degisim ortunun altinda, sonra kapanir ---
+	var cagri := [0]
+	await Gecis.ara(&"glitch", 0, func() -> void: cagri[0] += 1)
+	_dogrula(cagri[0] == 1 and not Gecis.mesgul_mu() and not Gecis._kaplama.visible, "ara(): degistir bir kez cagrildi, gecis bitti")
+	# --- hareket azaltma: aninda, bekleme yok ---
+	Ayarlar.oyun_hissi = false
+	_dogrula(Gecis.sade(), "oyun hissi kapali = sade gecis")
+	t0 = Time.get_ticks_msec()
+	await Gecis.kapat(&"iris", 0)
+	await Gecis.ara(&"bloklar", 1, func() -> void: cagri[0] += 1)
+	await Gecis.acilis(&"perde", 2)
+	_dogrula(Time.get_ticks_msec() - t0 < 100 and cagri[0] == 2 and not Gecis._kaplama.visible, "hareket azaltma: gecis aninda, kaplama hic acilmadi (%d ms)" % (Time.get_ticks_msec() - t0))
+	Ayarlar.oyun_hissi = true
+	# --- sayac chip'i renk akisi ---
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	oyun.get_node("Dunya/Oyuncu").girdi_acik = false
+	var blok: Color = oyun._blok
+	oyun._sayac_vurgula()
+	var v: Color = Tema.akis_rengi(oyun._tema_i, oyun._akis_i)
+	var yazi: Color = oyun._sayac.get_theme_color("font_color")
+	_dogrula(oyun._chip_stil_sag.bg_color.is_equal_approx(v) and oyun._chip_stil.bg_color.is_equal_approx(blok), "cevirme: sayac chip'i akis rengine dondu, sol chip yerinde")
+	_dogrula(Tema.kontrast(v, yazi) >= Tema.ESIK, "sayac yazisi vurgu uzerinde %.2f:1" % Tema.kontrast(v, yazi))
+	var i0: int = oyun._akis_i
+	oyun._sayac_vurgula()
+	_dogrula(oyun._akis_i == i0, "vurgu suresince ikinci tetik yok sayildi (flas hizi siniri)")
+	await get_tree().create_timer(0.45).timeout
+	_dogrula(oyun._chip_stil_sag.bg_color.is_equal_approx(oyun._blok), "vurgu bitti, chip blok rengine dondu")
+	Ayarlar.yuksek_kontrast = true
+	i0 = oyun._akis_i
+	oyun._sayac_vurgula()
+	_dogrula(oyun._akis_i == i0, "yuksek kontrastta sayac vurgusu kapali")
+	Ayarlar.yuksek_kontrast = false
+	Ayarlar.oyun_hissi = false
+	oyun._sayac_vurgula()
+	_dogrula(oyun._akis_i == i0, "oyun hissi kapaliyken sayac vurgusu kapali")
+	Ayarlar.oyun_hissi = true
+	# --- duraklatma perdesi ---
+	var olay := InputEventAction.new()
+	olay.action = &"duraklat"
+	olay.pressed = true
+	oyun._unhandled_input(olay)
+	_dogrula(get_tree().paused and Gecis._kaplama.visible and Gecis.son_tur == &"perde", "duraklat: perde gecisi basladi")
+	await get_tree().create_timer(0.45).timeout
+	_dogrula(not Gecis._kaplama.visible, "duraklat: perde acildi (oyun durmusken de calisiyor)")
+	oyun._devam()
+	# --- bolum sonu: flas vurusu + yeni rekor damgasi ---
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	var kapi: Area2D = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	_dogrula(oyun._damga != null and oyun._damga.visible and oyun._damga_yazi.text == "YENİ REKOR", "ilk bitis: YENI REKOR damgasi")
+	_dogrula(Gecis.son_tur == &"flas", "bolum sonu: flas vurusu")
+	var damga_v: Color = (oyun._damga.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
+	_dogrula(Tema.kontrast(damga_v, oyun._damga_yazi.get_theme_color("font_color")) >= Tema.ESIK, "damga yazisi okunuyor (%.2f:1)" % Tema.kontrast(damga_v, oyun._damga_yazi.get_theme_color("font_color")))
+	await get_tree().create_timer(0.9).timeout
+	damga_v = (oyun._damga.get_theme_stylebox("panel") as StyleBoxFlat).bg_color
+	_dogrula(damga_v.is_equal_approx(Tema.akis_rengi(oyun._tema_i, 0)), "damga renk akisindan sonra ilk renkte durdu")
+	oyun.queue_free()
+	await get_tree().process_frame
+	get_tree().paused = false
+	Ayarlar.sifirla()

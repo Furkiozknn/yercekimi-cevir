@@ -55,6 +55,19 @@ tasarım, önce/sonra ve ölçümler: `docs/TASARIM.md`.
   Yerel web denemesinde konsolda iki çift WebGL `bindBuffer` uyarısı (hata
   değil) görüldü.
 
+- **Günlük video imkânları (renk akışı + geçişler).** Dünya düz renk kalır;
+  `Gecis` artık `assets/gecis.gdshader` ile sekiz aile (iris, glitch, bloklar,
+  itme, perde, flaş, kararma, zoom) ve video paletlerinden (klasik/limon/kâğıt)
+  dönen renklerle çalışır. Menü açılışı, bölüm geçişi, bölüm/oyun sonu, duraklat,
+  dil değişimi, sayaç chip'i ve "yeni rekor" damgası. Oyun hissi kapalıyken ya da
+  tarayıcı `prefers-reduced-motion` isterken geçiş anında. Ayrıntı ve kaynak
+  eşlemesi: `docs/TASARIM.md` bölüm 7. Test 915 → 963 (`TEST_TABANI` 963).
+  Oynanış karesi ölçüm farkı yok; ilk geçişteki shader derlemesi tek 135 ms kare.
+  `tools/bot.gd ... kayit b=N k=N` (istenen bölümden geçiş kaydı),
+  `tests/ekran.tscn -- -10` (kanıt kareleri), `tools/fps.gd ... gecis`.
+  Ham kayıt (`sosyal/medya/oyunlar/yercekimi-cevir.mp4`, 18 sn) sekiz ailenin
+  hepsini gösterecek biçimde yeniden üretildi.
+
 ## [Yayımlanmamış]
 
 Oynanış değişmedi; yalnız depo ve belge işleri.

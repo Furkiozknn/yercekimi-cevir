@@ -73,3 +73,48 @@ static func ad_parcala(ad: String) -> Array:
 static func kisa_baslik(ad: String) -> String:
 	var p := ad_parcala(ad)
 	return ("%s / %s" % [p[0], p[1]]) if String(p[0]) != "" else String(p[1])
+
+## Gunluk video imkanlarindan alinan renk akisi ve gecis aileleri
+## (sosyal/uret/tema.mjs TEMALAR, docs/TASARIM.md "Gunluk video imkanlarindan alinanlar").
+## Dunya DUZ kalir; akis yalniz gecislerde, sayac chip'inde ve rekor damgasinda.
+## Dizin = tema dizini (0 gece, 1 pembe, 2 kagit). "vurgu" sirayla doner (video:
+## renkAkisi); yazi rengi ise vurgunun uzerinde kodla secilir (en az ESIK).
+const GECIS_TURLERI: Array[StringName] = [&"iris", &"glitch", &"bloklar", &"itme", &"perde", &"flas", &"kararma", &"zoom"]
+const ESIK := 4.5                  ## okunurluk alt siniri (video 5:1, burada 4,5:1)
+const AKIS: Array = [
+	{"kaynak": "klasik", "acik": Color("f1ece2"), "koyu": Color("0e0d0b"),
+		"vurgu": [Color("ffc21a"), Color("19d3e6"), Color("ff7a1a"), Color("ff4d6d"), Color("f1ece2")],
+		"gecis": [&"glitch", &"flas", &"itme", &"bloklar"]},
+	{"kaynak": "limon", "acik": Color("fbfff0"), "koyu": Color("0d0d0d"),
+		"vurgu": [Color("c2006b"), Color("3a1cff"), Color("0b1f6b"), Color("0b5d1e")],
+		"gecis": [&"bloklar", &"zoom", &"perde", &"iris"]},
+	{"kaynak": "kagit", "acik": Color("fffaf0"), "koyu": Color("16130f"),
+		"vurgu": [Color("c1121f"), Color("1f45c9"), Color("13632f"), Color("6a1b9a"), Color("9a3a00")],
+		"gecis": [&"perde", &"itme", &"kararma", &"zoom"]},
+]
+
+
+## WCAG goreli parlaklik.
+static func parlaklik(c: Color) -> float:
+	var k: Array[float] = []
+	for v in [c.r, c.g, c.b]:
+		k.append(v / 12.92 if v <= 0.04045 else pow((v + 0.055) / 1.055, 2.4))
+	return 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2]
+
+
+static func kontrast(a: Color, b: Color) -> float:
+	var x := parlaklik(a)
+	var y := parlaklik(b)
+	return (maxf(x, y) + 0.05) / (minf(x, y) + 0.05)
+
+
+## Vurgu rengi uzerindeki yazi: acik ya da koyu, hangisi daha okunuyorsa.
+static func yazi_rengi(zemin: Color, tema: int) -> Color:
+	var a: Dictionary = AKIS[clampi(tema, 0, 2)]
+	return a["acik"] if kontrast(zemin, a["acik"]) >= kontrast(zemin, a["koyu"]) else a["koyu"]
+
+
+## Akis paletinden k. renk (sarmal).
+static func akis_rengi(tema: int, k: int) -> Color:
+	var v: Array = AKIS[clampi(tema, 0, 2)]["vurgu"]
+	return v[posmod(k, v.size())]

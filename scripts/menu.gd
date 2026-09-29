@@ -34,6 +34,9 @@ func _ready() -> void:
 	UI.dugmeleri_bagla(self)
 	$Kutu/Basla.grab_focus()
 	Ses.muzik(&"menu")
+	if not Gecis.acilis_yapildi and not Gecis.mesgul_mu():
+		Gecis.acilis(&"iris", 0, 0.5)      # menu acilisi: iris ortadan acilir
+	Gecis.acilis_yapildi = true
 	if Ayarlar.oyun_hissi:
 		UI.sirayla_gir([$Ust, $Dil, $Baslik, $AltBaslik, $Kutu/Basla, $Kutu/Ikinci/Sec, $Kutu/Ikinci/Gunluk,
 			$Kutu/Ikinci/Ayar, $Kutu/Ikinci/Cikis, $Gunluk, $KristalIkon, $Durum])
@@ -93,10 +96,11 @@ func _egik(a: Vector2, b: Vector2, kalinlik: float, blok: Color, diken: Color) -
 
 func _dil_degistir() -> void:
 	Ses.cal(&"menu")
-	Ayarlar.dil = "tr" if Ayarlar.dil_etkin() == "en" else "en"
-	Ayarlar.dil_uygula()
-	Ayarlar.kaydet()
-	get_tree().reload_current_scene()
+	Gecis.ara(&"glitch", 0, func() -> void:       # dil degisimi: glitch ortusunun altinda yeni metin
+		Ayarlar.dil = "tr" if Ayarlar.dil_etkin() == "en" else "en"
+		Ayarlar.dil_uygula()
+		Ayarlar.kaydet()
+		get_tree().reload_current_scene())
 
 
 func _basla() -> void:

@@ -115,7 +115,8 @@ func _dil_yaz() -> void:
 
 func _dil_degistir() -> void:
 	Ses.cal(&"menu")
-	Ayarlar.dil = "tr" if Ayarlar.dil_etkin() == "en" else "en"
-	Ayarlar.dil_uygula()
-	Ayarlar.kaydet()
-	get_tree().reload_current_scene()
+	Gecis.ara(&"glitch", 0, func() -> void:       # dil degisimi: glitch ortusunun altinda yeni metin
+		Ayarlar.dil = "tr" if Ayarlar.dil_etkin() == "en" else "en"
+		Ayarlar.dil_uygula()
+		Ayarlar.kaydet()
+		get_tree().reload_current_scene())
