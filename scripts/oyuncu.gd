@@ -5,6 +5,8 @@ extends CharacterBody2D
 ## Okunurluk: cevirince kisa bir hayalet izi birakir, sprite esneyip sikisir ve
 ## "cevirdi" sinyaliyle sahneye sarsinti/ses/arka plan kaymasi haber verilir.
 
+const HAYALET_DOKU := preload("res://assets/sprites/hayalet.png")   ## beyaz: iz rengi modulate ile
+
 signal oldu
 signal cevirdi(yeni_yon: float)
 signal kondu
@@ -25,6 +27,9 @@ var _iz_kalan: float = 0.0
 var _iz_sayaci: float = 0.0
 var _onceki_yerde: bool = true
 var _ezilme: Tween = null
+## Erken cevirme: tus olayi geldiginde (fizik adimini beklemeden) cevirme kabul
+## edildiyse o adimdaki "just_pressed" ikinci kez sayilmasin. Bkz. _input.
+var _erken_cevirdi: bool = false
 
 @onready var _gorsel: AnimatedSprite2D = $Gorsel
 @onready var _ok: Node2D = $Ok
@@ -33,6 +38,19 @@ var _ezilme: Tween = null
 func _ready() -> void:
 	add_to_group("oyuncu")
 	up_direction = Vector2(0.0, -yercekimi_yonu)
+
+
+## Gercek tus/dokunus olayi geldigi AN cevirir: fizik adimini (60 Hz) beklemek
+## ses, renk gecisi ve parcacik geri bildirimini ortalama ~8 ms geciktiriyordu
+## (tools/his_olc.gd, docs/TASARIM.md). Fizik zaman cizelgesi ayni kalir: hiz
+## simdi atanir, konum bir sonraki adimda ilerler; bot ve testler
+## Input.action_press ile basar, yani bu yola girmez.
+func _input(olay: InputEvent) -> void:
+	if not (girdi_acik and yasiyor and olay.is_action_pressed(&"cevir", false)):
+		return
+	if cevir():
+		_erken_cevirdi = true
+	# Reddedilirse (havada, kojot bitmis) tampon fizik adiminda kurulur.
 
 
 ## Bolum basina (ya da kontrol noktasina) dondurur. yon = -1: ters yercekimiyle
@@ -44,6 +62,7 @@ func hazirla(konum: Vector2, yon: float = 1.0) -> void:
 	up_direction = Vector2(0.0, -yon)
 	_tampon = 0.0
 	_kojot = 0.0
+	_erken_cevirdi = false
 	_bakis = 1.0
 	_iz_kalan = 0.0
 	_onceki_yerde = true
@@ -113,7 +132,10 @@ func _physics_process(delta: float) -> void:
 		velocity.y = clampf(velocity.y, -Ayarlar.EN_YUKSEK_DUSUS, Ayarlar.EN_YUKSEK_DUSUS)
 
 	if girdi_acik and Input.is_action_just_pressed("cevir"):
-		_tampon = Ayarlar.CEVIR_TAMPONU
+		if _erken_cevirdi:
+			_erken_cevirdi = false          # _input bu basisi zaten cevirmeye cevirdi
+		else:
+			_tampon = Ayarlar.CEVIR_TAMPONU
 	else:
 		_tampon = maxf(0.0, _tampon - delta)
 
@@ -168,9 +190,8 @@ func _iz_isle(delta: float) -> void:
 	if _iz_sayaci > 0.0:
 		return
 	_iz_sayaci = Ayarlar.IZ_ARALIGI
-	var kareler: SpriteFrames = _gorsel.sprite_frames
 	var hayalet := Sprite2D.new()
-	hayalet.texture = kareler.get_frame_texture(_gorsel.animation, _gorsel.frame)
+	hayalet.texture = HAYALET_DOKU
 	hayalet.flip_h = _gorsel.flip_h
 	hayalet.flip_v = _gorsel.flip_v
 	hayalet.global_position = global_position

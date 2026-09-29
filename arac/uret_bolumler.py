@@ -30,7 +30,7 @@ PENCERE = 3   # iki tehlike arasindaki en dar cevirme penceresi (hucre)
 SUZULME = 6   # bir platformdan dusen oyuncunun tam hizda katedebilecegi yol (hucre)
 
 L = [
- dict(ad="1 — İlk Adım", w=40, ipucu="A / D ile yürü. Yeşil kapıya ulaş.",
+ dict(ad="1 — İlk Adım", w=40, ipucu="A / D ile yürü. Sarı kapıya ulaş.",
       bands=[], hrk=[], kristal="zemin"),
  dict(ad="2 — Çevir", w=40, ipucu="BOŞLUK yerçekimini çevirir. Delikten geçmek için tavana düş.",
       bands=[("gap", 15, 26)], hrk=[]),
@@ -44,7 +44,7 @@ L = [
       bands=[("spike", 8, 13), ("ceil", 18, 24), ("gap", 28, 33)], hrk=[]),
  dict(ad="7 — Üç Engel", w=40, ipucu="",
       bands=[("gap", 8, 13), ("ceil", 17, 22), ("spike", 26, 32)], hrk=[]),
- dict(ad="8 — Asansör", w=40, ipucu="Mor platform gidip geliyor; üstüne ya da altına yapış.",
+ dict(ad="8 — Asansör", w=40, ipucu="Camgöbeği platform gidip geliyor; üstüne ya da altına yapış.",
       bands=[("gap", 10, 20), ("ceil", 25, 31)], hrk=[("plat", 11, 10, 20)]),
  dict(ad="9 — Salıncak", w=40, ipucu="Kesik çizgili kutuda çevirme yasak. Kutuya girmeden karar ver.",
       bands=[("gap", 9, 16), ("ceil", 20, 25), ("spike", 32, 33)], hrk=[("plat", 11, 9, 16)],
@@ -55,7 +55,7 @@ L = [
       bands=[("gap", 12, 17), ("ceil", 21, 26)], hrk=[("spike", 20, 28, 33)]),
  dict(ad="12 — Süpürge", w=40, ipucu="",
       bands=[("ceil", 8, 13), ("gap", 26, 32)], hrk=[("spike", 20, 14, 22)]),
- dict(ad="13 — Uzun Yol", w=64, ipucu="Mavi kontrol noktası ölünce seni oraya döndürür.",
+ dict(ad="13 — Uzun Yol", w=64, ipucu="Bayrağa dokunursan öldüğünde oradan devam edersin.",
       bands=[("spike", 8, 12), ("ceil", 16, 21), ("gap", 25, 32), ("ceil", 36, 41),
              ("spike", 45, 50), ("ceil", 54, 57)],
       hrk=[]),

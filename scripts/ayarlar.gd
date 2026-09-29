@@ -30,10 +30,10 @@ const ODA_GECISI: float = 0.16
 const HAYALET_ARALIGI: int = 2       ## kac fizik karesinde bir konum kaydedilir (60/2 = 30 Hz)
 const HAYALET_EN_FAZLA: int = 3600   ## ~2 dakika; daha uzun kosu kaydedilmez
 const HAYALET_YOLU: String = "user://hayalet_%d.dat"
-const HAYALET_RENGI: Color = Color(0.75, 0.80, 0.90, 0.40)
+const HAYALET_RENGI: Color = Color(0.271, 0.522, 0.741, 0.38)   ## oyuncu mavisi, soluk
 ## Altin hayalet AYRI bir hedeftir (botun olculmus en iyi kosusu), oyuncunun
 ## kendi hayaletiyle karismamali: hem daha parlak/dolgun hem de etiketli.
-const ALTIN_HAYALET_RENGI: Color = Color(1.00, 0.88, 0.30, 0.58)
+const ALTIN_HAYALET_RENGI: Color = Color(1.00, 0.761, 0.102, 0.70)
 
 # --- Yardim modu ---
 const YARDIM_EN_YAVAS: float = 0.5   ## oyun hizi alt siniri (%50)
@@ -49,13 +49,11 @@ const GOVDE: Vector2 = Vector2(12, 20)
 # --- Oyun hissi (hepsi "oyun_hissi" ayariyla kapatilabilir) ---
 const IZ_SURESI: float = 0.45        ## cevirdikten sonra bu kadar sure hayalet birak
 const IZ_ARALIGI: float = 0.045
-const IZ_RENGI: Color = Color(0.17, 0.91, 0.96, 0.55)
+const IZ_RENGI: Color = Color(0.490, 0.831, 0.906, 0.55)   ## camgobegi iz
 const EZILME_SURESI: float = 0.14    ## inis/cevirme esneme-sikisma suresi
 const SARSINTI_CEVIR: float = 1.6
 const SARSINTI_OLUM: float = 5.0
 const SARSINTI_SONUM: float = 14.0   ## saniyede bu kadar soner
-const ARKA_DUZ: Color = Color(1.0, 1.0, 1.0)        ## normal yercekiminde arka plan tonu
-const ARKA_TERS: Color = Color(0.74, 0.86, 1.22)    ## ters yercekiminde (soguk kayma)
 const ARKA_GECIS: float = 0.25
 
 # --- Ust HUD seritleri ---
@@ -71,11 +69,11 @@ const HUD_SOLMA_SURESI: float = 0.15
 const TABELA_SURESI: float = 1.2
 
 # --- Renkler (arayuz) ---
-const RENK_METIN: Color = Color(0.90, 0.92, 0.97)
+const RENK_METIN: Color = Color(0.945, 0.925, 0.886)
 const MADALYA_AD: Array = ["—", "Bronz", "Gümüş", "Altın"]
 const MADALYA_RENK: Array = [
-	Color(0.55, 0.59, 0.70), Color(0.72, 0.44, 0.31),
-	Color(0.75, 0.79, 0.86), Color(1.00, 0.91, 0.38),
+	Color(0.54, 0.52, 0.47), Color("c9865a"),
+	Color("c9ccd6"), Color("ffc21a"),
 ]
 
 const KAYIT_YOLU: String = "user://kayit.cfg"
@@ -101,6 +99,10 @@ var muzik_acik: bool = true
 var efekt_acik: bool = true
 var tam_ekran: bool = false
 var oyun_hissi: bool = true      ## sarsinti / parcacik / iz
+## Arayuz dili: "" = otomatik (isletim sistemi / tarayici dili: tr ise Turkce,
+## degilse Ingilizce), "tr" ya da "en" = kullanicinin secimi. Kaynak metinler
+## Turkce'dir (tr() anahtari); Ingilizce tablo scripts/ceviri.gd'de.
+var dil: String = ""
 
 # --- Yaris (kaydedilir) ---
 var altin_hayalet: bool = true      ## botun olculmus altin kosusu ayrica kossun
@@ -169,6 +171,8 @@ func _ready() -> void:
 	# gomulu Open Sans'ta olmadigi icin kutu olarak cikiyorlardi.
 	SIMGELER.kur()
 	yukle()
+	Ceviri.kur()
+	dil_uygula()
 	ses_uygula()
 	ekran_uygula()
 
@@ -185,19 +189,33 @@ func dokunmatik_mi() -> bool:
 	return dokunmatik_algilandi or DisplayServer.is_touchscreen_available()
 
 
-## Klavye metnini dokunmatik cihazda dokunma karsiligiyla verir.
-## Masaustunde metin oldugu gibi doner.
+## Etkin dil kodu: kullanici secmisse o, degilse sistem dili (tr -> "tr", digerleri "en").
+func dil_etkin() -> String:
+	if dil == "tr" or dil == "en":
+		return dil
+	return "tr" if OS.get_locale_language() == "tr" else "en"
+
+
+func dil_uygula() -> void:
+	TranslationServer.set_locale(dil_etkin())
+
+
+## Klavye metnini (Turkce kaynak anahtar) ceviren ve dokunmatik cihazda dokunma
+## karsiligiyla degistiren tek yol. Once tr() ile etkin dile cevrilir, sonra
+## tablodaki terimler (o dilin karsiligi) dokunma metniyle degistirilir.
+## Masaustunde yalniz ceviri yapilir.
 func kontrol_metni(m: String) -> String:
+	m = tr(m)
 	if not dokunmatik_mi():
 		return m
 	for c in DOKUNMA_METNI:
-		m = m.replace(String(c[0]), dokunma_karsiligi(c))
+		m = m.replace(tr(String(c[0])), dokunma_karsiligi(c))
 	return m
 
 
 ## Tablodaki bir satirin o anki solak ayarina gore dolu dokunma metni.
 func dokunma_karsiligi(c: Array) -> String:
-	return String(c[1]).format({"h": "Sağ" if solak else "Sol", "c": "Sol" if solak else "Sağ"})
+	return tr(String(c[1])).format({"h": tr("Sağ") if solak else tr("Sol"), "c": tr("Sol") if solak else tr("Sağ")})
 
 
 func bolum_sayisi() -> int:
@@ -252,10 +270,10 @@ func madalya_sayisi() -> int:
 ## Tabela metni: "9 — Salıncak · altın 6.99 sn · en iyi —". Gunluk modda
 ## degistirici ve gunun en iyisi.
 func tabela_metni(i: int) -> String:
-	var ad := String(bolum(i)["ad"])
+	var ad := tr(String(bolum(i)["ad"]))
 	if gunluk_mod:
-		return "%s · günün bölümü: %s · en iyi %s" % [ad, gunluk_degistirici_adi(), gunluk_en_iyi_metin()]
-	return "%s · altın %.2f sn · en iyi %s" % [ad, float(esik(i)["altin"]), en_iyi_metin(i)]
+		return tr("%s · günün bölümü: %s · en iyi %s") % [ad, tr(gunluk_degistirici_adi()), gunluk_en_iyi_metin()]
+	return tr("%s · altın %.2f sn · en iyi %s") % [ad, float(esik(i)["altin"]), en_iyi_metin(i)]
 
 
 func kristal_var(i: int) -> bool:
@@ -321,7 +339,7 @@ func bolum_ac(i: int) -> void:
 
 func en_iyi_metin(i: int) -> String:
 	if en_iyi.has(i):
-		return "%.2f sn" % float(en_iyi[i])
+		return tr("%.2f sn") % float(en_iyi[i])
 	return "—"
 
 
@@ -408,19 +426,19 @@ func _gun_sayisi(tarih: int) -> int:
 
 func gunluk_en_iyi_metin() -> String:
 	_gunluk_tazele()
-	return ("%.2f sn" % gunluk_en_iyi) if gunluk_en_iyi > 0.0 else "—"
+	return (tr("%.2f sn") % gunluk_en_iyi) if gunluk_en_iyi > 0.0 else "—"
 
 
 ## Menu ve HUD icin: "7 — Üç Engel · ters başlangıç"
 func gunluk_baslik() -> String:
-	return "%s · %s" % [String(bolum(gunluk_bolum())["ad"]), gunluk_degistirici_adi()]
+	return "%s · %s" % [tr(String(bolum(gunluk_bolum())["ad"])), tr(gunluk_degistirici_adi())]
 
 
 ## Panoya kopyalanan paylasim metni. Simge yok (baska uygulamanin yazi tipi
 ## bilinmez), "⟳" yerine "çevirme" yaziyor.
 func gunluk_paylasim(sure: float, olum: int, cevirme: int) -> String:
 	var t := bugun()
-	return "Yerçekimi Çevir · günün bölümü · %02d.%02d.%d\n%s\n%.2f sn · %d ölüm · %d çevirme · seri %d gün" % [
+	return tr("Yerçekimi Çevir · günün bölümü · %02d.%02d.%d\n%s\n%.2f sn · %d ölüm · %d çevirme · seri %d gün") % [
 		t % 100, (t / 100) % 100, t / 10000, gunluk_baslik(), sure, olum, cevirme, gunluk_seri_al()]
 
 
@@ -516,6 +534,9 @@ func yukle() -> void:
 	efekt_acik = bool(cfg.get_value("ayar", "efekt_acik", efekt_acik))
 	tam_ekran = bool(cfg.get_value("ayar", "tam_ekran", tam_ekran))
 	oyun_hissi = bool(cfg.get_value("ayar", "oyun_hissi", oyun_hissi))
+	dil = str(cfg.get_value("ayar", "dil", ""))
+	if dil != "tr" and dil != "en":
+		dil = ""
 	altin_hayalet = bool(cfg.get_value("ayar", "altin_hayalet", altin_hayalet))
 	yuksek_kontrast = bool(cfg.get_value("ayar", "yuksek_kontrast", yuksek_kontrast))
 	yercekimi_oku = bool(cfg.get_value("ayar", "yercekimi_oku", yercekimi_oku))
@@ -550,6 +571,7 @@ func kaydet() -> void:
 	cfg.set_value("ayar", "efekt_acik", efekt_acik)
 	cfg.set_value("ayar", "tam_ekran", tam_ekran)
 	cfg.set_value("ayar", "oyun_hissi", oyun_hissi)
+	cfg.set_value("ayar", "dil", dil)
 	cfg.set_value("ayar", "altin_hayalet", altin_hayalet)
 	cfg.set_value("ayar", "yuksek_kontrast", yuksek_kontrast)
 	cfg.set_value("ayar", "yercekimi_oku", yercekimi_oku)

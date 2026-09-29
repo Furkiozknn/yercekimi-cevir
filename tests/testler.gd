@@ -46,8 +46,8 @@ func _ready() -> void:
 	await _tabela_testi()
 	print("— Sure listesi ve madalya sayisi —")
 	await _sure_listesi_testi()
-	print("— Kol sallanmasi (sprite sayfasi) —")
-	_kol_testi()
+	print("— Oyuncu gorseli (duz renk) —")
+	_oyuncu_gorseli_testi()
 	print("— Affetme: kojot cevirme —")
 	await _kojot_testi()
 	print("— Yeniden deneme suresi —")
@@ -90,6 +90,20 @@ func _ready() -> void:
 	_ayar_kayit_testi()
 	print("— Kapi, madalya ve ilerleme —")
 	await _kapi_testi()
+	print("— Ceviri (TR/EN) —")
+	await _ceviri_testi()
+	print("— Dil kaydi ve eski kayit uyumu —")
+	_dil_kayit_testi()
+	print("— Menu akisi —")
+	await _menu_akisi_testi()
+	print("— Duraklat akisi —")
+	await _duraklat_testi()
+	print("— Bolum sonu ve bitis karti —")
+	await _bolum_sonu_testi()
+	print("— Tema (duz renk dunya) —")
+	await _tema_testi()
+	print("— Erken cevirme (girdi gecikmesi) —")
+	await _erken_cevirme_testi()
 	print("%d dogrulama, %d hata" % [_sayi, _hata])
 	if _hata == 0:
 		print("TESTLER GECTI")
@@ -125,6 +139,8 @@ func _varsayilan_ayarlar() -> void:
 	Ayarlar.titresim = true
 	Ayarlar.dokunmatik_algilandi = false
 	Ayarlar.tarih_zorla = 0
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
 	Ayarlar.zaman_sifirla()
 
 
@@ -709,24 +725,38 @@ func _olum_haritasi_testi() -> void:
 	await get_tree().process_frame
 
 
-## Yeni ayarlar kayit dosyasina gercekten yaziliyor ve geri okunuyor mu?
-## Web yapisinda sistem yazi tipi yedegi yoktur: gomulu Open Sans'ta olmayan
-## her simge kutu olarak cikar. Bu test web'deki durumu olcer (kur() cagrilmazsa
-## ayni test kalir), cunku has_char sistem yazi tipine bakmaz.
+## Web yapisinda sistem yazi tipi yedegi yoktur: yazi tiplerinde (Instrument
+## Sans, JetBrains Mono) olmayan her simge kutu olarak cikar. Bu test web'deki
+## durumu olcer: oyunun asil yazi tipi tema dosyasindan gelir ve simge yedegi
+## (simgeler.ttf) onun icinde durur; yedek kaldirilinca simgeler GERCEKTEN eksik
+## cikmali, yoksa test masaustunu (sistem yazi tipi) olcuyor demektir.
 func _simge_testi() -> void:
 	_dogrula(ResourceLoader.exists(Simgeler.YOL), "simge yazi tipi projede var")
-	_dogrula(Simgeler.eksikler("⟳●—") == "",
-		"HUD simgeleri yazi tipinde var (eksik: '%s')" % Simgeler.eksikler("⟳●—"))
+	_dogrula(Simgeler.eksikler("⟳●—◆") == "",
+		"HUD simgeleri yazi tipinde var (eksik: '%s')" % Simgeler.eksikler("⟳●—◆"))
+	_dogrula(Simgeler.eksikler("İıŞşĞğÖöÜüÇç") == "",
+		"Turkce harfler Instrument Sans'ta var (eksik: '%s')" % Simgeler.eksikler("İıŞşĞğÖöÜüÇç"))
+	# Mono etiket yazi tipi (JetBrains Mono + simge yedegi): HUD ve menu etiketleri.
+	var tema := ThemeDB.get_project_theme()
+	_dogrula(tema != null, "proje temasi yuklendi (gui/theme/custom)")
+	var mono: Font = tema.get_font("font", "Etiket")
+	var mono_eksik := ""
+	for ch in "İıŞşĞğÖöÜüÇç·—×⟳●◆/ 0123456789":
+		if ch != " " and not mono.has_char(ch.unicode_at(0)):
+			mono_eksik += ch
+	_dogrula(mono_eksik == "", "mono etiket yazi tipinde eksik karakter yok ('%s')" % mono_eksik)
 
-	# Test bos olmasin: yedek kaldirilinca eksik gercekten cikmali. Cikmiyorsa
-	# bu test web'i degil masaustunu olcuyor demektir.
-	var yedekler: Array[Font] = ThemeDB.fallback_font.fallbacks.duplicate()
-	ThemeDB.fallback_font.fallbacks = []
+	# Test bos olmasin: yedek kaldirilinca eksik gercekten cikmali.
+	var ana := Simgeler.ana() as FontVariation
+	_dogrula(ana != null and ana.fallbacks.size() >= 1, "asil yazi tipi FontVariation ve simge yedegi bagli")
+	var yedekler: Array[Font] = ana.fallbacks.duplicate()
+	ana.fallbacks = []
 	_dogrula(Simgeler.eksikler("⟳●") == "⟳●",
 		"yedeksiz yazi tipinde simgeler GERCEKTEN eksik (web durumu olculuyor)")
-	ThemeDB.fallback_font.fallbacks = yedekler
+	ana.fallbacks = yedekler
 
 	# kur() birden cok kez cagrilabiliyor (menu + oyun sahnesi); yedek bir kez eklenmeli.
+	Simgeler.kur()
 	var once: int = ThemeDB.fallback_font.fallbacks.size()
 	Simgeler.kur()
 	Simgeler.kur()
@@ -756,7 +786,7 @@ func _dokunma_metni_testi() -> void:
 
 	# Tablodaki her klavye terimi gercekten bir arayuz metninde geciyor mu?
 	# Gecmiyorsa metin degismis, ceviri sessizce olu kalmis demektir.
-	var tum := "Zıplama yok. Tek tuş: yerçekimini çevir."
+	var tum := "Tek tuş · 20 oda A / D ile yürü · BOŞLUK yerçekimini çevirir"
 	for i in Ayarlar.bolum_sayisi():
 		tum += String(Ayarlar.bolum(i)["ipucu"])
 	for c in Ayarlar.DOKUNMA_METNI:
@@ -1580,8 +1610,7 @@ func _yasak_bolge_testi() -> void:
 ## Tek yonlu platform: '_' yalniz asagi duseni tutar (yukari dusen icinden
 ## gecer), '~' yalniz yukari duseni; inis tahmini ikisini de gorur.
 func _tek_yonlu_testi() -> void:
-	var doku: Texture2D = Bolum.T_TEK_YONLU
-	_dogrula(doku.get_width() == 16 and doku.get_height() == 8, "tek yonlu karo 16x8 (%dx%d)" % [doku.get_width(), doku.get_height()])
+	_dogrula(is_equal_approx(Bolum.TEK_KALINLIK, 8.0), "tek yonlu serit 8 px (vektor cizim, doku yok)")
 	Ayarlar.sifirla()
 	Ayarlar.acilan_bolum = 19
 	Ayarlar.secilen_bolum = 19             # 20 — Son Kapi: '_' 54-58, satir 16
@@ -1757,34 +1786,341 @@ func _sure_listesi_testi() -> void:
 	Ayarlar.sifirla()
 
 
-## Yuruyus cevriminde kollar sallaniyor mu? Sprite sayfasinda kol bolgesi
-## (satir 8-14, sutun 0-3 ve 12-15) yuruyus karelerinde bekleme karesinden ve
-## birbirinden farkli olmali; zipla/dus karelerinde de ayri. Kask degismemeli.
-func _kol_testi() -> void:
+## v1.0 oyuncu gorseli: 8 kare 16x24, HEPSI ayni duz mavi yuvarlatilmis kare
+## (#4585bd) + tek goz (kagit rengi); kose seffaf. Hayalet dokusu beyaz
+## (modulate ile boyanir). Kare duzeni oyuncu_frames.tres'te durur.
+func _oyuncu_gorseli_testi() -> void:
 	var g: Image = (load("res://assets/sprites/oyuncu.png") as Texture2D).get_image()
 	_dogrula(g.get_width() == 128 and g.get_height() == 24, "oyuncu sayfasi 8 kare 16x24 (%dx%d)" % [g.get_width(), g.get_height()])
-	var idle := _kol_imzasi(g, 0)
-	var yuru0 := _kol_imzasi(g, 2)
-	var yuru1 := _kol_imzasi(g, 3)
-	var zipla := _kol_imzasi(g, 6)
-	var dus := _kol_imzasi(g, 7)
-	_dogrula(yuru0 != idle and yuru1 != idle and yuru0 != yuru1, "yuruyus karelerinde kollar bekleme karesinden ve birbirinden farkli")
-	_dogrula(_kol_imzasi(g, 2) == _kol_imzasi(g, 4) and _kol_imzasi(g, 3) == _kol_imzasi(g, 5), "4 kareli cevrim: 1=3, 2=4 kol pozu")
-	_dogrula(zipla != idle and dus != idle and zipla != dus, "zipla ve dus karelerinde kollar ayri")
-	_dogrula(_kask_imzasi(g, 0) == _kask_imzasi(g, 2) and _kask_imzasi(g, 0) == _kask_imzasi(g, 7), "kask her karede ayni")
+	var mavi := Tema.OYUNCU
+	var sonuc := true
+	var goz := true
+	var kose := true
+	for kare in 8:
+		var c := g.get_pixel(kare * 16 + 5, 12)
+		sonuc = sonuc and absf(c.r - mavi.r) < 0.01 and absf(c.g - mavi.g) < 0.01 and absf(c.b - mavi.b) < 0.01 and c.a > 0.99
+		var e := g.get_pixel(kare * 16 + 11, 8)
+		goz = goz and e.r > 0.85 and e.g > 0.85 and e.a > 0.99
+		kose = kose and g.get_pixel(kare * 16, 0).a < 0.01
+	_dogrula(sonuc, "her karede govde duz #4585bd")
+	_dogrula(goz, "her karede bakis yonunu gosteren goz")
+	_dogrula(kose, "kose seffaf (yuvarlatilmis kare)")
+	var h: Image = (load("res://assets/sprites/hayalet.png") as Texture2D).get_image()
+	var hc := h.get_pixel(8, 12)
+	_dogrula(h.get_width() == 16 and h.get_height() == 24 and hc.r > 0.99 and hc.g > 0.99 and hc.b > 0.99,
+		"hayalet dokusu beyaz 16x24 (modulate ile boyanir)")
 
 
-func _kol_imzasi(g: Image, kare: int) -> String:
-	var s := ""
-	for y in range(8, 15):
-		for x in [0, 1, 2, 3, 12, 13, 14, 15]:
-			s += g.get_pixel(kare * 16 + x, y).to_html(false)
-	return s
+# --- v1.0 arayuz yenilemesi ------------------------------------------------------
+
+## Ingilizce tablo: her anahtarin belirtec dizisi (%d, %s, %.2f) cevirisiyle ayni;
+## her bolum adi/ipucu, madalya adi, degistirici ve sahnelerdeki DURAGAN metinler
+## (PackedScene durumundan okunur) tabloda; dil gecisi metinleri gercekten degistiriyor.
+func _ceviri_testi() -> void:
+	var kotu := ""
+	for k in Ceviri.EN:
+		var ing: String = Ceviri.EN[k]
+		if Ceviri.belirtecler(String(k)) != Ceviri.belirtecler(ing):
+			kotu += " [%s]" % String(k).left(28)
+		for yer in ["{h}", "{c}"]:
+			if String(k).contains(yer) != ing.contains(yer):
+				kotu += " {%s}" % String(k).left(20)
+	_dogrula(kotu == "", "Ingilizce tabloda belirtecler anahtarla ayni ('%s')" % kotu)
+
+	var eksik := ""
+	for i in Ayarlar.bolum_sayisi():
+		var v: Dictionary = Ayarlar.bolum(i)
+		if not Ceviri.EN.has(String(v["ad"])):
+			eksik += " [%s]" % v["ad"]
+		if String(v["ipucu"]) != "" and not Ceviri.EN.has(String(v["ipucu"])):
+			eksik += " [%s]" % String(v["ipucu"]).left(24)
+	for m in [1, 2, 3]:
+		if not Ceviri.EN.has(String(Ayarlar.MADALYA_AD[m])):
+			eksik += " [%s]" % Ayarlar.MADALYA_AD[m]
+	for d in Ayarlar.GUNLUK_DEGISTIRICI:
+		if not Ceviri.EN.has(String(d)):
+			eksik += " [%s]" % d
+	for c in Ayarlar.DOKUNMA_METNI:
+		for j in 2:
+			if not Ceviri.EN.has(String(c[j])):
+				eksik += " [%s]" % c[j]
+	_dogrula(eksik == "", "bolum adlari, ipuclari, madalyalar, degistiriciler ve dokunma metinleri cevrilmis ('%s')" % eksik)
+
+	var muaf := ["", ".", "<", ">", "EN", "TR", "%100", "Türkçe", "YERÇEKİMİ ÇEVİR"]
+	var duragan := ""
+	for yol in ["res://scenes/menu.tscn", "res://scenes/bolum_sec.tscn", "res://scenes/ayarlar_ekrani.tscn", "res://scenes/oyun.tscn"]:
+		var durum: SceneState = (load(yol) as PackedScene).get_state()
+		for i in durum.get_node_count():
+			for j in durum.get_node_property_count(i):
+				if durum.get_node_property_name(i, j) == &"text":
+					var metin := String(durum.get_node_property_value(i, j))
+					if not muaf.has(metin) and not Ceviri.EN.has(metin):
+						duragan += " [%s]" % metin.left(24)
+	_dogrula(duragan == "", "sahnelerdeki duragan metinlerin hepsi cevrilmis ('%s')" % duragan)
+
+	# Dil gecisi: Ingilizce metinler gercekten degisiyor, Turkce anahtar aynen doner.
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	_dogrula(tr("Oyna") == "Play" and tr("Ayarlar") == "Settings", "EN: Oyna -> Play, Ayarlar -> Settings")
+	_dogrula(tr("1 — İlk Adım") == "1 — First Step", "EN: bolum adi cevrildi")
+	_dogrula(Ayarlar.kontrol_metni("A / D ile yürü. Sarı kapıya ulaş.").contains("Reach the yellow door"), "EN: ipucu cevrildi")
+	_dogrula((tr("%.2f sn") % 3.5) == "3.50 s", "EN: sure birimi 's'")
+	_dogrula(Tema.buyuk("first step") == "FIRST STEP", "EN: buyuk harf duz")
+	var dokunma_yedek := Ayarlar.dokunmatik_algilandi
+	Ayarlar.dokunmatik_algilandi = true
+	var t := Ayarlar.kontrol_metni("A / D ile yürü · BOŞLUK yerçekimini çevirir")
+	_dogrula(t.contains("Walk with the two left zones") and t.contains("Tap the right half"),
+		"EN dokunma: klavye terimi dokunmaya cevrildi ('%s')" % t)
+	_dogrula(not t.contains("A / D") and not t.contains("SPACE"), "EN dokunma: klavye terimi kalmadi")
+	Ayarlar.dokunmatik_algilandi = dokunma_yedek
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	_dogrula(tr("Oyna") == "Oyna" and Tema.buyuk("iğne ılık") == "İĞNE ILIK", "TR: anahtar aynen doner, buyuk harf Turkce (i->İ, ı->I)")
+
+	# Varsayilan dil: kayitli secim yoksa sistem dili (tr ise Turkce, degilse Ingilizce).
+	Ayarlar.dil = ""
+	var beklenen := "tr" if OS.get_locale_language() == "tr" else "en"
+	_dogrula(Ayarlar.dil_etkin() == beklenen, "dil secilmediyse sistem dili: %s (sistem '%s')" % [beklenen, OS.get_locale_language()])
+	Ayarlar.dil = "en"
+	_dogrula(Ayarlar.dil_etkin() == "en", "kullanici secimi sistem dilinden once gelir")
+	Ayarlar.dil = "tr"
 
 
-func _kask_imzasi(g: Image, kare: int) -> String:
-	var s := ""
-	for y in range(2, 8):
-		for x in range(4, 12):
-			s += g.get_pixel(kare * 16 + x, y).to_html(false)
-	return s
+## Dil kaydi: yeni anahtar (ayar/dil); eski kayit (anahtarsiz) bozulmaz; ilerleme
+## anahtarlari (acilan, en_iyi, madalya, kristal, en_az) ESKI adlarla yazilir.
+func _dil_kayit_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 6
+	Ayarlar.en_iyi[3] = 4.5
+	Ayarlar.madalya[3] = 2
+	Ayarlar.kristal[3] = true
+	Ayarlar.en_az[3] = 5
+	Ayarlar.dil = "en"
+	Ayarlar.kaydet()
+	var cfg := ConfigFile.new()
+	_dogrula(cfg.load(Ayarlar.KAYIT_YOLU) == OK, "kayit dosyasi okundu")
+	_dogrula(cfg.get_value("ayar", "dil", "?") == "en", "dil 'ayar/dil' anahtarina yazildi")
+	_dogrula(int(cfg.get_value("ilerleme", "acilan", -1)) == 6
+		and is_equal_approx(float(cfg.get_value("en_iyi", "3", -1.0)), 4.5)
+		and int(cfg.get_value("madalya", "3", -1)) == 2
+		and bool(cfg.get_value("kristal", "3", false))
+		and int(cfg.get_value("en_az", "3", -1)) == 5, "ilerleme anahtarlari eski adlarla duruyor (en_iyi/madalya/kristal/en_az)")
+	Ayarlar.acilan_bolum = 0
+	Ayarlar.en_iyi.clear()
+	Ayarlar.madalya.clear()
+	Ayarlar.kristal.clear()
+	Ayarlar.en_az.clear()
+	Ayarlar.dil = ""
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.dil == "en" and Ayarlar.acilan_bolum == 6 and is_equal_approx(float(Ayarlar.en_iyi[3]), 4.5)
+		and Ayarlar.madalya_al(3) == 2 and Ayarlar.kristal_var(3) and Ayarlar.en_az_al(3) == 5, "dil ve ilerleme geri okundu")
+	# Eski kayit: 'ayar/dil' anahtari hic yok -> dil otomatik, ilerleme korunur.
+	cfg.erase_section_key("ayar", "dil")
+	cfg.save(Ayarlar.KAYIT_YOLU)
+	Ayarlar.dil = "en"
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.dil == "" and Ayarlar.acilan_bolum == 6, "eski kayit (dilsiz): dil otomatik, ilerleme bozulmadi")
+	# Bozuk deger
+	cfg.set_value("ayar", "dil", "xx")
+	cfg.save(Ayarlar.KAYIT_YOLU)
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.dil == "", "gecersiz dil degeri yok sayildi")
+	Ayarlar.dil = "tr"
+	Ayarlar.sifirla()
+
+
+## Menu: dev OYNA (birincil), tek satir nasil oynanir, ikincil dugmeler; dil
+## degisince metinler yeniden yazilir; ilk odak OYNA'da.
+func _menu_akisi_testi() -> void:
+	Ayarlar.sifirla()
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var basla: Button = menu.get_node("Kutu/Basla")
+	_dogrula(basla.theme_type_variation == &"Birincil" and basla.text == "Oyna", "OYNA birincil dugme")
+	_dogrula(menu.get_viewport().gui_get_focus_owner() == basla, "ilk odak OYNA'da")
+	_dogrula(basla.size.y >= 40.0 and basla.size.x >= 300.0, "OYNA buyuk (%.0fx%.0f)" % [basla.size.x, basla.size.y])
+	for ad in ["Sec", "Gunluk", "Ayar"]:
+		_dogrula(menu.get_node("Kutu/Ikinci/" + ad) is Button, "ikincil dugme: " + ad)
+	var alt: String = menu.get_node("AltBaslik").text
+	_dogrula(alt.contains("A / D ile yürü") and alt.contains("BOŞLUK") and not alt.contains("\n"), "tek satir nasil oynanir ('%s')" % alt)
+	_dogrula(menu.get_node("Baslik/Yazi").text == "YERÇEKİMİ ÇEVİR", "baslik Turkce buyuk harf (%s)" % menu.get_node("Baslik/Yazi").text)
+	# Dil degisince metinler yeniden yazilir (sahne yeniden yuklenmeden test icin dogrudan).
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	menu._yazilari_yaz()
+	_dogrula(String(menu.get_node("AltBaslik").text).contains("SPACE flips gravity"), "EN: nasil oynanir Ingilizce")
+	_dogrula(menu.get_node("Dil").text == "TR", "dil dugmesi digerini gosteriyor (TR)")
+	_dogrula(String(menu.get_node("Ust").text) == "ONE KEY · 20 ROOMS", "EN: ust etiket ('%s')" % menu.get_node("Ust").text)
+	_dogrula(basla.atr(basla.text) == "Play", "EN: OYNA dugmesi 'Play' gorunuyor")
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	menu._yazilari_yaz()
+	_dogrula(menu.get_node("Dil").text == "EN", "TR: dil dugmesi EN")
+	# Gecis bandi sabitleri stil rehberiyle uyumlu (giris 180-260, cikis 120-260 ms).
+	_dogrula(Gecis.ORTME >= 0.18 and Gecis.ORTME <= 0.30 and Gecis.ACMA >= 0.12 and Gecis.ACMA <= 0.26
+		and not Gecis.mesgul_mu(), "renk bandi gecisi sureleri rehberde")
+	_dogrula(UI.ARALIK == 0.04 and UI.BASIS == 0.09, "menu ogeleri 40 ms arayla girer, dugme basisi 90 ms")
+	menu.queue_free()
+	await get_tree().process_frame
+
+
+## Duraklat: Esc/P -> perde + kart, ilk odak DEVAM, oyun donar; Devam kapatir,
+## Bastan bolumu sifirlar.
+func _duraklat_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	oyun.get_node("Dunya/Oyuncu").girdi_acik = false
+	var olay := InputEventAction.new()
+	olay.action = &"duraklat"
+	olay.pressed = true
+	oyun._unhandled_input(olay)
+	_dogrula(get_tree().paused, "duraklat tusu oyunu durdurdu")
+	_dogrula(oyun.get_node("Arayuz/Duraklat").visible and oyun.get_node("Arayuz/Perde").visible, "kart ve perde acildi")
+	_dogrula(oyun.get_viewport().gui_get_focus_owner() == oyun.get_node("Arayuz/Duraklat/Kutu/Devam"), "ilk odak DEVAM'da")
+	_dogrula(oyun.get_node("Arayuz/Duraklat/Kutu/Devam").theme_type_variation == &"Birincil", "DEVAM birincil dugme")
+	for ad in ["Bastan", "Ayar", "Menu"]:
+		_dogrula((oyun.get_node("Arayuz/Duraklat/Kutu/" + ad) as Button).visible, "duraklat dugmesi gorunur: " + ad)
+	_dogrula(not (oyun.get_node("Arayuz/Duraklat/Kutu/Atla") as Button).visible, "bolum atla yalniz yardim modunda")
+	oyun.sure = 3.0
+	oyun._bastan()
+	_dogrula(not get_tree().paused and not oyun.get_node("Arayuz/Duraklat").visible and not oyun.get_node("Arayuz/Perde").visible,
+		"BASTAN: oyun surer, kart ve perde kapandi")
+	_dogrula(oyun.sure == 0.0 and oyun.bolum_i == 0, "BASTAN: sure sifirlandi, ayni bolum")
+	oyun._unhandled_input(olay)
+	oyun._devam()
+	_dogrula(not get_tree().paused and not oyun.get_node("Arayuz/Duraklat").visible, "DEVAM: kapandi")
+	oyun.queue_free()
+	await get_tree().process_frame
+	get_tree().paused = false
+
+
+## Bolum sonu: kagit kart (oda, buyuk sure, madalya/rekor); son bolumden sonra
+## bitis karti, ilk odak TEKRAR'da, TEKRAR bastan baslatir.
+func _bolum_sonu_testi() -> void:
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var kapi: Area2D = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	var kart: Panel = oyun.get_node("Arayuz/BolumKarti")
+	_dogrula(kart.visible, "bolum sonu karti acildi")
+	_dogrula(String(oyun.get_node("Arayuz/BolumKarti/Etiket").text) == "ODA 01 / 20 TAMAM", "kart etiketi: '%s'" % oyun.get_node("Arayuz/BolumKarti/Etiket").text)
+	_dogrula(String(oyun.get_node("Arayuz/BolumKarti/Sure").text).ends_with(" sn"), "kart buyuk sureyi gosteriyor ('%s')" % oyun.get_node("Arayuz/BolumKarti/Sure").text)
+	var satir: String = oyun.get_node("Arayuz/BolumKarti/Satir").text
+	_dogrula(satir.contains("madalya") and satir.contains("YENİ REKOR") and satir.contains("En iyi"), "kart madalya + rekor + en iyi ('%s')" % satir.replace("\n", " | "))
+	await get_tree().create_timer(1.6).timeout
+	_dogrula(oyun.bolum_i == 1 and not kart.visible, "sonraki boluma gecince kart kapandi")
+	# Son bolum: bitis karti
+	Ayarlar.acilan_bolum = 19
+	oyun.bolum_yukle(19)
+	await get_tree().physics_frame
+	kapi = oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	await get_tree().create_timer(1.6).timeout
+	var bitis: Panel = oyun.get_node("Arayuz/Bitis")
+	var tekrar: Button = oyun.get_node("Arayuz/Bitis/Kutu/Tekrar")
+	_dogrula(bitis.visible and oyun.get_node("Arayuz/Perde").visible, "bitis karti + perde acildi")
+	_dogrula(oyun.get_viewport().gui_get_focus_owner() == tekrar, "ilk odak TEKRAR'da")
+	_dogrula(tekrar.theme_type_variation == &"Birincil" and tekrar.text == "Tekrar oyna", "TEKRAR birincil dugme")
+	_dogrula(String(oyun.get_node("Arayuz/Bitis/Kutu/Metin").text).contains("Toplam süre"), "bitis kartinda toplam sure var")
+	oyun._tekrar_oyna()
+	await get_tree().physics_frame
+	_dogrula(oyun.bolum_i == 0 and not bitis.visible and o.visible and oyun.sure < 0.5, "TEKRAR: 1. bolumden basliyor, kart kapandi")
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.sifirla()
+
+
+## Tema: bolum -> tema (0-6 kagit, 7-13 gece, 14-19 pembe); yercekimi ters
+## donunce zemin ve blok yer degistirir; renkler videodaki koddan.
+func _tema_testi() -> void:
+	_dogrula(Tema.bolum_temasi(0) == 2 and Tema.bolum_temasi(6) == 2 and Tema.bolum_temasi(7) == 0
+		and Tema.bolum_temasi(13) == 0 and Tema.bolum_temasi(14) == 1 and Tema.bolum_temasi(19) == 1, "bolum temalari muzik gruplariyla ayni")
+	var kagit: Array = Tema.renkler(2, false)
+	var ters: Array = Tema.renkler(2, true)
+	_dogrula(kagit[0].is_equal_approx(Color("f1ede5")) and kagit[1].is_equal_approx(Color("14121a")), "kagit temasi #f1ede5 / #14121a")
+	_dogrula(ters[0].is_equal_approx(kagit[1]) and ters[1].is_equal_approx(kagit[0]), "ters yercekimi: zemin ve blok yer degistirir")
+	_dogrula(Tema.renkler(0, false)[0].is_equal_approx(Color("1c141c")) and Tema.renkler(0, false)[1].is_equal_approx(Color("f1ece2")), "gece temasi #1c141c / #f1ece2")
+	_dogrula(Tema.renkler(1, false)[0].is_equal_approx(Color("f0d6cc")) and Tema.renkler(1, false)[1].is_equal_approx(Color("2b1517")), "pembe kagit temasi #f0d6cc / #2b1517")
+	_dogrula(Tema.DIKEN.is_equal_approx(Color("e94f36")) and Tema.OYUNCU.is_equal_approx(Color("4585bd")), "diken #e94f36, oyuncu #4585bd")
+	Ayarlar.sifirla()
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	var b: Bolum = oyun.get_node("Dunya/Bolum")
+	_dogrula(b.blok_rengi.is_equal_approx(Color("14121a")), "1. bolum bloklari #14121a")
+	for i in 30:
+		await get_tree().physics_frame
+	_dogrula(o.cevir(), "oyuncu zeminde, cevirme kabul edildi")
+	await get_tree().create_timer(0.5).timeout
+	_dogrula(b.blok_rengi.is_equal_approx(Color("f1ede5")), "cevirince bloklar acik renge gecti (%s)" % b.blok_rengi.to_html(false))
+	oyun.queue_free()
+	await get_tree().process_frame
+	Ayarlar.sifirla()
+
+
+## Tus olayi (Input.parse_input_event) fizik adimini beklemeden cevirir ve ayni
+## basis ikinci kez sayilmaz; havada reddedilen basis tampona gider (kojot/tampon
+## davranisi degismedi: _cevirme_testi ve _kojot_testi ayni).
+func _erken_cevirme_testi() -> void:
+	Ayarlar.sifirla()
+	var b := Bolum.new()
+	add_child(b)
+	b.kur(Bolumler.BOLUMLER[0])
+	var o: CharacterBody2D = OYUNCU.instantiate()
+	add_child(o)
+	o.hazirla(b.baslangic)
+	for i in 30:
+		await get_tree().physics_frame
+	var sayac := [0]
+	o.cevirdi.connect(func(_y: float) -> void: sayac[0] += 1)
+	var ev := InputEventAction.new()
+	ev.action = &"cevir"
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	var t0 := Time.get_ticks_usec()
+	while sayac[0] == 0 and Time.get_ticks_usec() - t0 < 200000:
+		await get_tree().process_frame       # olay bir sonraki karenin basinda islenir
+	_dogrula(o.yercekimi_yonu == -1.0 and sayac[0] == 1, "tus olayi cevirmeyi tetikledi (%d)" % sayac[0])
+	_dogrula(float(Time.get_ticks_usec() - t0) / 1000.0 < 40.0, "cevirme olaydan en fazla ~2 kare sonra (%.1f ms)" % (float(Time.get_ticks_usec() - t0) / 1000.0))
+	for i in 4:
+		await get_tree().physics_frame
+	_dogrula(sayac[0] == 1 and o.yercekimi_yonu == -1.0, "ayni basis ikinci kez cevirmedi (%d cevirme)" % sayac[0])
+	var birak := InputEventAction.new()
+	birak.action = &"cevir"
+	birak.pressed = false
+	Input.parse_input_event(birak)
+	await get_tree().process_frame
+	# Havadayken (kojot bitmis) gelen olay reddedilir, tampon kurulur: yere inince cevirir.
+	for i in 60:
+		await get_tree().physics_frame
+	_dogrula(o.is_on_floor() and o.yercekimi_yonu == -1.0, "tavana oturdu")
+	o.position.y += 60.0
+	for i in 12:
+		await get_tree().physics_frame
+	_dogrula(not o.is_on_floor(), "oyuncu havada")
+	sayac[0] = 0
+	Input.parse_input_event(ev)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_dogrula(sayac[0] == 0, "havada (kojot bitmis) olay dogrudan cevirmedi")
+	Input.parse_input_event(birak)
+	o.queue_free()
+	b.queue_free()
+	await get_tree().process_frame

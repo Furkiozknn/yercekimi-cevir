@@ -14,6 +14,8 @@ extends Node
 ##                   yeni duzeni, gunun bolumu (menu, ters baslangic, kristal zorunlu)
 ##     <mod> = -7  : tur 5 (v0.6): tavan-HUD solmasi, gunluk hayalet yarisi,
 ##                   paylasim paneli, menude seri, kapi/kristal parilti kareleri
+##     <mod> = -9  : v1.0 arayuz yenilemesi: menu/bolum sec/ayarlar (TR+EN), uc tema,
+##                   cevirme, duraklat, bolum sonu karti, olum haritasi, bitis karti
 ##     <mod> = -8  : tur 6 (v0.7): cevirme yasagi bolgesi (rozet, reddedilen
 ##                   cevirme, tavan/zemin bolgeleri), tek yonlu platformlar,
 ##                   bolum basi tabelasi, sure listesi, menude madalya, kol kareleri
@@ -64,6 +66,8 @@ func _ready() -> void:
 		await _tur5_cek()
 	elif mod == -8:
 		await _tur6_cek()
+	elif mod == -9:
+		await _v1_cek()
 	else:
 		await _oynanis_cek(mod)
 
@@ -809,3 +813,96 @@ func _kapak_yazisi() -> CanvasLayer:
 	alt.add_theme_constant_override("outline_size", 6)
 	kat.add_child(alt)
 	return kat
+
+
+## mod -9: v1.0 kanit kareleri (kanit/yercekimi-cevir/sonra). Her sahne animasyon
+## bittikten sonra cekilir; dil ve tema degisimi kod uzerinden.
+func _v1_cek() -> void:
+	_sahte_ilerleme()
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(1.1)
+	await _cek("menu-tr")
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	menu._yazilari_yaz()
+	await _bekle(0.3)
+	await _cek("menu-en")
+	menu.queue_free()
+	await _bekle(0.2)
+	var sec: Control = load("res://scenes/bolum_sec.tscn").instantiate()
+	add_child(sec)
+	await _bekle(1.6)
+	await _cek("bolum-sec-en")
+	sec.liste_goster(true)
+	await _bekle(0.3)
+	await _cek("sure-listesi-en")
+	sec.queue_free()
+	await _bekle(0.2)
+	var ayar: Control = load("res://scenes/ayarlar_ekrani.tscn").instantiate()
+	add_child(ayar)
+	await _bekle(1.0)
+	await _cek("ayarlar-en")
+	ayar.queue_free()
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	await _bekle(0.2)
+	ayar = load("res://scenes/ayarlar_ekrani.tscn").instantiate()
+	add_child(ayar)
+	await _bekle(1.0)
+	await _cek("ayarlar-tr")
+	ayar.queue_free()
+	await _bekle(0.2)
+	# Uc tema: kagit (1. bolum), gece (9.), pembe (16.). Her birinde baslangic + cevirme.
+	for bolum in [0, 8, 15]:
+		await _oyunu_ac(bolum)
+		await _bekle(0.5)
+		await _cek("oyun-%02d-basla" % (bolum + 1))
+		Input.action_press("move_right")
+		await _bekle(0.5)
+		Input.action_release("move_right")
+		Input.action_press("cevir")
+		await _bekle(0.05)
+		Input.action_release("cevir")
+		await _bekle(0.12)
+		await _cek("oyun-%02d-cevirdi" % (bolum + 1))
+		await _bekle(0.6)
+		await _cek("oyun-%02d-tavanda" % (bolum + 1))
+		_oyun.queue_free()
+		await _bekle(0.2)
+	# Duraklat + Ingilizce
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	await _oyunu_ac(7)
+	await _bekle(1.5)
+	var olay := InputEventAction.new()
+	olay.action = &"duraklat"
+	olay.pressed = true
+	_oyun._unhandled_input(olay)
+	await _bekle(0.8)
+	await _cek("duraklat-en")
+	_oyun._devam()
+	# Olum haritasi + bolum sonu karti (Ingilizce): once birkac olum, sonra kapi.
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	for x in [200.0, 320.0, 420.0]:
+		o.position = Vector2(x, 200.0)
+		o.oldur()
+		await _bekle(0.35)
+	var kapi: Area2D = _oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	await _bekle(0.7)
+	await _cek("bolum-sonu-en")
+	_oyun.queue_free()
+	await _bekle(0.2)
+	# Bitis karti (son bolum), Turkce
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	Ayarlar.acilan_bolum = 19
+	await _oyunu_ac(19)
+	o = _oyun.get_node("Dunya/Oyuncu")
+	kapi = _oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	await _bekle(2.2)
+	await _cek("bitis-tr")

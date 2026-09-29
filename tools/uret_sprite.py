@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Oyunun butun pixel art varliklarini kodla uretir -> assets/sprites/*.png
+"""Oyunun butun varliklarini kodla uretir -> assets/sprites/*.png
 
 Kullanim:  python tools/uret_sprite.py
 
-Neden kodla: bu makinede GUI cizim araci yok ve Pillow kurulu degil. PNG yazici
-asagida (zlib + struct, ~20 satir); sprite'lar ASCII haritadan, arka planlar
-yordamla ciziliyor. Her sey yeniden uretilebilir: dosyalari silip betigi calistir.
+v1.0 (arayuz yenilemesi): pixel-art EDG32 "laboratuvar" temasi yerine tanitim
+videosundaki DUZ renk dunyasi (bkz. docs/TASARIM.md). Her sey duz dolgu:
+golge, degrade, dis cizgi yok. Kenarlar 4x4 alt ornekleme ile yumusatilir, bu
+yuzden proje dokusu filtresi dogrusal (project.godot).
 
-Palet: Endesga 32 (EDG32) — tum oyun bu 32 renkle sinirli.
-Tema: "yercekimi laboratuvari" — metal paneller, uyari seritleri, parlayan kapi.
+Neden kodla: bu makinede GUI cizim araci yok ve Pillow kurulu degil. PNG yazici
+asagida (zlib + struct); sekiller matematiksel maskelerden cizilir. Her sey
+yeniden uretilebilir: dosyalari silip betigi calistir.
+
+Bolumun blok ve dikenleri PNG degil: scripts/bolum.gd _draw ile vektor cizer
+(tema rengine boyanir, her olcekte keskin). Eski karo/diken/tek_yonlu
+dosyalari _eski/sprites-v0.9/ altinda.
 """
 import os
 import struct
@@ -17,22 +23,23 @@ import zlib
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CIKTI = os.path.join(KOK, "assets", "sprites")
 
-# --- Endesga 32 -------------------------------------------------------------
-EDG = {
-    "siyah": "#181425", "koyu": "#262b44", "lacivert": "#3a4466",
-    "mavigri": "#5a6988", "gri": "#8b9bb4", "acikgri": "#c0cbdc", "beyaz": "#ffffff",
-    "kirmizi": "#e43b44", "kankirmizi": "#a22633", "parlakkirmizi": "#ff0044",
-    "pembe": "#f6757a", "turuncu": "#f77622", "sari": "#feae34", "acsari": "#fee761",
-    "ten": "#ead4aa", "kahve": "#b86f50", "kokahve": "#733e39", "kokahve2": "#3e2731",
-    "yesil": "#63c74d", "koyuyesil": "#3e8948", "cokkoyuyesil": "#265c42",
-    "camgobegi": "#2ce8f5", "mavi": "#0099db", "komavi": "#124e89",
-    "mor": "#68386c", "acikmor": "#b55088",
-}
+# --- Palet (scripts/tema.gd ile ayni) ---------------------------------------
+MUREKKEP = "#0e0d0b"
+KAGIT = "#f1ece2"
+DIKEN = "#e94f36"
+OYUNCU = "#4585bd"
+CAM = "#7dd4e7"
+SARI = "#ffc21a"
+SARI_KOYU = "#e0a200"
+GRI = "#8a8478"
+GUMUS = "#c9ccd6"
+BRONZ = "#c9865a"
+BEYAZ = "#ffffff"
 
 
-def rgb(ad):
-    h = EDG[ad].lstrip("#")
-    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255)
+def rgb(h, a=255):
+    h = h.lstrip("#")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), a)
 
 
 SEFFAF = (0, 0, 0, 0)
@@ -59,35 +66,88 @@ def png_yaz(yol, g, y, piksel):
     return yol
 
 
+# --- maskeler: (px, py) -> bool ---------------------------------------------
+def dikdortgen(x0, y0, x1, y1):
+    return lambda x, y: x0 <= x < x1 and y0 <= y < y1
+
+
+def yuvarlak_dikdortgen(x0, y0, x1, y1, r):
+    def f(x, y):
+        if not (x0 <= x < x1 and y0 <= y < y1):
+            return False
+        cx = min(max(x, x0 + r), x1 - r)
+        cy = min(max(y, y0 + r), y1 - r)
+        return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+    return f
+
+
+def daire(cx, cy, r):
+    return lambda x, y: (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+
+
+def eleman(cx, cy, rx, ry):
+    """Elmas (donmus kare): |dx|/rx + |dy|/ry <= 1."""
+    return lambda x, y: abs(x - cx) / rx + abs(y - cy) / ry <= 1.0
+
+
+def ucgen(a, b, c):
+    def isaret(p1, p2, p3):
+        return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1])
+
+    def f(x, y):
+        p = (x, y)
+        d1, d2, d3 = isaret(p, a, b), isaret(p, b, c), isaret(p, c, a)
+        neg = d1 < 0 or d2 < 0 or d3 < 0
+        poz = d1 > 0 or d2 > 0 or d3 > 0
+        return not (neg and poz)
+    return f
+
+
+def birlesim(*maskeler):
+    return lambda x, y: any(m(x, y) for m in maskeler)
+
+
+def fark(a, b):
+    return lambda x, y: a(x, y) and not b(x, y)
+
+
+def halka(cx, cy, r_dis, r_ic):
+    return lambda x, y: r_ic * r_ic <= (x - cx) ** 2 + (y - cy) ** 2 <= r_dis * r_dis
+
+
 class Tuval:
+    ALT = 4          # piksel basina ALT x ALT ornek
+
     def __init__(self, g, y):
         self.g, self.y = g, y
         self.p = [[SEFFAF] * g for _ in range(y)]
 
-    def nokta(self, x, y, renk):
-        if 0 <= x < self.g and 0 <= y < self.y:
-            self.p[y][x] = renk
-
-    def kutu(self, x, y, g, yk, renk):
-        for j in range(y, y + yk):
-            for i in range(x, x + g):
-                self.nokta(i, j, renk)
-
-    def cerceve(self, x, y, g, yk, renk):
-        for i in range(x, x + g):
-            self.nokta(i, y, renk)
-            self.nokta(i, y + yk - 1, renk)
-        for j in range(y, y + yk):
-            self.nokta(x, j, renk)
-            self.nokta(x + g - 1, j, renk)
-
-    def bas(self, x, y, harita, sozluk):
-        """ASCII haritayi (satir listesi) x,y'den itibaren basar."""
-        for j, satir in enumerate(harita):
-            for i, ch in enumerate(satir):
-                renk = sozluk.get(ch)
-                if renk is not None:
-                    self.nokta(x + i, y + j, renk)
+    def boya(self, maske, renk, x_bas=0, y_bas=0, g=None, y=None):
+        """Maske icindeki alani renkle boyar (kenarda kaplama orani = alfa).
+        x_bas.. arasi kutu yalniz hiz icin; maske zaten sinirlar."""
+        g = self.g if g is None else g
+        y = self.y if y is None else y
+        n = self.ALT
+        for j in range(max(0, y_bas), min(self.y, y_bas + y)):
+            for i in range(max(0, x_bas), min(self.g, x_bas + g)):
+                say = 0
+                for sj in range(n):
+                    for si in range(n):
+                        if maske(i + (si + 0.5) / n, j + (sj + 0.5) / n):
+                            say += 1
+                if say == 0:
+                    continue
+                a = renk[3] * say / (n * n) / 255.0
+                r0, g0, b0, a0 = self.p[j][i]
+                a0f = a0 / 255.0
+                ao = a + a0f * (1.0 - a)
+                if ao <= 0:
+                    continue
+                self.p[j][i] = (
+                    round((renk[0] * a + r0 * a0f * (1.0 - a)) / ao),
+                    round((renk[1] * a + g0 * a0f * (1.0 - a)) / ao),
+                    round((renk[2] * a + b0 * a0f * (1.0 - a)) / ao),
+                    round(ao * 255))
 
     def yaz(self, ad):
         URETILEN.append((ad, self))
@@ -95,15 +155,7 @@ class Tuval:
 
 
 URETILEN = []
-
-# Parildayan varliklar (kapi, kristal) 4 kareli yatay sayfa olarak uretilir;
-# Bolum bunlari PARILTI_ARALIGI'nda bir ilerletir (bkz. scripts/bolum.gd).
 PARILTI_KARE = 4
-
-
-def dogrula(harita, g, ad):
-    for i, satir in enumerate(harita):
-        assert len(satir) == g, (ad, "satir %d genisligi %d, %d olmali" % (i, len(satir), g))
 
 
 def _sayfa(kareler, ad):
@@ -113,487 +165,183 @@ def _sayfa(kareler, ad):
     for i, k in enumerate(kareler):
         for j in range(y):
             for x in range(g):
-                s.nokta(i * g + x, j, k.p[j][x])
+                s.p[j][i * g + x] = k.p[j][x]
     return s.yaz(ad)
 
 
 # --- oyuncu -----------------------------------------------------------------
-# o outline · L kask acik · v vizor · V vizor koyu · S tulum · D tulum koyu
-# B bot · b bot koyu · . seffaf
-OYUNCU_SOZ = {
-    ".": None, "o": rgb("siyah"), "L": rgb("sari"), "l": rgb("acsari"),
-    "v": rgb("camgobegi"), "V": rgb("mavi"), "S": rgb("turuncu"), "D": rgb("kokahve"),
-    "B": rgb("mavigri"), "b": rgb("lacivert"),
-}
-
-# Govde: 0..17 satirlar (kask + govde), KOLSUZ. Kollar ayri katman (KOL),
-# bacaklar ayri (18..22). v0.7: yuruyus cevriminde kollar sallaniyor; onceden
-# kollar govdeye cizili ve sabitti.
-GOVDE = [
-    "................",
-    "................",
-    ".....oooooo.....",
-    "....olllllLo....",
-    "...olvvvvvvLo...",
-    "...olvvvvvvLo...",
-    "...olVVVVVVLo...",
-    "....oLLLLLLo....",
-    ".....oooooo.....",
-    "....oSSSSSSo....",
-    "...oSSllllSSo...",
-    "...oSSlSSlSSo...",
-    "...oSSllllSSo...",
-    "...oSSSSSSSSo...",
-    "....oSSSSSSo....",
-    "....oDSSSSDo....",
-    "....oDDDDDDo....",
-    ".....oDDDDo.....",
-]
-
-# Kollar: (ilk satir, harita). Govdenin USTUNE basilir; '.' seffaf oldugu
-# icin govde pikselleri korunur, kol govdenin onunde gorunur.
-#   yan    sarkik (bekleme)               dis    dirsekler disari: "\ /"
-#   ic     kollar govdenin onune "/ \"    yukari kollar basin yaninda (zipla)
-#   acik   kollar yana acik, T (dus)
-KOL = {
-    "yan": (11, [
-        ".oDo........oDo.",
-        ".oDo........oDo.",
-        ".oDo........oDo.",
-        ".ooo........ooo.",
-    ]),
-    "dis": (11, [
-        ".oDo........oDo.",
-        "oDo..........oDo",
-        "oo............oo",
-    ]),
-    "ic": (11, [
-        ".oDo........oDo.",
-        "..oDo......oDo..",
-        "...oo......oo...",
-    ]),
-    "yukari": (8, [
-        ".oo.........oo..",
-        ".oDo........oDo.",
-        ".oDo........oDo.",
-        ".oDo........oDo.",
-    ]),
-    "acik": (10, [
-        ".ooo........ooo.",
-        "oDDDo......oDDDo",
-        ".ooo........ooo.",
-    ]),
-}
-
-BACAK_BIRLIKTE = [
-    ".....oDooDo.....",
-    ".....oDooDo.....",
-    "....oBBooBBo....",
-    "....obbooBBo....",
-    "....oooooooo....",
-]
-BACAK_ACIK_A = [
-    "....oDDooDo.....",
-    "...oDDoooDo.....",
-    "...oBBo.oBBo....",
-    "...obbo.oBBo....",
-    "...ooo...ooo....",
-]
-BACAK_ACIK_B = [
-    ".....oDooDDo....",
-    ".....oDoooDDo...",
-    "....oBBo.oBBo...",
-    "....obbo.oBBo...",
-    "....ooo...ooo...",
-]
-BACAK_TOPLU = [   # havada yukari giderken: bacaklar toplanmis
-    "....oDDooDDo....",
-    "....oDoooooDo...",
-    "...oBBo...oBBo..",
-    "...obbo...oBBo..",
-    "...oooo...oooo..",
-]
-BACAK_ACILMIS = [  # havada duserken: bacaklar acilmis
-    "...oDDo..oDDo...",
-    "..oDDo....oDDo..",
-    "..oBBo....oBBo..",
-    "..obbo....oBBo..",
-    "..oooo....oooo..",
-]
-
-
-def oyuncu_karesi(bacak, kol="yan", yukari=0):
-    """16x24 bir kare: govde + kol + bacak. yukari=1 ise govde ve kollar 1 px
-    yukari kayar (adim hissi); bacaklar yerde kalir."""
-    t = Tuval(16, 24)
-    t.bas(0, 0 - yukari, GOVDE, OYUNCU_SOZ)
-    satir, harita = KOL[kol]
-    t.bas(0, satir - yukari, harita, OYUNCU_SOZ)
-    t.bas(0, 18, bacak, OYUNCU_SOZ)
-    return t
-
-
 def uret_oyuncu():
-    for ad, h in [("GOVDE", GOVDE), ("BIRLIKTE", BACAK_BIRLIKTE), ("ACIK_A", BACAK_ACIK_A),
-                  ("ACIK_B", BACAK_ACIK_B), ("TOPLU", BACAK_TOPLU), ("ACILMIS", BACAK_ACILMIS)]:
-        dogrula(h, 16, "oyuncu/" + ad)
-    for ad, (_, h) in KOL.items():
-        dogrula(h, 16, "oyuncu/kol_" + ad)
-    # Yuruyus: bacaklar acilirken kollar disa savrulur, kapanirken govdenin
-    # onune gelir — iki kol pozu + iki bacak pozu, 4 karede tam cevrim.
-    kareler = [
-        oyuncu_karesi(BACAK_BIRLIKTE, "yan"),          # idle 0
-        oyuncu_karesi(BACAK_BIRLIKTE, "yan", 1),       # idle 1 (nefes)
-        oyuncu_karesi(BACAK_ACIK_A, "dis"),            # yuru 0
-        oyuncu_karesi(BACAK_BIRLIKTE, "ic", 1),        # yuru 1
-        oyuncu_karesi(BACAK_ACIK_B, "dis"),            # yuru 2
-        oyuncu_karesi(BACAK_BIRLIKTE, "ic", 1),        # yuru 3
-        oyuncu_karesi(BACAK_TOPLU, "yukari"),          # zipla (yukari): kollar basin yaninda
-        oyuncu_karesi(BACAK_ACILMIS, "acik"),          # dus: kollar yana acik
-    ]
-    sayfa = Tuval(16 * len(kareler), 24)
-    for i, k in enumerate(kareler):
-        for y in range(24):
-            for x in range(16):
-                sayfa.nokta(i * 16 + x, y, k.p[y][x])
-    return sayfa.yaz("oyuncu.png")
+    """8 kare x 16x24, hepsi AYNI: duz mavi yuvarlatilmis kare + tek goz.
+    Kare duzeni (idle 2, yuru 4, zipla 1, dus 1) oyuncu_frames.tres'te durur;
+    hareket dili squash/stretch ile (scripts/oyuncu.gd), kare degisimiyle degil.
+    Goz bakis yonunu gosterir: flip_h yatay, flip_v tavanda ters cevirir.
+    Gorsel 14x20 (isabet kutusu 12x20): kenarda 1 px bosluk, oyuncuyu haksiz
+    yere olduren gorsel yok."""
+    kare = Tuval(16, 24)
+    kare.boya(yuvarlak_dikdortgen(1, 2, 15, 22, 4.0), rgb(OYUNCU))
+    kare.boya(daire(10.6, 8.2, 1.7), rgb(KAGIT))
+    return _sayfa([kare] * 8, "oyuncu.png")
 
 
-# --- karolar ----------------------------------------------------------------
-def uret_karo():
-    """16x16 metal panel. Sol-ust acik, sag-alt koyu bizote + perçinler."""
-    t = Tuval(16, 16)
-    t.kutu(0, 0, 16, 16, rgb("lacivert"))
-    for i in range(16):
-        t.nokta(i, 0, rgb("mavigri"))
-        t.nokta(0, i, rgb("mavigri"))
-        t.nokta(i, 15, rgb("siyah"))
-        t.nokta(15, i, rgb("siyah"))
-    t.kutu(4, 7, 8, 2, rgb("koyu"))          # panel dikisi
-    for (x, y) in [(3, 3), (12, 3), (3, 12), (12, 12)]:
-        t.nokta(x, y, rgb("gri"))
-        t.nokta(x, y + 1, rgb("koyu"))
-    return t.yaz("karo.png")
+def uret_hayalet():
+    """16x24 BEYAZ oyuncu golgesi: hayalet, altin hayalet ve cevirme izi bunu
+    modulate ile boyar (mavi oyuncu dokusu renkle carpilinca bozulurdu)."""
+    t = Tuval(16, 24)
+    t.boya(yuvarlak_dikdortgen(1, 2, 15, 22, 4.0), rgb(BEYAZ))
+    return t.yaz("hayalet.png")
 
 
-def uret_karo_ust():
-    """Yuruyus yuzeyi: ustunde uyari seridi olan panel. Ters cevrilerek tavan icin
-    de kullanilir, bu yuzden serit ustte."""
-    t = Tuval(16, 16)
-    t.kutu(0, 0, 16, 16, rgb("lacivert"))
-    for i in range(16):
-        t.nokta(i, 15, rgb("siyah"))
-        t.nokta(15, i, rgb("siyah"))
-        t.nokta(0, i, rgb("mavigri"))
-    t.kutu(0, 0, 16, 4, rgb("acsari"))       # uyari seridi
-    for i in range(16):                      # egik siyah cizgiler
-        for j in range(4):
-            if (i + j) % 6 < 3:
-                t.nokta(i, j, rgb("siyah"))
-    t.kutu(0, 4, 16, 1, rgb("sari"))
-    t.kutu(4, 9, 8, 2, rgb("koyu"))
-    for x in (3, 12):
-        t.nokta(x, 13, rgb("gri"))
-        t.nokta(x, 14, rgb("koyu"))
-    return t.yaz("karo_ust.png")
-
-
-# --- tehlikeler -------------------------------------------------------------
-DIKEN = [
-    ".......oo.......",
-    ".......rr.......",
-    "......orro......",
-    "......rWWr......",
-    ".....orrrro.....",
-    ".....rrWWrr.....",
-    "....orrrrrro....",
-    "....rrrWWrrr....",
-    "...orrrrrrrro...",
-    "...rrrWWRRRRr...",
-    "..orrrrrrrrrro..",
-    "..rrrWWRRRRRRr..",
-    ".orrrrrrrrrrrro.",
-    ".rrrWWRRRRRRRRr.",
-    "oRRRRRRRRRRRRRRo",
-    "oooooooooooooooo",
-]
-DIKEN_SOZ = {
-    ".": None, "o": rgb("siyah"), "r": rgb("kirmizi"),
-    "R": rgb("kankirmizi"), "W": rgb("pembe"),
-}
-
-
-def uret_diken():
-    dogrula(DIKEN, 16, "diken")
-    t = Tuval(16, 16)
-    t.bas(0, 0, DIKEN, DIKEN_SOZ)
-    return t.yaz("diken.png")
-
-
+# --- tehlike ---------------------------------------------------------------
 def uret_gezgin():
-    """24x10 gezgin diken: iki yana disli, ortada kirmizi govde."""
+    """24x10 gezgin diken: ortada dar govde, ust ve altta ucgen disler. Duz kirmizi."""
+    govde = yuvarlak_dikdortgen(1, 3, 23, 7, 1.5)
+    disler = []
+    for x in range(2, 22, 4):
+        disler.append(ucgen((x, 3.2), (x + 4, 3.2), (x + 2, 0.4)))
+        disler.append(ucgen((x, 6.8), (x + 4, 6.8), (x + 2, 9.6)))
     t = Tuval(24, 10)
-    t.kutu(1, 2, 22, 6, rgb("kankirmizi"))
-    t.kutu(2, 3, 20, 2, rgb("kirmizi"))
-    t.cerceve(1, 2, 22, 6, rgb("siyah"))
-    for x in range(2, 22, 3):                # ust ve alt disler
-        for j in range(2):
-            t.kutu(x + j, 1 - j, 3 - 2 * j, 1, rgb("parlakkirmizi"))
-            t.kutu(x + j, 8 + j, 3 - 2 * j, 1, rgb("parlakkirmizi"))
-    for x in range(4, 21, 6):
-        t.nokta(x, 5, rgb("pembe"))
+    t.boya(birlesim(govde, *disler), rgb(DIKEN))
     return t.yaz("gezgin.png")
 
 
+def uret_platform():
+    """48x10 hareketli platform: duz camgobegi, yuvarlak uclu (guvenli + hareketli)."""
+    t = Tuval(48, 10)
+    t.boya(yuvarlak_dikdortgen(0, 0, 48, 10, 3.0), rgb(CAM))
+    return t.yaz("platform.png")
+
+
 def uret_inis():
-    """20x5 inis gostergesi: cevirme tusunu basili tutunca karsi yuzeyde nerede
-    duracagini gosteren ayrac. Iki ucta dolu beyaz direk, ortada kesik cizgi,
-    hepsi siyah dis cizgili — 640x360'ta uzaktan da secilsin diye. Rengi kodda
-    ayarlanir: mavi = temiz inis, kirmizi = yolda diken var."""
-    s, b = rgb("siyah"), rgb("beyaz")
+    """20x5 inis gostergesi: iki uc direk + ince cizgi, beyaz. Rengi kodda
+    boyanir (mavi = temiz inis, kirmizi = yolda diken var)."""
     t = Tuval(20, 5)
-    t.kutu(0, 0, 20, 5, s)                 # once tum sekli siyah: dis cizgi
-    t.kutu(2, 1, 16, 3, SEFFAF)            # ortayi bosalt
-    t.kutu(1, 1, 2, 3, b)                  # sol direk
-    t.kutu(17, 1, 2, 3, b)                 # sag direk
-    for x in range(5, 16, 4):              # ortada kesik cizgi
-        t.kutu(x, 1, 2, 1, s)
-        t.kutu(x, 2, 2, 1, b)
-        t.kutu(x, 3, 2, 1, s)
+    t.boya(birlesim(yuvarlak_dikdortgen(0, 0, 2.5, 5, 1.0), yuvarlak_dikdortgen(17.5, 0, 20, 5, 1.0),
+                    dikdortgen(2, 2, 18, 3)), rgb(BEYAZ))
     return t.yaz("inis.png")
 
 
-def uret_tek_yonlu():
-    """16x8 tek yonlu platform karosu: acik gri izgara, ustunde koyu mavi YUKARI
-    oklar = "yukari dogru icinden gecilir, ustune inilir". Bolum bunu hucre
-    hucre doser; alttan katisi (~) icin dikey aynalayarak cizer (oklar asagi)."""
-    t = Tuval(16, 8)
-    t.kutu(0, 0, 16, 8, rgb("acikgri"))
-    t.kutu(0, 6, 16, 1, rgb("gri"))                 # alt golge
-    t.cerceve(0, 0, 16, 8, rgb("siyah"))
-    for c in (4, 11):                               # iki ok: 5 px genis, 3 satir (2x'te 10x6)
-        t.nokta(c, 1, rgb("komavi"))
-        t.kutu(c - 1, 2, 3, 1, rgb("komavi"))
-        t.kutu(c - 2, 3, 5, 1, rgb("komavi"))
-        t.kutu(c - 2, 4, 2, 1, rgb("komavi"))       # bacaklar: ok govdesi degil, "^" cizgisi
-        t.kutu(c + 1, 4, 2, 1, rgb("komavi"))
-    return t.yaz("tek_yonlu.png")
-
-
-KILIT = [
-    "...gggggg...",
-    "..gg....gg..",
-    "..g......g..",
-    "..g......g..",
-    ".oooooooooo.",
-    ".oSSSSSSSSo.",
-    ".oSSSooSSSo.",
-    ".oSSSooSSSo.",
-    ".oSSSSoSSSo.",
-    ".oSSSSSSSSo.",
-    ".oooooooooo.",
-    "............",
-]
-KILIT_SOZ = {".": None, "o": rgb("siyah"), "g": rgb("acikgri"), "S": rgb("sari")}
-
-
 def uret_kilit():
-    """12x12 asma kilit: cevirme yasagi bolgesinin isareti (bolum ici 2x, HUD 1x)."""
-    dogrula(KILIT, 12, "kilit")
+    """12x12 asma kilit, BEYAZ: bolum blok rengine boyanir (tema neyse o)."""
     t = Tuval(12, 12)
-    t.bas(0, 0, KILIT, KILIT_SOZ)
+    kanca = fark(halka(6, 4.6, 3.6, 2.2), dikdortgen(0, 5, 12, 12))
+    govde = fark(yuvarlak_dikdortgen(1.5, 5, 10.5, 11.5, 1.5), daire(6, 8, 1.1))
+    t.boya(birlesim(kanca, govde), rgb(BEYAZ))
     return t.yaz("kilit.png")
-
-
-def uret_platform():
-    """48x10 hareketli platform: mor metal kiris + calisan isiklar."""
-    t = Tuval(48, 10)
-    t.kutu(0, 0, 48, 10, rgb("mor"))
-    t.kutu(1, 1, 46, 3, rgb("acikmor"))
-    t.kutu(0, 8, 48, 2, rgb("siyah"))
-    t.cerceve(0, 0, 48, 10, rgb("siyah"))
-    for x in range(5, 45, 8):
-        t.kutu(x, 5, 3, 2, rgb("camgobegi"))
-        t.nokta(x + 1, 6, rgb("beyaz"))
-    return t.yaz("platform.png")
 
 
 # --- hedef, toplanabilir, kontrol noktasi -----------------------------------
 def _kapi_karesi(kare):
-    """16x48 laboratuvar kapisi. kare 0..3: enerji cizgileri her karede 2 px
-    YUKARI kayar, dis cekirdek her iki karede bir sariya doner (nabiz)."""
+    """16x48 kapi: sari govde, icinde koyu sari oyuk ve yukari kayan acik cizgi."""
     t = Tuval(16, 48)
-    t.kutu(0, 0, 16, 48, rgb("koyu"))
-    t.kutu(2, 2, 12, 44, rgb("cokkoyuyesil"))
-    t.kutu(3, 3, 10, 42, rgb("koyuyesil"))
-    t.kutu(4, 5, 8, 38, rgb("yesil"))
-    for j in range(6, 42, 2):                # yukari akan enerji cizgileri
-        t.kutu(5, j, 6, 1, rgb("acsari") if (j // 2 + kare) % 4 == 0 else rgb("yesil"))
-    t.kutu(6, 8, 4, 32, rgb("beyaz") if kare % 2 == 0 else rgb("acsari"))   # cekirdek
-    t.kutu(7, 6, 2, 36, rgb("beyaz"))
-    t.cerceve(0, 0, 16, 48, rgb("siyah"))
-    t.kutu(0, 0, 16, 2, rgb("mavigri"))      # ust/alt metal kelepce
-    t.kutu(0, 46, 16, 2, rgb("mavigri"))
-    t.cerceve(0, 0, 16, 48, rgb("siyah"))
+    t.boya(yuvarlak_dikdortgen(0, 0, 16, 48, 3.0), rgb(SARI))
+    t.boya(yuvarlak_dikdortgen(4, 5, 12, 43, 2.0), rgb(SARI_KOYU))
+    y = 36 - kare * 9
+    t.boya(yuvarlak_dikdortgen(6, y, 10, y + 7, 1.5), rgb(KAGIT))
     return t
 
 
 def uret_kapi():
-    """64x48: 4 kareli parildayan kapi (yalniz scripts/bolum.gd kullanir)."""
+    """64x48: 4 kareli kapi (yalniz scripts/bolum.gd kullanir)."""
     return _sayfa([_kapi_karesi(k) for k in range(PARILTI_KARE)], "kapi.png")
-
-
-KRISTAL = [
-    "....oooo....",
-    "...oCCCCo...",
-    "..oCWWWWCo..",
-    ".oCWWccWWCo.",
-    "oCWccccccWCo",
-    "oCWccccccWCo",
-    "oCcccccccCo.",
-    ".oCcccccCo..",
-    "..oCcccCo...",
-    "...oCcCo....",
-    "....oCo.....",
-    ".....o......",
-]
-KRISTAL_SOZ = {
-    ".": None, "o": rgb("siyah"), "C": rgb("komavi"),
-    "c": rgb("mavi"), "W": rgb("camgobegi"),
-}
-
-
-# Kare basina ek beyaz pikseller (x, y): kristalin uzerinde kayan isik.
-# Hepsi haritada "W" ya da "c" olan, yani govdenin icindeki noktalar.
-KRISTAL_PARILTI = [[], [(3, 3), (4, 3)], [(7, 2), (8, 5)], [(5, 7)]]
 
 
 def _kristal_karesi(kare):
     t = Tuval(12, 12)
-    soz = dict(KRISTAL_SOZ)
-    if kare == 2:
-        soz["c"] = rgb("camgobegi")          # en parlak kare: govde bir ton acilir
-    t.bas(0, 0, KRISTAL, soz)
-    for (x, y) in KRISTAL_PARILTI[kare]:
-        t.nokta(x, y, rgb("beyaz"))
+    t.boya(eleman(6, 6, 5.6, 5.6), rgb(SARI_KOYU if kare == 2 else SARI))
+    lekeler = [None, (4.2, 4.2), (6.0, 3.6), (7.6, 5.0)]
+    if lekeler[kare]:
+        t.boya(daire(lekeler[kare][0], lekeler[kare][1], 1.0), rgb(KAGIT))
     return t
 
 
 def uret_kristal():
     """12x12 TEK kare: HUD, menu ve Bolum Sec simgesi (parildamaz)."""
-    dogrula(KRISTAL, 12, "kristal")
     return _kristal_karesi(0).yaz("kristal.png")
 
 
 def uret_kristal_parilti():
-    """48x12: bolum icindeki kristalin 4 kareli parilti sayfasi."""
+    """48x12: bolum icindeki kristalin 4 kareli sayfasi."""
     return _sayfa([_kristal_karesi(k) for k in range(PARILTI_KARE)], "kristal_parilti.png")
 
 
 def uret_kontrol():
-    """32x24: iki kare — 0 pasif (gri), 1 aktif (mavi, isikli)."""
+    """32x24: iki kare — 0 pasif (gri), 1 aktif (camgobegi). Direk + ucgen bayrak."""
     t = Tuval(32, 24)
-    for i, (govde, isik, parlak) in enumerate([
-            ("mavigri", "lacivert", "gri"), ("komavi", "mavi", "camgobegi")]):
+    for i, renk in enumerate([GRI, CAM]):
         x = i * 16
-        t.kutu(x + 6, 6, 4, 18, rgb(govde))          # direk
-        t.kutu(x + 3, 20, 10, 4, rgb("lacivert"))    # taban
-        t.cerceve(x + 3, 20, 10, 4, rgb("siyah"))
-        t.kutu(x + 2, 2, 12, 8, rgb("koyu"))         # lamba kutusu
-        t.cerceve(x + 2, 2, 12, 8, rgb("siyah"))
-        t.kutu(x + 4, 4, 8, 4, rgb(isik))
-        t.kutu(x + 5, 5, 6, 2, rgb(parlak))
-        if i == 1:
-            t.kutu(x + 6, 5, 4, 1, rgb("beyaz"))
+        t.boya(yuvarlak_dikdortgen(x + 5.5, 2, x + 7.5, 24, 1.0), rgb(renk))
+        t.boya(ucgen((x + 7.5, 2.5), (x + 7.5, 11.5), (x + 15, 7)), rgb(renk))
     return t.yaz("kontrol.png")
 
 
 def uret_madalya():
-    """36x12: altin / gumus / bronz — Bolum Sec ve bitis ekrani icin."""
-    renkler = [("acsari", "sari", "beyaz"), ("acikgri", "gri", "beyaz"),
-               ("kahve", "kokahve", "ten")]
+    """36x12: altin / gumus / bronz — duz daire."""
     t = Tuval(36, 12)
-    for i, (dis, ic, parlak) in enumerate(renkler):
-        x = i * 12
-        for j in range(12):
-            for k in range(12):
-                d = (k - 5.5) ** 2 + (j - 6.5) ** 2
-                if d <= 20:
-                    t.nokta(x + k, j, rgb(dis))
-                if d <= 10:
-                    t.nokta(x + k, j, rgb(ic))
-        for k in (2, 9):                         # iki kurdele ucu
-            t.kutu(x + k, 0, 2, 3, rgb("kirmizi"))
-            t.nokta(x + k, 3, rgb("kankirmizi"))
-        t.nokta(x + 4, 4, rgb(parlak))
-        t.nokta(x + 5, 4, rgb(parlak))
-        t.nokta(x + 4, 5, rgb(parlak))
+    for i, renk in enumerate([SARI, GUMUS, BRONZ]):
+        t.boya(daire(i * 12 + 6, 6, 5.2), rgb(renk))
     return t.yaz("madalya.png")
 
 
-# --- parallaks arka plan ----------------------------------------------------
-def _gokyuzu(t, ust, alt):
-    a, b = rgb(ust), rgb(alt)
+# --- arayuz parcalari --------------------------------------------------------
+def uret_arayuz():
+    """Kaydirici tutamagi ve anahtar (CheckButton) resimleri."""
+    t = Tuval(16, 16)
+    t.boya(daire(8, 8, 6.5), rgb(CAM))
+    t.yaz("tutamak.png")
+    for ad, acik, engelli in [("anahtar_acik", True, False), ("anahtar_kapali", False, False),
+                              ("anahtar_acik_pasif", True, True), ("anahtar_kapali_pasif", False, True)]:
+        s = Tuval(32, 16)
+        alfa = 90 if engelli else 255
+        if acik:
+            s.boya(yuvarlak_dikdortgen(0, 1, 32, 15, 7.0), rgb(CAM, alfa))
+            s.boya(daire(23.5, 8, 5.2), rgb(MUREKKEP, alfa))
+        else:
+            s.boya(yuvarlak_dikdortgen(0, 1, 32, 15, 7.0), rgb(KAGIT, 60 if not engelli else 30))
+            s.boya(daire(8.5, 8, 5.2), rgb(KAGIT, 200 if not engelli else 90))
+        s.yaz(ad + ".png")
+
+
+# --- arka plan: eGik uzun cubuklar -------------------------------------------
+# Videodaki egik bloklar: her katman 320 px genis, x'te PERIYODIK (320) — iki
+# kopya yan yana ekrani ortu (CLAUDE.md tuzak 21) ve dikis gorunmez. BEYAZ,
+# dusuk alfa: oyun sahnesi blok rengiyle boyar (Oyun._arka_ton).
+def _cubuk(t, ofset, egim, genislik, alfa):
+    """Her satirda x = ofset + egim*y (mod 320) etrafinda genislik px'lik serit."""
     for j in range(t.y):
-        o = j / max(1, t.y - 1)
-        t.kutu(0, j, t.g, 1, tuple(int(a[k] + (b[k] - a[k]) * o) for k in range(3)) + (255,))
+        merkez = (ofset + egim * j) % 320.0
+        for i in range(t.g):
+            d = min(abs(i + 0.5 - merkez), 320 - abs(i + 0.5 - merkez))
+            if d <= genislik / 2.0:
+                t.p[j][i] = (255, 255, 255, alfa)
+            elif d <= genislik / 2.0 + 1.0:
+                a = alfa * (1.0 - (d - genislik / 2.0))
+                t.p[j][i] = (255, 255, 255, round(a))
 
 
 def uret_arka_0():
-    """En uzak katman: laboratuvar holunun karanligi + soluk izgara."""
     t = Tuval(320, 360)
-    _gokyuzu(t, "siyah", "koyu")
-    for x in range(0, 320, 32):              # soluk dikey izgara
-        t.kutu(x, 0, 1, 360, rgb("koyu"))
-    for y in range(0, 360, 32):
-        t.kutu(0, y, 320, 1, rgb("koyu"))
-    for x in range(24, 320, 96):             # uzak lamba halkalari
-        for y in (60, 300):
-            t.kutu(x, y, 10, 2, rgb("lacivert"))
+    _cubuk(t, 70, 0.55, 46, 18)
     return t.yaz("arka_0.png")
 
 
 def uret_arka_1():
-    """Orta katman: dev tank siluetleri. Oyun alani onunde durdugu icin KOYU
-    tutulur — ilk denemede acik tonlar oynanisin onune geciyordu."""
     t = Tuval(320, 360)
-    desen = [(10, 150, 46, 150), (72, 190, 30, 110), (120, 120, 64, 190),
-             (200, 170, 38, 120), (252, 140, 52, 160)]
-    for x, y, g, yk in desen:
-        t.kutu(x, y, g, yk, rgb("siyah"))
-        t.kutu(x, y, g, 2, rgb("koyu"))
-        for j in range(y + 14, y + yk - 10, 26):   # sonuk gosterge sirasi
-            t.kutu(x + 6, j, 3, 2, rgb("koyu"))
+    _cubuk(t, 250, -0.9, 12, 26)
     return t.yaz("arka_1.png")
 
 
 def uret_arka_2():
-    """En yakin katman: yalniz dikey kablolar ve sonuk lamba noktalari.
-    YATAY hicbir sey yok — arka planda yatay bir cizgi oyuncu tarafindan
-    platform saniliyor (ilk denemede ortadaki uyari seridi tam bunu yapti)."""
     t = Tuval(320, 360)
-    for x in range(26, 320, 62):             # dikey kablo demeti
-        t.kutu(x, 0, 2, 360, rgb("koyu"))
-        t.kutu(x + 4, 0, 1, 360, rgb("koyu"))
-        for y in range(40, 340, 90):
-            t.kutu(x - 2, y, 7, 5, rgb("lacivert"))
-            t.nokta(x + 1, y + 2, rgb("komavi"))
-    for x in range(58, 320, 62):             # duvar lambasi
-        for y in (96, 264):
-            t.kutu(x, y, 4, 3, rgb("lacivert"))
-            t.nokta(x + 1, y + 1, rgb("mavi"))
+    _cubuk(t, 160, 0.3, 3, 34)
     return t.yaz("arka_2.png")
 
 
 def onizleme(olcek=4):
-    """Butun kucuk sprite'lari tek bir buyutulmus levhaya dizer: gozle denetlemek icin.
-    Arka planlar cok buyuk oldugu icin disarida birakilir."""
+    """Kucuk varliklari tek levhaya dizer (docs/varliklar.png): gozle denetim."""
     ogeler = [(ad, t) for ad, t in URETILEN if not ad.startswith("arka_")]
-    bosluk = 4
-    g = max(t.g for _, t in ogeler) * olcek + bosluk * 2
-    g = max(g, 448 * olcek // 3)
-    satirlar, x, y, satir_y = [], bosluk, bosluk, 0
-    yer = []
+    bosluk = 6
+    g = 720
+    yer, x, y, satir_y = [], bosluk, bosluk, 0
     for ad, t in ogeler:
         if x + t.g * olcek > g - bosluk:
             x, y, satir_y = bosluk, y + satir_y + bosluk, 0
@@ -602,16 +350,18 @@ def onizleme(olcek=4):
         satir_y = max(satir_y, t.y * olcek)
     yukseklik = y + satir_y + bosluk
     levha = Tuval(g, yukseklik)
-    levha.kutu(0, 0, g, yukseklik, rgb("acikgri"))
+    zemin = rgb("#1c141c")
+    for j in range(yukseklik):
+        for i in range(g):
+            levha.p[j][i] = zemin
     for lx, ly, t in yer:
-        levha.kutu(lx - 1, ly - 1, t.g * olcek + 2, t.y * olcek + 2, rgb("siyah"))
-        for j in range(t.y):
-            for i in range(t.g):
-                px = t.p[j][i]
-                if px[3] == 0:
-                    px = rgb("acikmor") if (i + j) % 2 else rgb("mor")
-                levha.kutu(lx + i * olcek, ly + j * olcek, olcek, olcek, px)
-    del satirlar
+        for j in range(t.y * olcek):
+            for i in range(t.g * olcek):
+                px = t.p[j // olcek][i // olcek]
+                a = px[3] / 255.0
+                if a > 0:
+                    z = levha.p[ly + j][lx + i]
+                    levha.p[ly + j][lx + i] = tuple(round(px[k] * a + z[k] * (1 - a)) for k in range(3)) + (255,)
     yol = os.path.join(KOK, "docs", "varliklar.png")
     os.makedirs(os.path.dirname(yol), exist_ok=True)
     png_yaz(yol, levha.g, levha.y, levha.p)
@@ -620,14 +370,14 @@ def onizleme(olcek=4):
 
 def main():
     os.makedirs(CIKTI, exist_ok=True)
-    isler = [uret_oyuncu, uret_karo, uret_karo_ust, uret_diken, uret_gezgin,
-             uret_platform, uret_tek_yonlu, uret_kilit, uret_inis, uret_kapi,
+    isler = [uret_oyuncu, uret_hayalet, uret_gezgin, uret_platform, uret_inis, uret_kilit, uret_kapi,
              uret_kristal, uret_kristal_parilti, uret_kontrol, uret_madalya,
              uret_arka_0, uret_arka_1, uret_arka_2]
     for is_ in isler:
         yol = is_()
         print("  %-28s %6d bayt" % (os.path.basename(yol), os.path.getsize(yol)))
-    print("%d varlik uretildi -> %s" % (len(isler), CIKTI))
+    uret_arayuz()
+    print("%d varlik + arayuz parcalari uretildi -> %s" % (len(isler), CIKTI))
     onizleme()
 
 

@@ -21,7 +21,7 @@ class_name Bolumler
 const BOLUMLER: Array[Dictionary] = [
 	{
 		"ad": "1 — İlk Adım",
-		"ipucu": "A / D ile yürü. Yeşil kapıya ulaş.",
+		"ipucu": "A / D ile yürü. Sarı kapıya ulaş.",
 		"altin": 4.9,
 		"gumus": 7.1,
 		"bronz": 10.3,
@@ -245,7 +245,7 @@ const BOLUMLER: Array[Dictionary] = [
 	},
 	{
 		"ad": "8 — Asansör",
-		"ipucu": "Mor platform gidip geliyor; üstüne ya da altına yapış.",
+		"ipucu": "Camgöbeği platform gidip geliyor; üstüne ya da altına yapış.",
 		"altin": 5.8,
 		"gumus": 8.4,
 		"bronz": 12.2,
@@ -405,7 +405,7 @@ const BOLUMLER: Array[Dictionary] = [
 	},
 	{
 		"ad": "13 — Uzun Yol",
-		"ipucu": "Mavi kontrol noktası ölünce seni oraya döndürür.",
+		"ipucu": "Bayrağa dokunursan öldüğünde oradan devam edersin.",
 		"altin": 11.1,
 		"gumus": 16.1,
 		"bronz": 23.3,
