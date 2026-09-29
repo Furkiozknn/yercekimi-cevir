@@ -3,7 +3,7 @@
   "id": "yercekimi-cevir",
   "owner": "Furkiozknn",
   "repository": "https://github.com/Furkiozknn/yercekimi-cevir",
-  "homepage": "https://furkiozknn.github.io/#yercekimi-cevir",
+  "homepage": "https://furkiozknn.github.io/yercekimi-cevir/",
   "releases": "https://github.com/Furkiozknn/yercekimi-cevir/releases",
   "status": "active",
   "category": "game",
@@ -53,9 +53,9 @@
     "videos": []
   },
   "tests": {
-    "count": 841,
-    "source": "CI log: `841 dogrulama, 0 hata` / `TESTLER GECTI`",
-    "measured": "2026-09-22"
+    "count": 963,
+    "source": "CI log: `963 dogrulama, 0 hata` / `TESTLER GECTI`",
+    "measured": "2026-09-29"
   },
   "ci": {
     "workflows": [
@@ -82,7 +82,7 @@
       "gamedev",
       "precisionplatformer"
     ],
-    "primary_link": "https://github.com/Furkiozknn/yercekimi-cevir"
+    "primary_link": "https://furkiozknn.github.io/yercekimi-cevir/"
   },
   "provenance": {
     "generated_at": "2026-09-22",
