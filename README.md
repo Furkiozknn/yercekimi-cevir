@@ -4,6 +4,7 @@
 
 <p align="center"><img src="docs/reel/reel.gif" alt="yercekimi-cevir - 15 saniyelik tanıtım videosu" width="720"></p>
 <p align="center"><sub><a href="docs/reel/reel.mp4">Sesli MP4 sürümü</a></sub></p>
+<h3 align="center"><a href="https://furkiozknn.github.io/yercekimi-cevir/">Tarayıcıda oyna → furkiozknn.github.io/yercekimi-cevir</a></h3>
 
 *No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 841 headless checks.*
 
@@ -26,7 +27,7 @@ süresi, en az çevirme.
 
 | Yol | Durum |
 |---|---|
-| **Tarayıcıda (GitHub Pages)** | Henüz yayında **değil**. Web paketi hazır ([Yapi](.github/workflows/yapi.yml) üretiyor), Pages'e ilk yayın depo sahibinin bir kez yapacağı iş. |
+| **Tarayıcıda (GitHub Pages)** | **[furkiozknn.github.io/yercekimi-cevir](https://furkiozknn.github.io/yercekimi-cevir/)** — kurulum gerekmez. 29 Eylül 2026'da masaüstü Chromium'da açıldı: menü geldi, **Başla** 1. bölümü yükledi, `Boşluk` yerçekimini çevirdi, konsolda hata yok. Dokunmatik ve mobil tarayıcı bu kontrolde denenmedi. |
 | **İndirilebilir paket** | [Releases](https://github.com/Furkiozknn/yercekimi-cevir/releases)'ta henüz ekli dosya yok. GitHub'a giriş yaptıysan [Actions → Yapi](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/yapi.yml) altındaki son başarılı koşunun *Artifacts* bölümünden `yercekimi-cevir-windows` ya da `yercekimi-cevir-web` zip'ini indirebilirsin (artifact'lar 90 gün saklanır). |
 | **Kaynaktan** | Godot 4.7 ve Git LFS ile — aşağıda [Kaynaktan çalıştır](#kaynaktan-çalıştır). |
 
@@ -318,8 +319,8 @@ Hepsi ölçüldü veya yapılandırmadan doğrulandı — tahmin yok.
 
 - **Yalnızca Windows ve Web paketi.** Linux, macOS ve Android dışa aktarımı
   yok (bkz. [Platform ve performans](#platform-ve-performans)).
-- **Canlı demo henüz yok.** Pages yayını ve Releases'a paket ekleme depo
-  sahibinin elle yapacağı işler (bkz. [Nasıl oynarım?](#nasıl-oynarım)).
+- **Releases'ta indirilebilir paket yok.** Tarayıcı sürümü yayında; Releases'a
+  paket ekleme depo sahibinin elle yapacağı iş (bkz. [Nasıl oynarım?](#nasıl-oynarım)).
 - **Arayüz yalnızca Türkçe.** `project.godot` içinde çeviri/locale girdisi
   bulunmuyor; metinler sahnelere ve betiklere doğrudan gömülü
   (`scenes/*.tscn` + `scripts/*.gd`), çeviri katmanı yok.
