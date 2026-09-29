@@ -13,22 +13,17 @@ signal kontrol_alindi(konum: Vector2)
 const A := preload("res://scripts/ayarlar.gd")
 const H: int = A.HUCRE
 
-const T_KARO := preload("res://assets/sprites/karo.png")
-const T_KARO_UST := preload("res://assets/sprites/karo_ust.png")
-const T_DIKEN := preload("res://assets/sprites/diken.png")
 const T_KAPI := preload("res://assets/sprites/kapi.png")
 const T_PLATFORM := preload("res://assets/sprites/platform.png")
 const T_GEZGIN := preload("res://assets/sprites/gezgin.png")
 const T_KRISTAL := preload("res://assets/sprites/kristal_parilti.png")   ## 4 kare; HUD simgesi ayri (kristal.png)
 const T_KONTROL := preload("res://assets/sprites/kontrol.png")
-const T_TEK_YONLU := preload("res://assets/sprites/tek_yonlu.png")       ## 16x8, oklar yukari; '~' icin dikey ayna
-const T_KILIT := preload("res://assets/sprites/kilit.png")               ## 12x12, bolgede 2x cizilir
+const T_KILIT := preload("res://assets/sprites/kilit.png")               ## 12x12 beyaz, bolgede 2x cizilir; blok rengine boyanir
 
 ## Cevirme yasagi bolgesi: yuzeye bitisik, YASAK_BOYU px yuksek bir dikdortgen.
 ## Oyuncunun govdesi bu dikdortgene degiyorsa cevirme reddedilir. Yalniz kendi
 ## yuzeyini baglar: zemin bolgesinin ustundeki tavanda yuruyen serbesttir.
 const YASAK_BOYU: float = 48.0
-const YASAK_RENK := Color(0.97, 0.46, 0.13)     ## EDG32 turuncu (#f77622)
 ## Tek yonlu platform: hucrenin ortasinda TEK_KALINLIK px kalin bir serit.
 ## 8 px: inis benzetmesi 1/60 sn adimla en cok 7,2 px atlar, ayak noktasi
 ## seridin icine en az bir kez duser (hareketli platform 10 px, ayni neden).
@@ -47,9 +42,15 @@ var kapi_sayisi: int = 0
 var kristal_konumu: Vector2 = Vector2.ZERO
 var kontrol_konumu: Vector2 = Vector2.ZERO   ## ZERO = bu bolumde kontrol noktasi yok
 
+## Tema rengi: blok, tek yonlu platform ve yasak bolge bununla cizilir. Oyun
+## sahnesi zemin/blok cifti degisince (yercekimi ters) her karede gunceller.
+var blok_rengi: Color = Tema.TEMALAR[2]["blok"]:
+	set(v):
+		if v != blok_rengi:
+			blok_rengi = v
+			queue_redraw()
+
 var _blok_kutulari: Array[Rect2] = []
-var _ust_hucreler: Array[Vector2] = []
-var _alt_hucreler: Array[Vector2] = []
 var _dikenler: Array = []                     ## [Vector2 konum, bool yukari]
 var _kapi_gorselleri: Array[Sprite2D] = []    ## parildayan kapi(lar)
 ## {"ust": bool, "c1": int, "c2": int, "kutu": Rect2} — bkz. yasak_icinde()
@@ -71,9 +72,7 @@ var _alan_gecikmesi: int = 2
 
 
 func _ready() -> void:
-	# Doseme karosu draw_texture_rect(..., tile=true) ile cizilir; tekrar kapaliysa
-	# karodan tek bir gerilmis kopya cikar.
-	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	pass
 
 
 func kur(veri: Dictionary) -> void:
@@ -156,20 +155,6 @@ func kur(veri: Dictionary) -> void:
 					_tek_yonlu_ekle(kati, ch == "_", r, bas4, c - 1)
 					continue
 			c += 1
-
-	# Yuruyus yuzeyleri: ustunde (ya da altinda) blok olmayan hucreler uyari seritli
-	# karo ile cizilir — cevirme oyununda iki yuzey de yuruyus yuzeyi.
-	for r in satir_sayisi:
-		var s: String = harita[r]
-		for c in sutun_sayisi:
-			if s[c] != "#":
-				continue
-			# Haritanin dis kenari (ust satirin ustu, alt satirin alti) gorunmez:
-			# oraya serit cizmek yuruyus yuzeyini yanlis tarafa koyuyor.
-			if r > 0 and String(harita[r - 1])[c] != "#":
-				_ust_hucreler.append(Vector2(c * H, r * H))
-			if r < satir_sayisi - 1 and String(harita[r + 1])[c] != "#":
-				_alt_hucreler.append(Vector2(c * H, r * H))
 
 	if kristal_konumu != Vector2.ZERO:
 		_kristal_ekle()
@@ -331,45 +316,48 @@ func _govde_girdi(govde: Node, olumcul: bool) -> void:
 		kapiya_varildi.emit()
 
 
-## Yuksek kontrast: zemin koyulasir, tehlike parlar. Renk korlugune karsi
-## tek basina yeterli degil (diken ucgen ve dis cizgili), ama dusuk kontrastli
-## ekranlarda tehlikeyi zeminden ayiran sey bu.
+## Duz renk cizim (video dili): bloklar tema rengiyle dolu dikdortgen, dikenler
+## #e94f36 ucgen. Vektor oldugu icin her olcekte keskin; doku yok.
+## Yuksek kontrast: Tema.renkler() saf siyah/beyaz verir, dikenler daha parlak.
 func _draw() -> void:
-	var kontrast := Ayarlar.yuksek_kontrast
-	var zemin_ton: Color = Color(0.62, 0.66, 0.78) if kontrast else Color.WHITE
-	var tehlike_ton: Color = Color(1.35, 1.10, 1.10) if kontrast else Color.WHITE
+	var tehlike: Color = Tema.DIKEN.lightened(0.15) if Ayarlar.yuksek_kontrast else Tema.DIKEN
 	for k in _blok_kutulari:
-		draw_texture_rect(T_KARO, k, true, zemin_ton)
-	for p in _ust_hucreler:
-		draw_texture_rect(T_KARO_UST, Rect2(p, Vector2(H, H)), false, zemin_ton)
-	for p in _alt_hucreler:
-		# dikey ayna: negatif yukseklik
-		draw_texture_rect(T_KARO_UST, Rect2(p.x, p.y + H, H, -H), false, zemin_ton)
+		draw_rect(k, blok_rengi)
 	for d in _dikenler:
 		var p: Vector2 = d[0]
 		if d[1]:
-			draw_texture_rect(T_DIKEN, Rect2(p, Vector2(H, H)), false, tehlike_ton)
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(p.x, p.y + H), Vector2(p.x + H, p.y + H), Vector2(p.x + H * 0.5, p.y)]), tehlike)
 		else:
-			draw_texture_rect(T_DIKEN, Rect2(p.x, p.y + H, H, -H), false, tehlike_ton)
-	# Tek yonlu platform: hucre hucre karo; '~' dikey aynalanir (oklar asagi =
-	# asagi dogru icinden gecilir).
+			draw_colored_polygon(PackedVector2Array([
+				Vector2(p.x, p.y), Vector2(p.x + H, p.y), Vector2(p.x + H * 0.5, p.y + H)]), tehlike)
+	# Tek yonlu platform: yuzeyde 3 px cubuk + altinda gecis yonunu gosteren ok.
+	# '_' ustune inilir (ok yukari), '~' altina (ok asagi).
+	var soluk := Color(blok_rengi, 0.6)
 	for t in tek_yonlular:
 		var k: Rect2 = t["kutu"]
 		for c in range(int(t["c1"]), int(t["c2"]) + 1):
+			var x := float(c * H)
 			if bool(t["ust_kati"]):
-				draw_texture_rect(T_TEK_YONLU, Rect2(c * H, k.position.y, H, TEK_KALINLIK), false)
+				draw_rect(Rect2(x, k.position.y, H, 3.0), blok_rengi)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(x + 5.0, k.end.y - 1.0), Vector2(x + 11.0, k.end.y - 1.0),
+					Vector2(x + 8.0, k.position.y + 4.0)]), soluk)
 			else:
-				draw_texture_rect(T_TEK_YONLU, Rect2(c * H, k.end.y, H, -TEK_KALINLIK), false)
-	# Cevirme yasagi bolgesi: soluk dolgu + kesik cizgili cerceve + ortada kilit.
-	# Turuncu: tehlike (kirmizi) degil, platform (mor) degil, arayuz (camgobegi) degil.
+				draw_rect(Rect2(x, k.end.y - 3.0, H, 3.0), blok_rengi)
+				draw_colored_polygon(PackedVector2Array([
+					Vector2(x + 5.0, k.position.y + 1.0), Vector2(x + 11.0, k.position.y + 1.0),
+					Vector2(x + 8.0, k.end.y - 4.0)]), soluk)
+	# Cevirme yasagi bolgesi: soluk dolgu + kesik cizgili cerceve + ortada kilit,
+	# hepsi blok renginde: tehlike (kirmizi) ve odul (sari) ile karismaz.
 	for b in yasak_bolgeler:
 		var k: Rect2 = b["kutu"]
-		draw_rect(k, Color(YASAK_RENK, 0.10))
+		draw_rect(k, Color(blok_rengi, 0.09))
 		var kose := [k.position, Vector2(k.end.x, k.position.y), k.end, Vector2(k.position.x, k.end.y)]
 		for i in 4:
-			draw_dashed_line(kose[i], kose[(i + 1) % 4], YASAK_RENK, 1.0, 4.0)
+			draw_dashed_line(kose[i], kose[(i + 1) % 4], Color(blok_rengi, 0.7), 1.0, 4.0)
 		var m := k.get_center()
-		draw_texture_rect(T_KILIT, Rect2(m.x - 12.0, m.y - 12.0, 24.0, 24.0), false)
+		draw_texture_rect(T_KILIT, Rect2(m.x - 12.0, m.y - 12.0, 24.0, 24.0), false, Color(blok_rengi, 0.85))
 
 
 ## Kristali gizler (onceki oturumda toplandiysa bolum kurulurken cagrilir).

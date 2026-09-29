@@ -4,7 +4,10 @@ extends Control
 
 
 func _ready() -> void:
+	RenderingServer.set_default_clear_color(Tema.PANEL)
 	Ayarlar.zaman_sifirla()
+	_dil_yaz()
+	(_dugum("Dil") as Button).pressed.connect(_dil_degistir)
 	_kaydirici("Muzik", Ayarlar.muzik_ses, func(v: float) -> void:
 		Ayarlar.muzik_ses = v)
 	_kaydirici("Efekt", Ayarlar.efekt_ses, func(v: float) -> void:
@@ -56,7 +59,10 @@ func _ready() -> void:
 			_dugum(ad).hide()
 
 	$Geri.pressed.connect(_geri)
+	UI.dugmeleri_bagla(self)
 	$Geri.grab_focus()
+	if Ayarlar.oyun_hissi:
+		UI.sirayla_gir([$Baslik, $Kutu, $Not, $Geri])
 
 
 func _dugum(ad: String) -> Node:
@@ -98,4 +104,19 @@ func _anahtar(ad: String, deger: bool, uygula: Callable) -> void:
 
 func _geri() -> void:
 	Ses.cal(&"menu")
-	get_tree().change_scene_to_file(Ayarlar.donus_sahnesi)
+	Gecis.git(Ayarlar.donus_sahnesi)
+
+
+## Dil dugmesi: etkin dilin adini gosterir; basinca digerine gecer, kaydeder ve
+## sahneyi yeniden kurar (sahne metinleri tr() ile yeniden cevrilir).
+func _dil_yaz() -> void:
+	(_dugum("Dil") as Button).text = "English" if Ayarlar.dil_etkin() == "en" else "Türkçe"
+
+
+func _dil_degistir() -> void:
+	Ses.cal(&"menu")
+	Gecis.ara(&"glitch", 0, func() -> void:       # dil degisimi: glitch ortusunun altinda yeni metin
+		Ayarlar.dil = "tr" if Ayarlar.dil_etkin() == "en" else "en"
+		Ayarlar.dil_uygula()
+		Ayarlar.kaydet()
+		get_tree().reload_current_scene())

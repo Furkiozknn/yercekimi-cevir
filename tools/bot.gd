@@ -7,6 +7,15 @@ extends Node
 ##   bot 0,05-0,20 ile olcer). Bu modda DOSYA YAZILMAZ, yalniz tablo basilir —
 ##   amaci botun insani ne kadar gectigini olcmek (madalya carpani gerekcesi).
 ##
+##   "kayit": OYNANIS KAYDI icin. Ekran kaydi (--write-movie) altinda insan
+##   tepki bandiyla (0,18-0,35 sn) ardisik bolumleri oynar, ARAYUZ gizli
+##   (yazisiz ham goruntu), ilk bolumde ilk cevirmeyi bilerek gec yapip olur ve
+##   yeniden dogar; dosya yazilmaz. Ornek:
+##     godot --path . --write-movie kayit.avi --fixed-fps 60 res://tools/bot.tscn -- 1 -1 - kayit
+##   "k=N" kare sayisi (varsayilan 1200). "b=N" (0 tabanli bolum) verilirse o bolumden baslar, bilerek hata yapilmaz ve
+##   bolum sonu bekleme 0,35 sn'ye kisaltilir: gecis kaydi icin (her tema bir kosu,
+##   "KAYIT bolum N basladi: kare K" satirlari gecis anlarini verir).
+##
 ##   "denetle": DOSYA YAZMAZ, yazilmis olani SINAR. Esikler scripts/rota_verisi.gd
 ##   icinde duruyor ve testler onlari o dosyaya karsi dogruluyor — yani dosyayi
 ##   kendisine karsi. Bir bolumun geometrisi degisirse dosya eski kalir, testler
@@ -103,6 +112,7 @@ var _fren: bool = false                ## cevirme guvenli olana kadar hizi kesiy
 var _donma: int = 0                    ## cevirmeden sonra girdinin dondugu kare sayisi
 var _iz: bool = false                  ## tek bolum tanilamasi: her karari yaz
 var _insan: bool = false               ## insan tepki bandi, dosya yazilmaz
+var _kayit: bool = false               ## ekran kaydi modu (bkz. ust aciklama)
 var _denetle: bool = false             ## yazilmis esikleri yeniden olcup sinar, dosya yazmaz
 var _tepki_az: float = TEPKI_EN_AZ
 var _tepki_cok: float = TEPKI_EN_COK
@@ -124,7 +134,14 @@ func _ready() -> void:
 	var kosu: int = int(arg[0]) if arg.size() > 0 else KOSU_SAYISI
 	var tek: int = int(arg[1]) if arg.size() > 1 else -1
 	_iz = arg.size() > 2 and String(arg[2]) == "iz"
-	_insan = arg.has("insan")
+	_insan = arg.has("insan") or arg.has("kayit")
+	_kayit = arg.has("kayit")
+	for a in arg:
+		if String(a).begins_with("b="):
+			_kayit_ilk = int(String(a).substr(2))
+			_kayit_gecis = true
+		elif String(a).begins_with("k="):
+			_kayit_kare = int(String(a).substr(2))
 	_denetle = arg.has("denetle")
 	if _denetle:
 		print("DENETIM MODU: dosya yazilmaz, yazilmis esikler yeniden olculup sinanir")
@@ -152,6 +169,17 @@ func _ready() -> void:
 	add_child(_oyun)
 	await get_tree().process_frame
 
+	if _kayit:
+		await _kayit_oyna()
+		Ayarlar.oyun_hissi = bool(yedek["hissi"])
+		Ayarlar.inis_gostergesi = bool(yedek["inis"])
+		Ayarlar.yardim_acik = bool(yedek["yardim"])
+		Ayarlar.kaydet()
+		Ses.kapat()
+		await get_tree().create_timer(0.25).timeout
+		get_tree().quit(0)
+		return
+
 	var kayit: Array = []
 	for i in Ayarlar.bolum_sayisi():
 		if tek >= 0 and i != tek:
@@ -175,6 +203,83 @@ func _ready() -> void:
 	Ses.kapat()
 	await get_tree().create_timer(0.25).timeout
 	get_tree().quit(kod)
+
+
+# --- ekran kaydi ---------------------------------------------------------------
+
+const KAYIT_ILK_BOLUM: int = 5          ## 6 — Ileri Geri; sonraki bolumleri oyun kendisi acar
+const KAYIT_KARE: int = 1200            ## 20 sn @ 60 fps
+var _kayit_ilk: int = KAYIT_ILK_BOLUM
+var _kayit_gecis: bool = false          ## "b=N": gecis kaydi kipi
+var _kayit_kare: int = KAYIT_KARE       ## "k=N": kare sayisi
+
+
+## Oyun sahnesinin onbellege aldigimiz parcalarini (yeni bolum yuklenince)
+## tazeler; _kosu'daki hazirlik ile ayni degerler.
+func _kayit_bagla() -> void:
+	_bolum = _oyun.get_node("Dunya/Bolum")
+	_o = _oyun.get_node("Dunya/Oyuncu")
+	_harita = _bolum.harita
+	_satir = _harita.size()
+	_sutun = String(_harita[0]).length()
+	_kapi_x = _kapi_sutunu() * float(Ayarlar.HUCRE) + 8.0
+	_gecikme = -1.0
+	_basili = 0
+	_fren = false
+	_donma = 0
+	_birak()
+
+
+func _kayit_oyna() -> void:
+	seed(20260929)
+	Ayarlar.oyun_hissi = true            # sarsinti, parcacik, iz, renk gecisi kayitta gorunsun
+	Ayarlar.inis_gostergesi = false
+	Ayarlar.altin_hayalet = false        # etiketli hayalet kayitta yazi sayilir
+	_oyun.get_node("Arayuz").visible = false      # yazisiz ham goruntu
+	_oyun.bolum_yukle(_kayit_ilk)
+	await get_tree().physics_frame
+	_kayit_bagla()
+	var son_bolum: int = _oyun.bolum_i
+	var son_olum: int = 0
+	# Insan da hata yapar: 7. bolumde bot zemin dikenlerinden once gec karar verir
+	# (tepki 0,55-0,65 sn), diken uzerine iner ve olur; yeniden dogar, normal
+	# bandla bolumu bitirir.
+	var hata_yapildi := false
+	var dalgin := false
+	for kare in _kayit_kare:
+		await get_tree().physics_frame
+		if _oyun.bolum_i != son_bolum:
+			son_bolum = _oyun.bolum_i
+			son_olum = 0
+			print("KAYIT bolum %d basladi: kare %d" % [son_bolum + 1, kare])
+			_kayit_bagla()
+		if _oyun.olum != son_olum:
+			son_olum = _oyun.olum
+			print("KAYIT olum: kare %d, bolum %d, x=%.0f" % [kare, _oyun.bolum_i + 1, _o.global_position.x])
+			_kayit_bagla()                   # olumden sonra bot durumu (fren, gecikme) sifirlansin
+		var p := _o.global_position
+		if _kayit_gecis and _oyun._durum == 2:
+			_oyun._bekleme = minf(_oyun._bekleme, 0.35)      # TAMAM: sonraki bolume gecis daha erken
+		if not hata_yapildi and not _kayit_gecis and _oyun.bolum_i == 6 and _oyun._durum == 0 and p.x > 360.0 \
+				and _o.yercekimi_yonu > 0.0 and _o.is_on_floor():
+			# Dalgin insan: zemin dikenlerinin onunde karar vermeyi unutur, yurumeye
+			# devam eder (dikene girer). Olumden sonra bot normal davranir.
+			hata_yapildi = true
+			dalgin = true
+			print("KAYIT dalgin an basladi: kare %d" % kare)
+		if dalgin:
+			if _oyun.olum > 0:
+				dalgin = false
+			else:
+				Input.action_press("move_right")
+				continue
+		if _oyun._durum == 0:
+			_karar_ver(1.0 / 60.0)
+		else:
+			_birak()
+			_gecikme = -1.0
+	_birak()
+	print("KAYIT bitti: %d kare, son bolum %d, ilk bolumde olum %d" % [_kayit_kare, _oyun.bolum_i + 1, _oyun.olum])
 
 
 # --- olcum -------------------------------------------------------------------

@@ -1,0 +1,25 @@
+# tools/bot.gd insan modu (tepki 0,18-0,35 sn), 20 bolum x 5 kosu, 29 Eylul 2026, yenileme/arayuz dali (fizik, harita ve rota_verisi.gd main ile ayni; yalniz gorunum degisti)
+# komut: godot --headless --path . res://tools/bot.tscn --fixed-fps 60 -- 5 -1 - insan
+INSAN MODU: tepki 0.18-0.35 sn, dosya yazilmaz
+INSAN TABLOSU  bolum | bot ortanca (rota_verisi) | insan ortanca | oran | altin esigi | insan altin alir mi
+INSAN  1 1 — İlk Adım     bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  2 2 — Çevir        bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  3 3 — Tavan Yolu   bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  4 4 — Diken        bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  5 5 — Tavan Dikeni bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  6 6 — İleri Geri   bot  4.217  insan  5.317  oran 1.261  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  7 7 — Üç Engel     bot  4.217  insan  5.300  oran 1.257  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  8 8 — Asansör      bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN  9 9 — Salıncak     bot  5.183  insan  5.317  oran 1.026  altin  6.998  ALTIN  (5/5 bitti)
+INSAN 10 10 — Dört Vuruş  bot  5.217  insan  5.217  oran 1.000  altin  7.043  ALTIN  (5/5 bitti)
+INSAN 11 11 — Gezgin Diken bot  5.183  insan  5.267  oran 1.016  altin  6.998  ALTIN  (5/5 bitti)
+INSAN 12 12 — Süpürge     bot  4.217  insan  4.217  oran 1.000  altin  5.693  ALTIN  (5/5 bitti)
+INSAN 13 13 — Uzun Yol    bot  7.283  insan  8.200  oran 1.126  altin  9.833  ALTIN  (5/5 bitti)
+INSAN 14 14 — Boşluk Üstü bot  7.283  insan  8.283  oran 1.137  altin  9.833  ALTIN  (5/5 bitti)
+INSAN 15 15 — Tarak       bot  8.200  insan 10.633  oran 1.297  altin 11.070  ALTIN  (5/5 bitti)
+INSAN 16 16 — Kılçık      bot  8.250  insan  9.150  oran 1.109  altin 11.138  ALTIN  (5/5 bitti)
+INSAN 17 17 — İki Asansör bot  7.283  insan  7.417  oran 1.018  altin  9.833  ALTIN  (5/5 bitti)
+INSAN 18 18 — Koridor     bot  7.283  insan  7.283  oran 1.000  altin  9.833  ALTIN  (5/5 bitti)
+INSAN 19 19 — Fırtına     bot  8.233  insan  8.383  oran 1.018  altin 11.115  ALTIN  (5/5 bitti)
+INSAN 20 20 — Son Kapı    bot  9.150  insan 10.533  oran 1.151  altin 12.353  ALTIN  (5/5 bitti)
+INSAN OZET: 20/20 bolumde insan bandindaki bot mevcut altin esigini tutuyor

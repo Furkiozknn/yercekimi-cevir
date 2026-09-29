@@ -6,15 +6,16 @@ Bu dosya her oturumda otomatik yüklenir. Kısa ve güncel tut.
 
 Godot 4.7 / GDScript, 2B hassas platform oyunu. Tek dikey eylem **çevirme**:
 yerçekimi işareti ters döner, oyuncu tavana "düşer". Zıplama yok. 20 bölüm.
-Arayüz ve tüm belgeler **Türkçe** (tek istisna: README'nin en üstündeki bir
-satırlık İngilizce tanıtım, GitHub'da ilk bakışta anlaşılsın diye).
+Belgeler **Türkçe** (tek istisna: README'nin en üstündeki bir satırlık İngilizce
+tanıtım). Oyun arayüzü **Türkçe + İngilizce** (v1.0): kaynak dil Türkçe,
+`tr("Türkçe metin")` anahtardır, İngilizce tablo `scripts/ceviri.gd`.
 
 ## Değişmez teknik kararlar
 
 | Konu | Karar | Neden |
 |---|---|---|
 | Renderer | **GL Compatibility** | Tümleşik GPU (Intel UHD) hedefi; web export'ta da tek yol |
-| Doku filtresi | `default_texture_filter=0` (nearest) | pixel art bulanıklaşmasın |
+| Doku filtresi | `default_texture_filter=1` (doğrusal) | v1.0'dan beri dünya düz renk vektör + kenarı yumuşatılmış düz renk sprite; `nearest` bunları tırtıklar (v0.x pixel art'ıydı) |
 | Piksel oturtma | `snap_2d_transforms_to_pixel` + `snap_2d_vertices_to_pixel` açık | titreme olmasın |
 | Taban çözünürlük | 640×360, pencere 1280×720, stretch `canvas_items` / `keep` | 16×16 ızgara tam oturuyor (22 satır = 352 px) |
 | Dosya kodlaması | **BOM'suz UTF-8, LF** | `.gitattributes` zorluyor |
@@ -25,8 +26,8 @@ satırlık İngilizce tanıtım, GitHub'da ilk bakışta anlaşılsın diye).
 | Web ses yolu | `audio/general/default_playback_type.web=2` (Stream) | Sample yolunda perde/döngü de bozuluyor (Godot #95850) |
 | WAV | 16 bit, 22050 Hz, mono | 8 bit WAV'lar içe aktarımda hata basıyor |
 | Müzik döngü sonu | `loop_end = get_length() * mix_rate` (`ses.gd`) | içe aktarma QOA sıkıştırıyor; `data.size()/2` beşte bire düşüyordu (tuzak 18) |
-| Üst HUD | `Arayuz/HudSol` ve `HudSag` grupları, tavandaki oyuncu girince alfa 0,25 | şeritleri daraltmak 640 px'te metni sığdırmıyor |
-| Simge yazı tipi | `assets/fonts/simgeler.ttf`, `Simgeler.kur()` `Ayarlar._ready()` içinde | gömülü Open Sans'ta `⟳ ●` yok; web'de sistem yazı tipi yedeği olmadığı için kutu çıkıyordu |
+| Üst HUD | `Arayuz/HudSol` ve `HudSag` grupları (blok renginde chip + zemin renginde mono yazı), tavandaki oyuncu girince alfa 0,25 | tavan bloğuyla birleşen etiket, deliklerde de okunur; `_hud_yerlestir` yazı genişliğine göre boyar |
+| Yazı tipleri | Instrument Sans + JetBrains Mono (`assets/fonts/`, OFL), `assets/tema.tres` içinde **FontVariation.fallbacks = [simgeler.ttf]** | `⟳ ● ◆` bu yazı tiplerinde yok; web'de sistem yazı tipi yedeği olmadığı için kutu çıkıyordu. `Simgeler.kur()` hâlâ gömülü Open Sans'ı da kapsıyor |
 | En-boy oranı | `keep` (siyah şerit) — `expand` **yapılmadı** | oda kamerası 640 px'lik odalara kilitli; geniş görüş alanı 40 sütunluk bölümlerde bölüm dışını gösterir |
 | Çevirme yasağı bölgesi | **yüzeye bağlı** (`=` yürüyüş satırında; zemin/tavan), 48 px yüksek dikdörtgen; gövde değerken `cevir()` reddeder ve tamponu siler | tam boy bölge iki yüzeyi birden bağlardı; yüzeye bağlı bölge "karşı yüzeydeki diken bölgenin altında" desenine izin veriyor (16. bölüm) |
 | Tek yönlü platform | katı yüzü **sabit** (`_` üst, `~` alt), yerçekimine göre değişmez | yerçekimiyle dönen katı yüz her zaman inilen yüz olurdu, yani platform hiç "geçilmez"di; sabit yüz iki yerçekiminde farklı davranır |
@@ -34,24 +35,28 @@ satırlık İngilizce tanıtım, GitHub'da ilk bakışta anlaşılsın diye).
 ## Klasör yapısı
 
 ```
-scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet) · ses.gd (autoload)
+scripts/     ayarlar.gd (TÜM denge sabitleri + kayıt + ayarlar + hayalet + dil) · ses.gd, gecis.gd (autoload; assets/gecis.gdshader ile 8 geçiş ailesi, Tema.AKIS paleti, hareket azaltmada anında)
+             tema.gd (renkler, bölüm→tema) · ceviri.gd (TR→EN tablo) · ui.gd (giriş/basış hareketi)
              simgeler.gd (web'de eksik simgeler için yedek yazı tipi; ortak dosya)
              bolum.gd (ASCII harita -> sahne) · oyuncu.gd · oyun.gd · menu.gd
              bolum_sec.gd · ayarlar_ekrani.gd · bolumler.gd (ÜRETİLİR, elle düzenleme)
              rota_verisi.gd (ÜRETİLİR: madalya eşikleri + en az çevirme)
              altin_hayalet.gd (ÜRETİLİR: botun en iyi koşusunun yolu)
 scenes/      menu · bolum_sec · ayarlar_ekrani · oyun · oyuncu
-assets/      sprites/*.png (ÜRETİLİR; kapi.png 4 kare 64×48, kristal.png tek kare = HUD
-             simgesi, kristal_parilti.png 4 kare = bölüm içi, tek_yonlu.png 16×8 oklu
-             karo, kilit.png 12×12 yasak bölge/HUD) · audio/*.wav (ÜRETİLİR;
+assets/      tema.tres (tools/tema_uret.gd üretir) · sprites/*.png (ÜRETİLİR, düz renk; kapi.png 4 kare
+             64×48, kristal.png tek kare = HUD simgesi, kristal_parilti.png 4 kare = bölüm içi,
+             oyuncu.png 8 özdeş kare, hayalet.png BEYAZ (modulate ile boyanır), kilit.png beyaz;
+             karo/diken/tek_yonlu artık kod çizimi, eski dosyalar _eski/sprites-v0.9/) · audio/*.wav (ÜRETİLİR;
              muzik_{menu,sakin,gergin,hizli,bitis}, 10 efekt) · oyuncu_frames.tres
              fonts/simgeler.ttf + LISANS-simgeler.txt (lisans gereği yanında kalmalı)
 _eski/       silinmeyen eskiler (.gdignore): audio/muzik_oyun.wav (v0.5 tek oyun parçası),
              yayin-ekran-v0.x/ (v0.6'ya kadar)
-tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · sesler.md
-             bot.gd (madalya sürelerini ölçen bot) · gif_yap.py (bağımlılıksız GIF)
+tools/       uret_sprite.py · uret_ses.py · muzik_uret.gd · tema_uret.gd · sesler.md
+             bot.gd (madalya sürelerini ölçen bot; `kayit` kipi = yazısız oynanış kaydı) · gif_yap.py (bağımlılıksız GIF)
+             fps.gd (kare süresi) · his_olc.tscn (tuş → çevirme gecikmesi)
 arac/        uret_bolumler.py
 tests/       testler.gd (otomatik test) · ekran.gd (ekran görüntüsü aracı) · kapi.sh (CI günlük kapısı) + kapi_sinama.sh
+docs/        DENETIM.md, TASARIM.md (v1.0 yenilemesi), tasarim/ önce-sonra kareleri, oynanis.gif
 yayin/       itch.io paketi (yüklenmemiş) · yayin/tanitim/ 3 sn tanıtım GIF'i + kareler
 docs/        README görselleri · varliklar.png (sprite denetim levhası)
 build/       dışa aktarma çıktısı — `.gdignore` var, SİLME
@@ -149,7 +154,7 @@ Sprite üretiminden sonra **`--import` çalıştır**, yoksa Godot eski PNG'yi k
 ```bash
 godot --headless --path . --import                      # 0 hata vermeli
 godot --headless --path . res://tests/testler.tscn      # çıkış kodu 0 = geçti
-# CI aynı komutun günlüğünü tests/kapi.sh'a verir (taban: ci.yml → TEST_TABANI, şu an 841;
+# CI aynı komutun günlüğünü tests/kapi.sh'a verir (taban: ci.yml → TEST_TABANI, şu an 963;
 # SCRIPT ERROR olursa kırmızı). Test ekleyince TEST_TABANI'nı yükselt; kapının sınaması:
 bash tests/kapi_sinama.sh                               # Godot gerektirmez
 godot --path . res://tests/ekran.tscn -- -2 <klasör>    # yayın paketi görselleri
@@ -160,6 +165,12 @@ godot --path . res://tests/ekran.tscn -- -5 yayin/tanitim   # 3 sn tanıtım kar
 godot --path . res://tests/ekran.tscn -- -6 <klasör>    # tur 4 (v0.5): solak alanlar, 19. bölüm, günün bölümü
 godot --path . res://tests/ekran.tscn -- -7 <klasör>    # tur 5 (v0.6): HUD solması, hayalet yarışı, paylaşım paneli, parıltı
 godot --path . res://tests/ekran.tscn -- -8 <klasör>    # tur 6 (v0.7): yasak bölge, tek yönlü platform, tabela, süre listesi, kol kareleri
+godot --path . res://tests/ekran.tscn -- -9 <klasör>    # v1.0: menü/ayarlar TR+EN, üç tema, duraklat, bölüm sonu, bitiş
+godot --path . res://tests/ekran.tscn -- -10 <klasör>   # video imkânları: geçiş aileleri, sayaç akışı, rekor damgası
+godot --path . -s res://tools/fps.gd -- 9 600 [gecis]   # kare süresi (gecis: geçiş karelerini ayrıca ölçer) (SceneTree betiği: sahneyi load() ile açar, autoload adı derlenmez)
+godot --headless --path . res://tools/his_olc.tscn -- 100  # tuş olayı → çevirme gecikmesi
+godot --path . --write-movie kayit.avi --fixed-fps 60 res://tools/bot.tscn -- 1 -1 - kayit [b=N k=N]  # yazısız kayıt (b=N: N. bölümden geçiş kaydı); sonra ffmpeg ile 1080x1920
+godot --headless --path . -s res://tools/tema_uret.gd    # assets/tema.tres (sonra --import)
 python tools/gif_yap.py yayin/tanitim/kareler.raw yayin/tanitim/tanitim.gif 320 180 10
 python tools/gif_yap.py --dogrula                       # GIF kodlayıcısının öz denetimi
 godot --headless --path . --export-release "Windows Masaustu"
@@ -284,3 +295,40 @@ kararı Furki verir.
    `var k: bool = ...` yaz. Parse hatası **tek dosyayı** düşürür ama o sahneyi
    kullanan bütün testler "Nonexistent function" ile kalır — listedeki ilk
    `SCRIPT ERROR`a bak, gerisi onun gölgesi.
+25. **Çevirme tuşu iki yoldan gelir.** Gerçek tuş/dokunuş olayı `oyuncu.gd _input`
+   içinde HEMEN çevirir (fizik adımını beklemez: ortalama 13,0 → 6,8 ms); aynı
+   basış `_physics_process` içinde ikinci kez sayılmasın diye `_erken_cevirdi`
+   bayrağı var. Bot ve testler `Input.action_press` ile basar — bu **olay
+   üretmez**, `_input`'a ulaşmaz, eski yoldan gider (ölçüm değişmez). Testte
+   gerçek yolu denemek için `Input.parse_input_event(InputEventAction)`;
+   olay bir sonraki karenin başında işlenir, bir kare bekle.
+26. **`-s` ile çalışan SceneTree betiği `Ayarlar` gibi autoload adını (ve onu
+   kullanan sınıfı) derleyemez** ("Identifier not found: Ayarlar" — `oyuncu.gd`
+   `bolum.gd`'yi de düşürür). Ölçüm araçları ya sahneyi `load()` ile açar
+   (`fps.gd`) ya da `.tscn` olarak koşar (`his_olc.tscn`). `-s` yalnız kendi
+   içinde autoload'a dokunmayan betikler için.
+27. **Dil: `tr()` anahtarı Türkçe metnin kendisi.** `project.godot`
+   `internationalization/locale/fallback="tr"` olmalı; yoksa Türkçe seçiliyken
+   bile İngilizce tablo yedek olarak devreye girer. Yeni metin: koda `tr("...")`,
+   `Ceviri.EN`'e ekle (belirteç sayısı/sırası aynı); `_ceviri_testi` eksiği yakalar.
+   Klavye terimi içeren metin `Ayarlar.kontrol_metni()` üzerinden gider: önce
+   çevrilir, sonra dokunma tablosu (`DOKUNMA_METNI`, her iki dilde) uygulanır.
+   Büyük harf için `Tema.buyuk()` (Türkçede i → İ); marka başlığı sabit metin.
+28. **Testler Türkçe kaynak metinle koşar.** `_varsayilan_ayarlar` dili "tr"ye
+   çeker; CI'nın Linux locale'i "en" olurdu ve metin içeren testler kırılırdı.
+   Dil değiştiren test sonunda geri almalı.
+29. **`Gecis.git()` sahneyi DEĞİŞTİRİR** (test ağacını söker, trap 17 ile aynı) ve
+   `reload_current_scene()` (dil düğmesi) testleri yeniden yükler; testlerde düğme
+   yerine altındaki işlevi (`_yazilari_yaz`, `_bastan`, `_tekrar_oyna`) çağır.
+30. **Renk yer değiştirmesi (yerçekimi ters) her karede `_tema_uygula`.** HUD,
+   ipucu, parçacık ve `Bolum.blok_rengi` oradan boyanır; yeni bir renkli öğe
+   eklerken oraya bağla, yoksa ters yerçekiminde yanlış renkte kalır. Sprite'lar
+   BEYAZ + `modulate` ise tema ile boyanır; renkli (mavi oyuncu) sprite'ı
+   `modulate`'le farklı renge boyama (mavi × sarı = yeşil olur — hayalet için
+   ayrı beyaz `hayalet.png`).
+31. **`draw` sinyaline bağlı işlev hangi düğümün sinyaliyse o düğümün çizim
+   çağrılarını kullanmalı** (`$Dekor.draw_colored_polygon`); `self.draw_*`
+   "Drawing is only allowed inside this node's _draw()" hatası basar, çizim olmaz.
+32. **Heredoc + satır devamı (`\`) YİNE yenir** (bu turda `tools/bot.gd`'de iki
+   kez): Python yama betiğiyle `\` + satır sonu içeren GDScript yazma, `Edit`
+   aracını kullan. Yamadan sonra `grep -rnP "\S[ ]\t{2,}\S" --include=*.gd`.

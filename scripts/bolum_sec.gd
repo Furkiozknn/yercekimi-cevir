@@ -10,6 +10,7 @@ var _liste_acik: bool = false
 
 
 func _ready() -> void:
+	RenderingServer.set_default_clear_color(Tema.PANEL)
 	Ayarlar.zaman_sifirla()
 	var izgara: GridContainer = $Kutu/Izgara
 	for i in Ayarlar.bolum_sayisi():
@@ -17,15 +18,19 @@ func _ready() -> void:
 	_liste_kur()
 	$Geri.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
-		get_tree().change_scene_to_file("res://scenes/menu.tscn"))
+		Gecis.git("res://scenes/menu.tscn"))
 	$Gorunum.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
 		liste_goster(not _liste_acik))
-	$Ozet.text = "Kristal %d / %d     Madalya %d / %d     En az çevirme %d / %d" % [
+	$Ozet.text = tr("Kristal %d / %d     Madalya %d / %d     En az çevirme %d / %d") % [
 		Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
 		Ayarlar.madalya_sayisi(), Ayarlar.bolum_sayisi(),
 		_en_az_bolum(), Ayarlar.bolum_sayisi()]
+	UI.dugmeleri_bagla(self)
+	$Geri.grab_focus()
 	Ses.muzik(&"menu")
+	if Ayarlar.oyun_hissi:
+		UI.sirayla_gir([$Baslik, $Ozet] + $Kutu/Izgara.get_children() + [$Geri, $Gorunum])
 
 
 ## Izgara <-> liste. Ikisi de ayni alani kullanir; dugme metni oteki gorunumu soyler.
@@ -33,7 +38,7 @@ func liste_goster(acik: bool) -> void:
 	_liste_acik = acik
 	$Kutu.visible = not acik
 	$Liste.visible = acik
-	$Gorunum.text = "Bölüm Izgarası" if acik else "Süre Listesi"
+	$Gorunum.text = tr("Bölüm Izgarası") if acik else tr("Süre Listesi")
 
 
 ## 20 satir 640x360'a tek sutunda sigmaz (20 x 20 px = 400): iki sutun, 10'ar.
@@ -52,7 +57,7 @@ func _satir(i: int) -> Button:
 	d.name = "Satir%d" % (i + 1)
 	d.custom_minimum_size = Vector2(0, 20)
 	d.disabled = not acik
-	d.flat = true
+	d.theme_type_variation = &"Kucuk"
 	var h := HBoxContainer.new()
 	h.name = "Kutu"
 	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -60,13 +65,13 @@ func _satir(i: int) -> Button:
 	h.add_theme_constant_override("separation", 6)
 	d.add_child(h)
 
-	var ad := _yazi(String(Ayarlar.bolum(i)["ad"]), 0, HORIZONTAL_ALIGNMENT_LEFT)
+	var ad := _yazi(tr(String(Ayarlar.bolum(i)["ad"])), 0, HORIZONTAL_ALIGNMENT_LEFT)
 	ad.name = "Ad"
 	ad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ad.clip_text = true
 	h.add_child(ad)
 
-	var en_iyi := _yazi(Ayarlar.en_iyi_metin(i) if acik else "kilitli", 58, HORIZONTAL_ALIGNMENT_RIGHT)
+	var en_iyi := _yazi(Ayarlar.en_iyi_metin(i) if acik else tr("kilitli"), 58, HORIZONTAL_ALIGNMENT_RIGHT)
 	en_iyi.name = "EnIyi"
 	if not acik:
 		en_iyi.modulate.a = 0.5
@@ -82,7 +87,7 @@ func _satir(i: int) -> Button:
 		madalya.texture = _madalya_dokusu(m)
 	h.add_child(madalya)
 
-	var altin := _yazi("● %.2f sn" % float(Ayarlar.esik(i)["altin"]), 64, HORIZONTAL_ALIGNMENT_RIGHT)
+	var altin := _yazi(tr("● %.2f sn") % float(Ayarlar.esik(i)["altin"]), 72, HORIZONTAL_ALIGNMENT_RIGHT)
 	altin.name = "Altin"
 	altin.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[3])
 	h.add_child(altin)
@@ -91,7 +96,7 @@ func _satir(i: int) -> Button:
 		d.pressed.connect(func() -> void:
 			Ses.cal(&"menu")
 			Ayarlar.secilen_bolum = i
-			get_tree().change_scene_to_file("res://scenes/oyun.tscn"))
+			Gecis.git("res://scenes/oyun.tscn"))
 	return d
 
 
@@ -127,6 +132,7 @@ func _en_az_bolum() -> int:
 func _hucre(i: int) -> Button:
 	var acik := Ayarlar.acik_mi(i)
 	var dugme := Button.new()
+	dugme.theme_type_variation = &"Kucuk"
 	dugme.custom_minimum_size = Vector2(84, 52)
 	dugme.disabled = not acik
 
@@ -139,17 +145,18 @@ func _hucre(i: int) -> Button:
 	var no := Label.new()
 	no.text = str(i + 1)
 	no.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	no.add_theme_font_size_override("font_size", 14)
+	no.theme_type_variation = &"Baslik2"
+	no.add_theme_font_size_override("font_size", 15)
 	no.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	kutu.add_child(no)
 
 	var sure := Label.new()
 	var az := Ayarlar.en_az_al(i)
-	sure.text = Ayarlar.en_iyi_metin(i) if acik else "kilitli"
+	sure.text = Ayarlar.en_iyi_metin(i) if acik else tr("kilitli")
 	if acik and az >= 0:
 		sure.text += "  ⟳%d" % az
 	sure.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sure.add_theme_font_size_override("font_size", 9)
+	sure.theme_type_variation = &"Etiket"
 	sure.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	kutu.add_child(sure)
 
@@ -180,5 +187,5 @@ func _hucre(i: int) -> Button:
 		dugme.pressed.connect(func() -> void:
 			Ses.cal(&"menu")
 			Ayarlar.secilen_bolum = i
-			get_tree().change_scene_to_file("res://scenes/oyun.tscn"))
+			Gecis.git("res://scenes/oyun.tscn"))
 	return dugme

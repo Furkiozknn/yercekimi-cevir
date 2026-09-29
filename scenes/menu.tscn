@@ -1,108 +1,136 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/menu.gd" id="1_kod"]
-[ext_resource type="Texture2D" path="res://assets/sprites/arka_1.png" id="2_arka"]
 [ext_resource type="Texture2D" path="res://assets/sprites/kristal.png" id="3_kristal"]
 
 [node name="Menu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_kod")
 
 [node name="Arka" type="ColorRect" parent="."]
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.07, 0.08, 0.13, 1)
+mouse_filter = 2
+color = Color(0.0627451, 0.0627451, 0.101961, 1)
 
-[node name="ArkaSol" type="TextureRect" parent="."]
-modulate = Color(1, 1, 1, 0.45)
-offset_right = 320.0
-offset_bottom = 360.0
-texture = ExtResource("2_arka")
+[node name="Dekor" type="Control" parent="."]
+anchors_preset = 0
+mouse_filter = 2
 
-[node name="ArkaSag" type="TextureRect" parent="."]
-modulate = Color(1, 1, 1, 0.45)
-offset_left = 320.0
-offset_right = 640.0
-offset_bottom = 360.0
-texture = ExtResource("2_arka")
-flip_h = true
+[node name="Ust" type="Label" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 330.0
+offset_bottom = 26.0
+theme_type_variation = &"Etiket"
 
-[node name="Baslik" type="Label" parent="."]
-theme_override_constants/outline_size = 6
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-offset_left = 40.0
-offset_top = 40.0
-offset_right = 600.0
-offset_bottom = 80.0
-theme_override_font_sizes/font_size = 30
-theme_override_colors/font_color = Color(0.29, 0.85, 0.45, 1)
+[node name="Dil" type="Button" parent="."]
+layout_mode = 0
+offset_left = 582.0
+offset_top = 8.0
+offset_right = 624.0
+offset_bottom = 30.0
+theme_type_variation = &"Kucuk"
+text = "EN"
+
+[node name="Baslik" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 62.0
+offset_right = 580.0
+offset_bottom = 116.0
+alignment = 1
+theme_override_constants/separation = 2
+
+[node name="Yazi" type="Label" parent="Baslik"]
+layout_mode = 2
+theme_type_variation = &"Baslik"
 text = "YERÇEKİMİ ÇEVİR"
-horizontal_alignment = 1
+
+[node name="Nokta" type="Label" parent="Baslik"]
+layout_mode = 2
+theme_type_variation = &"Baslik"
+theme_override_colors/font_color = Color(0.913725, 0.309804, 0.211765, 1)
+text = "."
 
 [node name="AltBaslik" type="Label" parent="."]
-theme_override_constants/outline_size = 4
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+layout_mode = 0
 offset_left = 40.0
-offset_top = 82.0
+offset_top = 120.0
 offset_right = 600.0
-offset_bottom = 100.0
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.7, 0.74, 0.85, 1)
-text = "Zıplama yok. Tek tuş: yerçekimini çevir."
+offset_bottom = 136.0
+theme_type_variation = &"Etiket"
 horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Kutu" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 158.0
+offset_right = 490.0
+offset_bottom = 252.0
+theme_override_constants/separation = 10
+
+[node name="Basla" type="Button" parent="Kutu"]
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+theme_type_variation = &"Birincil"
+text = "Oyna"
+
+[node name="Ikinci" type="HBoxContainer" parent="Kutu"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="Sec" type="Button" parent="Kutu/Ikinci"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bölüm Seç"
+
+[node name="Gunluk" type="Button" parent="Kutu/Ikinci"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Günün Bölümü"
+
+[node name="Ayar" type="Button" parent="Kutu/Ikinci"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ayarlar"
+
+[node name="Cikis" type="Button" parent="Kutu/Ikinci"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Çıkış"
 
 [node name="Gunluk" type="Label" parent="."]
-theme_override_constants/outline_size = 4
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+layout_mode = 0
 offset_left = 40.0
-offset_top = 302.0
+offset_top = 276.0
 offset_right = 600.0
-offset_bottom = 318.0
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(1, 0.91, 0.38, 1)
+offset_bottom = 292.0
+theme_type_variation = &"Etiket"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="KristalIkon" type="TextureRect" parent="."]
+layout_mode = 0
 offset_left = 190.0
-offset_top = 320.0
+offset_top = 322.0
 offset_right = 202.0
-offset_bottom = 332.0
+offset_bottom = 334.0
+mouse_filter = 2
 texture = ExtResource("3_kristal")
 
 [node name="Durum" type="Label" parent="."]
-theme_override_constants/outline_size = 4
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+layout_mode = 0
 offset_left = 206.0
-offset_top = 319.0
+offset_top = 320.0
 offset_right = 636.0
-offset_bottom = 335.0
-theme_override_font_sizes/font_size = 11
-theme_override_colors/font_color = Color(0.6, 0.64, 0.75, 1)
-
-[node name="Kutu" type="VBoxContainer" parent="."]
-offset_left = 245.0
-offset_top = 104.0
-offset_right = 395.0
-offset_bottom = 300.0
-theme_override_constants/separation = 8
-
-[node name="Basla" type="Button" parent="Kutu"]
-layout_mode = 2
-text = "Başla"
-
-[node name="Sec" type="Button" parent="Kutu"]
-layout_mode = 2
-text = "Bölüm Seç"
-
-[node name="Gunluk" type="Button" parent="Kutu"]
-layout_mode = 2
-text = "Günün Bölümü"
-
-[node name="Ayar" type="Button" parent="Kutu"]
-layout_mode = 2
-text = "Ayarlar"
-
-[node name="Cikis" type="Button" parent="Kutu"]
-layout_mode = 2
-text = "Çıkış"
+offset_bottom = 336.0
+theme_type_variation = &"Etiket"
+vertical_alignment = 1

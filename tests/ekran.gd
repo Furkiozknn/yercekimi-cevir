@@ -14,6 +14,10 @@ extends Node
 ##                   yeni duzeni, gunun bolumu (menu, ters baslangic, kristal zorunlu)
 ##     <mod> = -7  : tur 5 (v0.6): tavan-HUD solmasi, gunluk hayalet yarisi,
 ##                   paylasim paneli, menude seri, kapi/kristal parilti kareleri
+##     <mod> = -9  : v1.0 arayuz yenilemesi: menu/bolum sec/ayarlar (TR+EN), uc tema,
+##                   cevirme, duraklat, bolum sonu karti, olum haritasi, bitis karti
+##     <mod> = -10 : gunluk video imkanlari: sekiz gecis ailesi ortu ortasinda (uc tema),
+##                   sayac renk akisi, yeni rekor damgasi, duraklat perdesi, dil glitch'i
 ##     <mod> = -8  : tur 6 (v0.7): cevirme yasagi bolgesi (rozet, reddedilen
 ##                   cevirme, tavan/zemin bolgeleri), tek yonlu platformlar,
 ##                   bolum basi tabelasi, sure listesi, menude madalya, kol kareleri
@@ -64,6 +68,10 @@ func _ready() -> void:
 		await _tur5_cek()
 	elif mod == -8:
 		await _tur6_cek()
+	elif mod == -9:
+		await _v1_cek()
+	elif mod == -10:
+		await _gecis_cek()
 	else:
 		await _oynanis_cek(mod)
 
@@ -809,3 +817,182 @@ func _kapak_yazisi() -> CanvasLayer:
 	alt.add_theme_constant_override("outline_size", 6)
 	kat.add_child(alt)
 	return kat
+
+
+## mod -9: v1.0 kanit kareleri (kanit/yercekimi-cevir/sonra). Her sahne animasyon
+## bittikten sonra cekilir; dil ve tema degisimi kod uzerinden.
+func _v1_cek() -> void:
+	_sahte_ilerleme()
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(1.1)
+	await _cek("menu-tr")
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	menu._yazilari_yaz()
+	await _bekle(0.3)
+	await _cek("menu-en")
+	menu.queue_free()
+	await _bekle(0.2)
+	var sec: Control = load("res://scenes/bolum_sec.tscn").instantiate()
+	add_child(sec)
+	await _bekle(1.6)
+	await _cek("bolum-sec-en")
+	sec.liste_goster(true)
+	await _bekle(0.3)
+	await _cek("sure-listesi-en")
+	sec.queue_free()
+	await _bekle(0.2)
+	var ayar: Control = load("res://scenes/ayarlar_ekrani.tscn").instantiate()
+	add_child(ayar)
+	await _bekle(1.0)
+	await _cek("ayarlar-en")
+	ayar.queue_free()
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	await _bekle(0.2)
+	ayar = load("res://scenes/ayarlar_ekrani.tscn").instantiate()
+	add_child(ayar)
+	await _bekle(1.0)
+	await _cek("ayarlar-tr")
+	ayar.queue_free()
+	await _bekle(0.2)
+	# Uc tema: kagit (1. bolum), gece (9.), pembe (16.). Her birinde baslangic + cevirme.
+	for bolum in [0, 8, 15]:
+		await _oyunu_ac(bolum)
+		await _bekle(0.5)
+		await _cek("oyun-%02d-basla" % (bolum + 1))
+		Input.action_press("move_right")
+		await _bekle(0.5)
+		Input.action_release("move_right")
+		Input.action_press("cevir")
+		await _bekle(0.05)
+		Input.action_release("cevir")
+		await _bekle(0.12)
+		await _cek("oyun-%02d-cevirdi" % (bolum + 1))
+		await _bekle(0.6)
+		await _cek("oyun-%02d-tavanda" % (bolum + 1))
+		_oyun.queue_free()
+		await _bekle(0.2)
+	# Duraklat + Ingilizce
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	await _oyunu_ac(7)
+	await _bekle(1.5)
+	var olay := InputEventAction.new()
+	olay.action = &"duraklat"
+	olay.pressed = true
+	_oyun._unhandled_input(olay)
+	await _bekle(0.8)
+	await _cek("duraklat-en")
+	_oyun._devam()
+	# Olum haritasi + bolum sonu karti (Ingilizce): once birkac olum, sonra kapi.
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	for x in [200.0, 320.0, 420.0]:
+		o.position = Vector2(x, 200.0)
+		o.oldur()
+		await _bekle(0.35)
+	var kapi: Area2D = _oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	await _bekle(0.7)
+	await _cek("bolum-sonu-en")
+	_oyun.queue_free()
+	await _bekle(0.2)
+	# Bitis karti (son bolum), Turkce
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	Ayarlar.acilan_bolum = 19
+	await _oyunu_ac(19)
+	o = _oyun.get_node("Dunya/Oyuncu")
+	kapi = _oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	await _bekle(2.2)
+	await _cek("bitis-tr")
+
+
+## Gecis karesi: Gecis'i elle kurar ve ortuyu p'de dondurur (kare dosyasi icin).
+func _gecis_dondur(tur: StringName, tema: int, p: float) -> void:
+	Gecis._kur(tur, tema)
+	Gecis._kaplama.visible = true
+	Gecis._p_yaz(p)
+	await _bekle(0.1)
+	Gecis._p_yaz(p)
+
+
+func _gecis_kapat() -> void:
+	Gecis._kaplama.visible = false
+
+
+## mod -10: gunluk video imkanlari kanit kareleri. Numara 19'dan devam eder.
+func _gecis_cek() -> void:
+	_sira = 18
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	# Sekiz gecis ailesi, yarim ortu; her ailenin kendi temasi/paletiyle gercek oyun uzerinde.
+	var plan := [[&"perde", 0], [&"itme", 0], [&"kararma", 0], [&"zoom", 0],
+		[&"glitch", 8], [&"flas", 8], [&"bloklar", 15], [&"iris", 15]]
+	var acik := -1
+	for pl in plan:
+		var bolum: int = pl[1]
+		if bolum != acik:
+			if _oyun != null:
+				_oyun.queue_free()
+				await _bekle(0.2)
+			await _oyunu_ac(bolum)
+			await _bekle(0.4)
+			acik = bolum
+		var tema: int = Tema.bolum_temasi(bolum)
+		await _gecis_dondur(pl[0], tema, 0.55)
+		await _cek("gecis-%s" % pl[0])
+		_gecis_kapat()
+	# Ayni ailenin tam ortulu hali: bloklar + iris (palet gorunsun)
+	await _gecis_dondur(&"bloklar", 1, 0.85)
+	await _cek("gecis-bloklar-pembe-yogun")
+	_gecis_kapat()
+	# Sayac chip'i renk akisi (uc tema, uc renk)
+	for k in 3:
+		_oyun._sayac_vurgula()
+		await _bekle(0.05)
+		await _cek("sayac-akis-%d" % (k + 1), Rect2i(640, 0, 640, 60))
+		await _bekle(0.4)
+	# Duraklat: perde acilirken (yarim)
+	var olay := InputEventAction.new()
+	olay.action = &"duraklat"
+	olay.pressed = true
+	_oyun._unhandled_input(olay)
+	await _bekle(0.05)
+	await _gecis_dondur(&"perde", Tema.bolum_temasi(15), 0.5)
+	await _cek("duraklat-perde")
+	_gecis_kapat()
+	_oyun._devam()
+	_oyun.queue_free()
+	await _bekle(0.2)
+	# Yeni rekor damgasi + flas vurusu (Ayarlar sifir: ilk bitis = rekor)
+	Ayarlar.sifirla()
+	_varsayilan_gorunum()
+	await _oyunu_ac(0)
+	var o: CharacterBody2D = _oyun.get_node("Dunya/Oyuncu")
+	var kapi: Area2D = _oyun.get_node("Dunya/Bolum/Kapi")
+	o.position = kapi.get_child(0).global_position
+	await _bekle(0.05)
+	await _cek("bolum-sonu-flas")
+	await _bekle(0.8)                     # 1 sn'lik bekleme bitmeden (sonraki bolum ortusu baslamadan)
+	await _cek("yeni-rekor-damga")
+	_oyun.queue_free()
+	await _bekle(0.2)
+	# Dil degisimi: menude glitch ortusu
+	Ayarlar.sifirla()
+	_varsayilan_gorunum()
+	Gecis.acilis_yapildi = true
+	var menu: Control = load("res://scenes/menu.tscn").instantiate()
+	add_child(menu)
+	await _bekle(1.0)
+	await _gecis_dondur(&"glitch", 0, 0.5)
+	await _cek("dil-glitch")
+	_gecis_kapat()
+	await _gecis_dondur(&"iris", 0, 0.6)
+	await _cek("menu-acilis-iris")
+	_gecis_kapat()
+	menu.queue_free()

@@ -6,6 +6,68 @@ metin aynen buraya taşındı. Tarihler git etiketinin tarihidir (0.2 etiketlenm
 Etiketler: `git tag -l 'v*'`; yayımlanmış sürüm notları:
 [Releases](https://github.com/Furkiozknn/yercekimi-cevir/releases).
 
+## [1.0.0 — arayüz yenilemesi] — yayımlanmadı (`yenileme/arayuz` dalı, 29 Eylül 2026)
+
+Oyunun görünümü ve arayüzü tanıtım videosundaki dünyaya taşındı. **Çekirdek
+mekanik, fizik, haritalar, `rota_verisi.gd` ve `altin_hayalet.gd` değişmedi**:
+bot denetimi (20/20 bölüm bitiyor) ve insan tepki bandı tablosu (20/20 altın
+eşiği tutuyor) yenileme sonrası aynı sonucu verdi. Denetim: `docs/DENETIM.md`;
+tasarım, önce/sonra ve ölçümler: `docs/TASARIM.md`.
+
+- **Düz renk dünya.** Pixel-art EDG32 "laboratuvar" temasının yerine video
+  dili: gölgesiz, dış çizgisiz; üç tema (kâğıt `#f1ede5`, gece `#1c141c`, pembe
+  kâğıt `#f0d6cc`), tehlike `#e94f36`, oyuncu `#4585bd` yuvarlatılmış kare.
+  Bloklar ve dikenler `Bolum._draw` ile vektör; sprite'lar düz renk, 4×4 alt
+  örneklemeli kenar. Yerçekimi ters dönünce zemin ile blok rengi yer değiştirir.
+  Arka plan videodaki eğik uzun bloklar. Doku filtresi `nearest` → doğrusal.
+- **Yeni arayüz.** Godot `Theme` (`assets/tema.tres`, `tools/tema_uret.gd`),
+  Instrument Sans + JetBrains Mono (OFL, lisans metinleriyle). Menü: dev OYNA,
+  tek satır nasıl oynanır; HUD: köşe etiketleri (`01 / İLK ADIM`, `ODA 01 / 20`);
+  duraklatma perde + kart; bölüm sonu kâğıt kartı; oyun sonu kartı ve **Tekrar
+  oyna**; Bölüm Seç ve Ayarlar aynı dilde. Sahne geçişi renk bandı
+  (`Gecis`), menü öğeleri 40 ms arayla girer, düğme basışı 90 ms.
+- **Türkçe / İngilizce.** Varsayılan dil sistem/tarayıcı dili; menüde ve
+  Ayarlar'da dil anahtarı. Kaynak dil Türkçe (`tr()` anahtarı Türkçe metin),
+  İngilizce tablo `scripts/ceviri.gd`. Bölüm adları, ipuçları, madalyalar,
+  dokunma metinleri çevrildi. Kayıt: yeni `ayar/dil` anahtarı; en iyi süre,
+  madalya, kristal, en az çevirme anahtarları **aynı**, eski kayıt bozulmaz.
+- **Oynanış hissi.** Çevirme artık tuş olayı gelir gelmez uygulanıyor (fizik
+  adımı beklenmiyor): tuş → çevirme gecikmesi ortalama 13,0 → 6,8 ms, en
+  yüksek 30,5 → 7,0 ms (`tools/his_olc.gd`). Dokunma alanları da gerçek olay
+  yolluyor. Çevirme patlaması (12 kırıntı). Giriş tamponu 0,10 sn ve kojot
+  0,08 sn **bilerek korundu** (testler ve bot ölçümü bunlara dayanıyor).
+  Dikey telefonda "cihazını yatay çevir" uyarısı.
+- **Test.** 841 → 915 doğrulama (`TEST_TABANI` 915): çeviri tablosu ve sahne
+  metinleri, dil kaydı ve eski kayıt uyumu, menü, duraklat, bölüm sonu ve
+  bitiş kartı, tema, erken çevirme, yazı tipi kapsamı (Türkçe harfler, mono
+  yazı tipi). Kol sallanması testi, kolların kalkmasıyla oyuncu görseli testine
+  dönüştü.
+- **Araçlar.** `tools/fps.gd` (kare süresi), `tools/his_olc.gd` (girdi
+  gecikmesi), `tools/bot.gd ... kayit` (yazısız ham oynanış kaydı: insan
+  tepki bandı, bilinçli bir ölüm, arayüz gizli), `tests/ekran.tscn -- -9`.
+- **Ölçümler (önce → sonra, Intel UHD, vsync kapalı).** Kare süresi 10.
+  bölüm 2,67 → 2,83 ms, 20. bölüm 2,87 → 3,41 ms (%99: 3,67 → 6,16 ve
+  4,16 → 7,99 ms). Web `index.pck` 830.812 → 1.077.440 bayt (dört yazı tipi);
+  `index.wasm` ve `index.js` aynı, toplam +%0,6.
+- **Yapılmadı / bilinmiyor.** Tanıtım videosu (`docs/reel/`) bu turda yeniden
+  üretilmedi (eski görünümü gösterir, README'den çıkarıldı). Gerçek telefonda,
+  Safari'de ve Firefox'ta denenmedi; gerçek insan elinde "his" ölçülmedi.
+  Yerel web denemesinde konsolda iki çift WebGL `bindBuffer` uyarısı (hata
+  değil) görüldü.
+
+- **Günlük video imkânları (renk akışı + geçişler).** Dünya düz renk kalır;
+  `Gecis` artık `assets/gecis.gdshader` ile sekiz aile (iris, glitch, bloklar,
+  itme, perde, flaş, kararma, zoom) ve video paletlerinden (klasik/limon/kâğıt)
+  dönen renklerle çalışır. Menü açılışı, bölüm geçişi, bölüm/oyun sonu, duraklat,
+  dil değişimi, sayaç chip'i ve "yeni rekor" damgası. Oyun hissi kapalıyken ya da
+  tarayıcı `prefers-reduced-motion` isterken geçiş anında. Ayrıntı ve kaynak
+  eşlemesi: `docs/TASARIM.md` bölüm 7. Test 915 → 963 (`TEST_TABANI` 963).
+  Oynanış karesi ölçüm farkı yok; ilk geçişteki shader derlemesi tek 135 ms kare.
+  `tools/bot.gd ... kayit b=N k=N` (istenen bölümden geçiş kaydı),
+  `tests/ekran.tscn -- -10` (kanıt kareleri), `tools/fps.gd ... gecis`.
+  Ham kayıt (`sosyal/medya/oyunlar/yercekimi-cevir.mp4`, 18 sn) sekiz ailenin
+  hepsini gösterecek biçimde yeniden üretildi.
+
 ## [Yayımlanmamış]
 
 Oynanış değişmedi; yalnız depo ve belge işleri.
