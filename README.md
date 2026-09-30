@@ -420,6 +420,8 @@ CI'da ayrı bir iş bunu arıyor: aynı hesaptaki
 indirmeden projeyi tarıyor ve bulguları SARIF olarak kod taramaya yüklüyor.
 Şu an temiz: **253 dosya, 75 referans, sıfır bulgu** (CHANGELOG.md eklendikten sonra; dosya sayısı depoyla birlikte değişir, bulgu sayısının sıfır kalması kapı).
 
+Claude Code ile yapıldı; commit geçmişindeki `Co-Authored-By` izleri kullanılan modelleri gösterir. Oyun döngüsü: [`scripts/oyun.gd`](scripts/oyun.gd).
+
 ## Bu ekosistemden başka projeler
 
 - **[tek-tus-kosu](https://github.com/Furkiozknn/tek-tus-kosu)** — tek tuş, müziğin vuruş ızgarasına dizilmiş engeller
