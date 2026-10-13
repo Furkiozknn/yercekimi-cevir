@@ -31,7 +31,7 @@
     "puzzle-platformer",
     "turkce"
   ],
-  "summary": "No jump button - one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms in Godot 4. Turkish UI.",
+  "summary": "Precision platformer in Godot 4 with no jump button: one key flips gravity across 20 hand-built rooms with bot-measured medal times. Turkish and English UI, playable in the browser.",
   "key_features": [
     "No jump button: one key flips gravity and you fall onto the ceiling",
     "20 hand-built precision rooms, each with its own medal times",
