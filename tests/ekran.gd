@@ -46,8 +46,12 @@ func _ready() -> void:
 	# Arac ilerleme uydurur (_sahte_ilerleme) ve bazi modlar bolum bitirir, yani
 	# Ayarlar.kaydet() cagrilir. Kullanicinin kayit.cfg'si bundan etkilenmesin:
 	# baslarken yedekle, cikarken geri koy (tools/bot.gd de ayarlari geri veriyor).
-	var kayit_vardi := FileAccess.file_exists(Ayarlar.KAYIT_YOLU)
-	var kayit_yedek := FileAccess.get_file_as_bytes(Ayarlar.KAYIT_YOLU) if kayit_vardi else PackedByteArray()
+	# The automatic backup (kayit.yedek.cfg) is part of the save too.
+	var kayit_yollari: Array[String] = [Ayarlar.KAYIT_YOLU, Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)]
+	var kayit_eski: Dictionary = {}
+	for yol in kayit_yollari:
+		if FileAccess.file_exists(yol):
+			kayit_eski[yol] = FileAccess.get_file_as_bytes(yol)
 
 	Ayarlar.sifirla()
 	_varsayilan_gorunum()
@@ -75,13 +79,14 @@ func _ready() -> void:
 	else:
 		await _oynanis_cek(mod)
 
-	if kayit_vardi:
-		var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
-		if f != null:
-			f.store_buffer(kayit_yedek)
-			f.close()
-	else:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(Ayarlar.KAYIT_YOLU))
+	for yol in kayit_yollari:
+		if kayit_eski.has(yol):
+			var f := FileAccess.open(yol, FileAccess.WRITE)
+			if f != null:
+				f.store_buffer(kayit_eski[yol])
+				f.close()
+		else:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(yol))
 	get_tree().quit(0)
 
 

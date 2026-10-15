@@ -510,9 +510,51 @@ func ekran_uygula() -> void:
 
 # --- Kayit -------------------------------------------------------------------
 
-func yukle() -> void:
+## Automatic copy written after every successful save (same scheme as
+## tek-tus-kosu): kayit.cfg -> kayit.yedek.cfg.
+func yedek_yolu(yol: String) -> String:
+	return yol.get_basename() + ".yedek.cfg"
+
+
+## Where an unreadable save is kept for manual recovery: kayit.bozuk.cfg.
+func bozuk_yolu(yol: String) -> String:
+	return yol.get_basename() + ".bozuk.cfg"
+
+
+## Loads the save at `yol`. kaydet() rebuilds the whole file from memory, so a
+## failed read used to mean the next write replaced every unlocked room, best
+## time, medal, crystal and setting with defaults. Now an unreadable (parse
+## error) or empty (write cut short) file falls back to the automatic backup,
+## and an unreadable file is copied to bozuk_yolu() before anything can
+## overwrite it. Returns an empty ConfigFile when neither could be read.
+func dosya_oku(yol: String) -> ConfigFile:
 	var cfg := ConfigFile.new()
-	if cfg.load(KAYIT_YOLU) != OK:
+	var hata := cfg.load(yol)
+	if hata == OK and not cfg.get_sections().is_empty():
+		return cfg
+	if hata != OK and hata != ERR_FILE_NOT_FOUND:
+		DirAccess.copy_absolute(yol, bozuk_yolu(yol))
+		push_warning("Save file unreadable (error %d), kept as %s" % [hata, bozuk_yolu(yol)])
+	var yedek := ConfigFile.new()
+	if yedek.load(yedek_yolu(yol)) == OK and not yedek.get_sections().is_empty():
+		push_warning("Save loaded from backup %s" % yedek_yolu(yol))
+		return yedek
+	return ConfigFile.new()
+
+
+## Saves `cfg` to `yol`, then refreshes the backup. The backup is written only
+## after the main file saved cleanly, so a save cut short (crash, closed tab)
+## leaves the previous good copy for dosya_oku().
+func dosya_yaz(cfg: ConfigFile, yol: String) -> Error:
+	var hata := cfg.save(yol)
+	if hata == OK:
+		hata = cfg.save(yedek_yolu(yol))
+	return hata
+
+
+func yukle() -> void:
+	var cfg := dosya_oku(KAYIT_YOLU)
+	if cfg.get_sections().is_empty():
 		return
 	acilan_bolum = clampi(int(cfg.get_value("ilerleme", "acilan", 0)), 0, maxi(0, bolum_sayisi() - 1))
 	en_iyi.clear()
@@ -587,7 +629,7 @@ func kaydet() -> void:
 	cfg.set_value("gunluk", "bitis", gunluk_bitis)
 	cfg.set_value("gunluk", "seri", gunluk_seri)
 	cfg.set_value("gunluk", "seri_tarih", gunluk_seri_tarih)
-	var hata := cfg.save(KAYIT_YOLU)
+	var hata := dosya_yaz(cfg, KAYIT_YOLU)
 	if hata != OK:
 		push_warning("Kayit yazilamadi: %d" % hata)
 
