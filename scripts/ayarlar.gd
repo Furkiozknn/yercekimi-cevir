@@ -91,6 +91,10 @@ var en_iyi: Dictionary = {}      ## bolum indeksi (int) -> en iyi sure (float sn
 var madalya: Dictionary = {}     ## bolum indeksi (int) -> 0 yok / 1 bronz / 2 gumus / 3 altin
 var kristal: Dictionary = {}     ## bolum indeksi (int) -> true (toplandi)
 var en_az: Dictionary = {}       ## bolum indeksi (int) -> o bolumdeki en az cevirme sayisi
+## Deathless clears (Celeste's golden strawberry, VVVVVV's no-death runs): level
+## index (int) -> true once the level was finished without a single death,
+## outside assist mode. A third goal next to time medals and fewest flips.
+var olumsuz: Dictionary = {}
 
 # --- Oyuncu ayarlari (kaydedilir) ---
 var muzik_ses: float = 0.7
@@ -302,16 +306,31 @@ func en_az_al(i: int) -> int:
 	return int(en_az.get(i, -1))
 
 
+func olumsuz_var(i: int) -> bool:
+	return bool(olumsuz.get(i, false))
+
+
+## Number of levels ever finished without dying (level select, end summary).
+func olumsuz_sayisi() -> int:
+	return olumsuz.size()
+
+
 ## Bolum bitince cagrilir.
-## {"rekor": bool, "madalya": int, "yeni_madalya": bool, "az_rekor": bool, "yardim": bool}
-## Yardim modu acikken sure, madalya ve cevirme rekoru KAYDEDILMEZ; bolum yine
-## acilir, kristal yine sayilir.
-func bolum_bitti(i: int, sure: float, cevirme: int = -1) -> Dictionary:
+## {"rekor": bool, "madalya": int, "yeni_madalya": bool, "az_rekor": bool, "yardim": bool,
+##  "olumsuz": bool, "olumsuz_yeni": bool}
+## Yardim modu acikken sure, madalya, cevirme rekoru ve olumsuz bitis
+## KAYDEDILMEZ; bolum yine acilir, kristal yine sayilir. olum < 0 = bilinmiyor
+## (eski cagiranlar): olumsuz bitis sayilmaz.
+func bolum_bitti(i: int, sure: float, cevirme: int = -1, olum: int = -1) -> Dictionary:
 	var yardim := yardim_acik
 	var rekor := false
 	var m := 0
 	var yeni := false
 	var az_rekor := false
+	var olumsuz_bitis := not yardim and olum == 0
+	var olumsuz_yeni := olumsuz_bitis and not olumsuz_var(i)
+	if olumsuz_yeni:
+		olumsuz[i] = true
 	if not yardim:
 		rekor = not en_iyi.has(i) or sure < float(en_iyi[i])
 		if rekor:
@@ -327,7 +346,8 @@ func bolum_bitti(i: int, sure: float, cevirme: int = -1) -> Dictionary:
 		acilan_bolum = i + 1
 	kaydet()
 	return {"rekor": rekor, "madalya": m, "yeni_madalya": yeni,
-		"az_rekor": az_rekor, "yardim": yardim}
+		"az_rekor": az_rekor, "yardim": yardim,
+		"olumsuz": olumsuz_bitis, "olumsuz_yeni": olumsuz_yeni}
 
 
 ## Yardim modunda bolum atlama: bir sonrakini acar, sure/madalya vermez.
@@ -528,6 +548,10 @@ func yukle() -> void:
 	en_az.clear()
 	for anahtar in cfg.get_section_keys("en_az") if cfg.has_section("en_az") else []:
 		en_az[int(anahtar)] = int(cfg.get_value("en_az", anahtar, 0))
+	olumsuz.clear()
+	for anahtar in cfg.get_section_keys("olumsuz") if cfg.has_section("olumsuz") else []:
+		if bool(cfg.get_value("olumsuz", anahtar, false)):
+			olumsuz[int(anahtar)] = true
 	muzik_ses = clampf(float(cfg.get_value("ayar", "muzik_ses", muzik_ses)), 0.0, 1.0)
 	efekt_ses = clampf(float(cfg.get_value("ayar", "efekt_ses", efekt_ses)), 0.0, 1.0)
 	muzik_acik = bool(cfg.get_value("ayar", "muzik_acik", muzik_acik))
@@ -565,6 +589,8 @@ func kaydet() -> void:
 		cfg.set_value("kristal", str(i), true)
 	for i in en_az:
 		cfg.set_value("en_az", str(i), en_az[i])
+	for i in olumsuz:
+		cfg.set_value("olumsuz", str(i), true)
 	cfg.set_value("ayar", "muzik_ses", muzik_ses)
 	cfg.set_value("ayar", "efekt_ses", efekt_ses)
 	cfg.set_value("ayar", "muzik_acik", muzik_acik)
@@ -603,6 +629,7 @@ func sifirla() -> void:
 	madalya.clear()
 	kristal.clear()
 	en_az.clear()
+	olumsuz.clear()
 	gunluk_tarih = 0
 	gunluk_en_iyi = 0.0
 	gunluk_bitis = 0

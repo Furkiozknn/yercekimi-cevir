@@ -8,6 +8,10 @@ const T_KRISTAL := preload("res://assets/sprites/kristal.png")
 
 var _liste_acik: bool = false
 
+## Top-right summary. Four goals must fit the 378 px label in both languages
+## (the test measures it with "20/20" everywhere), hence the compact form.
+const OZET := "Kristal %d/%d  Madalya %d/%d  En az ⟳ %d/%d  ◆ Ölümsüz %d/%d"
+
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Tema.PANEL)
@@ -22,10 +26,11 @@ func _ready() -> void:
 	$Gorunum.pressed.connect(func() -> void:
 		Ses.cal(&"menu")
 		liste_goster(not _liste_acik))
-	$Ozet.text = tr("Kristal %d / %d     Madalya %d / %d     En az çevirme %d / %d") % [
+	$Ozet.text = tr(OZET) % [
 		Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
 		Ayarlar.madalya_sayisi(), Ayarlar.bolum_sayisi(),
-		_en_az_bolum(), Ayarlar.bolum_sayisi()]
+		_en_az_bolum(), Ayarlar.bolum_sayisi(),
+		Ayarlar.olumsuz_sayisi(), Ayarlar.bolum_sayisi()]
 	UI.dugmeleri_bagla(self)
 	$Geri.grab_focus()
 	Ses.muzik(&"menu")
@@ -87,6 +92,8 @@ func _satir(i: int) -> Button:
 		madalya.texture = _madalya_dokusu(m)
 	h.add_child(madalya)
 
+	h.add_child(_olumsuz_simgesi(i))
+
 	var altin := _yazi(tr("● %.2f sn") % float(Ayarlar.esik(i)["altin"]), 72, HORIZONTAL_ALIGNMENT_RIGHT)
 	altin.name = "Altin"
 	altin.add_theme_color_override("font_color", Ayarlar.MADALYA_RENK[3])
@@ -117,6 +124,24 @@ func _madalya_dokusu(m: int) -> AtlasTexture:
 	atlas.atlas = T_MADALYA
 	atlas.region = Rect2((3 - m) * 12, 0, 12, 12)
 	return atlas
+
+
+## Deathless mark: a "◆" that is solid when the level was ever finished without
+## dying and faint otherwise (same convention as the crystal icon: the empty
+## slot shows there is a goal to chase).
+func _olumsuz_simgesi(i: int) -> Label:
+	var l := Label.new()
+	l.name = "Olumsuz"
+	l.text = "◆"
+	l.custom_minimum_size = Vector2(12, 12)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.theme_type_variation = &"Etiket"
+	l.add_theme_font_size_override("font_size", 10)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.modulate.a = 1.0 if Ayarlar.olumsuz_var(i) else 0.18
+	l.tooltip_text = tr("Ölümsüz: bölümü hiç ölmeden bitir")
+	return l
 
 
 ## Hedefteki en az cevirmeyle (ya da daha aziyla) bitirilen bolum sayisi.
@@ -182,6 +207,8 @@ func _hucre(i: int) -> Button:
 	kristal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	kristal.modulate.a = 1.0 if Ayarlar.kristal_var(i) else 0.18
 	simgeler.add_child(kristal)
+
+	simgeler.add_child(_olumsuz_simgesi(i))
 
 	if acik:
 		dugme.pressed.connect(func() -> void:

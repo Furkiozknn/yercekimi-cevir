@@ -70,6 +70,8 @@ func _ready() -> void:
 	await _yardim_testi()
 	print("— Olum haritasi —")
 	await _olum_haritasi_testi()
+	print("— Olumsuz bitis —")
+	await _olumsuz_testi()
 	print("— Simge yazi tipi —")
 	await _simge_testi()
 	print("— Dokunmatik metinler —")
@@ -363,6 +365,109 @@ func _kontrol_testi() -> void:
 	_dogrula(absf(o.position.x - bolum.kontrol_konumu.x) < 4.0, "kontrol noktasinda dogdu")
 	oyun.queue_free()
 	await get_tree().process_frame
+
+
+## Deathless clears (Celeste golden strawberry / VVVVVV no-death): a third goal
+## recorded only for a clear with zero deaths outside assist mode, saved with
+## the progress, stamped on the room card, marked in Level Select (grid, list,
+## summary) and counted in the end summary.
+func _olumsuz_testi() -> void:
+	Ayarlar.sifirla()
+	var s1: Dictionary = Ayarlar.bolum_bitti(0, 5.0, 3, 1)
+	_dogrula(not bool(s1["olumsuz"]) and not Ayarlar.olumsuz_var(0), "olumsuz: bir olumle biten bolum sayilmadi")
+	var s2: Dictionary = Ayarlar.bolum_bitti(0, 6.0, 3, 0)
+	_dogrula(bool(s2["olumsuz"]) and bool(s2["olumsuz_yeni"]) and Ayarlar.olumsuz_var(0),
+		"olumsuz: olumsuz bitis kaydedildi, ilk kez")
+	var s3: Dictionary = Ayarlar.bolum_bitti(0, 7.0, 3, 0)
+	_dogrula(bool(s3["olumsuz"]) and not bool(s3["olumsuz_yeni"]), "olumsuz: ikinci olumsuz bitis 'ilk kez' degil")
+	var s4: Dictionary = Ayarlar.bolum_bitti(1, 5.0, 3)
+	_dogrula(not bool(s4["olumsuz"]) and not Ayarlar.olumsuz_var(1), "olumsuz: olum bilinmiyorsa (eski cagiran) sayilmadi")
+	Ayarlar.yardim_acik = true
+	var s5: Dictionary = Ayarlar.bolum_bitti(2, 5.0, 3, 0)
+	Ayarlar.yardim_acik = false
+	_dogrula(not bool(s5["olumsuz"]) and not Ayarlar.olumsuz_var(2), "olumsuz: yardim modunda sayilmadi")
+	_dogrula(Ayarlar.olumsuz_sayisi() == 1, "olumsuz: sayi 1 (%d)" % Ayarlar.olumsuz_sayisi())
+
+	Ayarlar.kaydet()
+	Ayarlar.olumsuz.clear()
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.olumsuz_var(0) and not Ayarlar.olumsuz_var(1), "olumsuz: kayittan geri yuklendi")
+	Ayarlar.sifirla()
+	_dogrula(Ayarlar.olumsuz_sayisi() == 0, "olumsuz: sifirla temizledi")
+
+	# Room card stamp: first deathless clear of room 1.
+	Ayarlar.secilen_bolum = 0
+	var oyun: Node2D = OYUN.instantiate()
+	add_child(oyun)
+	await get_tree().physics_frame
+	var o: CharacterBody2D = oyun.get_node("Dunya/Oyuncu")
+	o.girdi_acik = false
+	o.position = (oyun.get_node("Dunya/Bolum/Kapi") as Area2D).get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	var damga := oyun.get_node_or_null("Arayuz/BolumKarti/OlumsuzDamga") as Panel
+	var yazi: Label = damga.get_child(0) as Label if damga != null else null
+	_dogrula(damga != null and damga.visible and yazi.text == "◆ İLK ÖLÜMSÜZ" and Ayarlar.olumsuz_var(0),
+		"kart: ilk olumsuz bitiste '◆ İLK ÖLÜMSÜZ' damgasi ('%s')" % (yazi.text if yazi != null else ""))
+	if yazi != null:
+		_dogrula(yazi.get_theme_font("font").has_char("◆".unicode_at(0)), "kart: damga yazi tipinde ◆ var")
+		_dogrula(damga.position.x < 40.0 and damga.position.x + damga.size.x <= (oyun.get_node("Arayuz/BolumKarti") as Control).size.x,
+			"kart: damga sol ustte ve kartin icinde")
+	oyun.queue_free()
+	await get_tree().process_frame
+
+	# Same room after a death: no stamp.
+	var oyun2: Node2D = OYUN.instantiate()
+	add_child(oyun2)
+	await get_tree().physics_frame
+	var o2: CharacterBody2D = oyun2.get_node("Dunya/Oyuncu")
+	o2.girdi_acik = false
+	oyun2.olum = 1
+	o2.position = (oyun2.get_node("Dunya/Bolum/Kapi") as Area2D).get_child(0).global_position
+	for i in 6:
+		await get_tree().physics_frame
+	var damga2 := oyun2.get_node_or_null("Arayuz/BolumKarti/OlumsuzDamga") as Panel
+	_dogrula(damga2 == null or not damga2.visible, "kart: olumlu bitiste olumsuz damgasi yok")
+	oyun2.queue_free()
+	await get_tree().process_frame
+
+	# Level Select: grid cell, list row and summary.
+	var sec: Control = load("res://scenes/bolum_sec.tscn").instantiate()
+	add_child(sec)
+	await get_tree().process_frame
+	var izgara: GridContainer = sec.get_node("Kutu/Izgara")
+	var h1 := izgara.get_child(0).find_child("Olumsuz", true, false) as Label
+	var h2 := izgara.get_child(1).find_child("Olumsuz", true, false) as Label
+	_dogrula(h1 != null and h2 != null and h1.modulate.a > 0.9 and h2.modulate.a < 0.3,
+		"bolum sec: 1. hucrede dolu ◆, 2. hucrede soluk")
+	var r1 := sec.get_node_or_null("Liste/Sol/Satir1/Kutu/Olumsuz") as Label
+	_dogrula(r1 != null and r1.modulate.a > 0.9, "sure listesi: 1. satirda ◆")
+	var ozet := sec.get_node("Ozet") as Label
+	_dogrula(ozet.text.contains("◆ Ölümsüz 1/%d" % Ayarlar.bolum_sayisi()), "ozet olumsuz sayisini soyluyor ('%s')" % ozet.text)
+	var font := ozet.get_theme_font("font")
+	var boy := ozet.get_theme_font_size("font_size")
+	var en_genis := 0.0
+	for dil in ["tr", "en"]:
+		Ayarlar.dil = dil
+		Ayarlar.dil_uygula()
+		var dolu: String = tr(sec_ozet_anahtari()) % [20, 20, 20, 20, 20, 20, 20, 20]
+		en_genis = maxf(en_genis, font.get_string_size(dolu, HORIZONTAL_ALIGNMENT_LEFT, -1, boy).x)
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	_dogrula(en_genis <= ozet.size.x, "ozet 20/20 ile iki dilde de sigiyor (%.0f <= %.0f px)" % [en_genis, ozet.size.x])
+	sec.queue_free()
+	await get_tree().process_frame
+
+	var eksik := ""
+	for m in [sec_ozet_anahtari(), "Ölümsüz", "İlk ölümsüz", "Ölümsüz: bölümü hiç ölmeden bitir", "Ölümsüz biten bölüm: %d / %d"]:
+		if not Ceviri.EN.has(String(m)):
+			eksik += " [%s]" % m
+	_dogrula(eksik == "", "olumsuz metinleri Ingilizcede var ('%s')" % eksik)
+	Ayarlar.sifirla()
+
+
+func sec_ozet_anahtari() -> String:
+	return preload("res://scripts/bolum_sec.gd").OZET
 
 
 func _kapi_testi() -> void:
@@ -1774,7 +1879,7 @@ func _sure_listesi_testi() -> void:
 	_dogrula(eksik == "", "liste metinlerinde eksik simge yok ('%s')" % eksik)
 	sec.liste_goster(false)
 	_dogrula(sec.get_node("Kutu").visible and sec.get_node("Gorunum").text == "Süre Listesi", "izgaraya donuldu")
-	_dogrula((sec.get_node("Ozet") as Label).text.contains("Madalya 1 / %d" % Ayarlar.bolum_sayisi()), "ozet madalya sayisini soyluyor")
+	_dogrula((sec.get_node("Ozet") as Label).text.contains("Madalya 1/%d" % Ayarlar.bolum_sayisi()), "ozet madalya sayisini soyluyor")
 	sec.queue_free()
 	await get_tree().process_frame
 	var menu: Control = load("res://scenes/menu.tscn").instantiate()
