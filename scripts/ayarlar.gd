@@ -171,6 +171,7 @@ func _ready() -> void:
 	# gomulu Open Sans'ta olmadigi icin kutu olarak cikiyorlardi.
 	SIMGELER.kur()
 	yukle()
+	Tuslar.yukle()   # key bindings: own file (user://tuslar.cfg), applied to InputMap
 	Ceviri.kur()
 	dil_uygula()
 	ses_uygula()
@@ -203,11 +204,12 @@ func dil_uygula() -> void:
 ## Klavye metnini (Turkce kaynak anahtar) ceviren ve dokunmatik cihazda dokunma
 ## karsiligiyla degistiren tek yol. Once tr() ile etkin dile cevrilir, sonra
 ## tablodaki terimler (o dilin karsiligi) dokunma metniyle degistirilir.
-## Masaustunde yalniz ceviri yapilir.
+## Masaustunde ceviri yapilir; tuslar yeniden atandiysa "A / D" ve "BOŞLUK"
+## yerine atanan tuslarin adi yazilir (Tuslar.metne_uygula).
 func kontrol_metni(m: String) -> String:
 	m = tr(m)
 	if not dokunmatik_mi():
-		return m
+		return Tuslar.metne_uygula(m)
 	for c in DOKUNMA_METNI:
 		m = m.replace(tr(String(c[0])), dokunma_karsiligi(c))
 	return m

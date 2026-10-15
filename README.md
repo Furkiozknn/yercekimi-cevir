@@ -43,6 +43,9 @@ Web paketini indirdiysen `index.html`'e çift tıklamak yetmez (tarayıcı
 | **Çevir** | `Boşluk` ya da `W` | `A` | ekranın sağ yarısı |
 | Duraklat | `Esc` | `Start` | — |
 
+Klavye tuşları **Ayarlar → Tuş atama** ekranından değiştirilir (aşağıda
+"Tuş atama").
+
 Çevirme **yalnızca bir yüzeye değerken** çalışır — havada ikinci kez çeviremezsin.
 İki yönlü affetme var: yüzeye değmeden ~0,1 sn önce bastıysan sayılır (giriş
 tamponu) ve yüzeyden ayrıldıktan sonra da ~0,08 sn hakkın sürer (kojot çevirme).
@@ -152,6 +155,19 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 - **Yardım modu.** Oyun hızı %50–100, dikenler öldürmek yerine iter, duraklatma
   menüsünden bölüm atlanır. Açıkken süre, madalya ve çevirme kaydı tutulmaz;
   kristaller sayılır. İstediğin an kapatılır.
+- **Tuş atama.** Celeste ve VVVVVV gibi her eylemin klavye tuşu değiştirilebilir:
+  sola/sağa yürü, yerçekimini çevir, duraklat (Ayarlar → **Tuş atama**, yalnız
+  masaüstünde). Tek elle oynamak, QWERTY olmayan klavye ya da çevirmeyi rahat bir
+  tuşa almak için. Düğmeye bas, sonra yeni tuşa bas; `Esc` vazgeçer.
+  - Atanan tuş o eylemin **varsayılan klavye tuşlarının yerini alır**. Gamepad
+    atamaları hiç değişmez, yani kötü bir klavye ataması kolu kilitleyemez.
+  - Bir tuş tek eyleme aittir; başka eylemdeki tuşu atarsan oradan taşınır.
+  - Bir eylemi tuşsuz bırakacak atama reddedilir, `Esc` atanamaz.
+  - Atamalar **ayrı dosyada** durur (`user://tuslar.cfg`): ilerleme kaydıyla
+    birbirini ezmez, kayıt sıfırlamak tuşlara dokunmaz.
+  - Klavye ipuçları (menü alt satırı ve `A / D` / `BOŞLUK` geçen bölüm ipuçları,
+    `Ayarlar.kontrol_metni()`) atanan tuşun adını yazar: "J / L ile yürü · K
+    yerçekimini çevirir".
 
 ## Lisanslar
 
