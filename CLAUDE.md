@@ -79,6 +79,11 @@ ses, tam ekran, oyun hissi, yüksek kontrast, yerçekimi oku, iniş göstergesi,
 altın hayalet, solak dokunmatik, düğme opaklığı, titreşim, yardım modu (açık/hız/ölümsüzlük).
 Yeni bir ayar eklerken **üç yeri** birden güncelle: `var`, `yukle()`, `kaydet()` —
 ve `tests/testler.gd` içindeki `_ayar_kayit_testi` bunu doğruluyor.
+**İstisna: tuş atamaları** `scripts/tuslar.gd` (`Tuslar`) ile **ayrı dosyada**
+(`user://tuslar.cfg`); `yukle()`/`kaydet()`'e girmez, `Ayarlar._ready()` içinde
+`Tuslar.yukle()` InputMap'e uygular. Yalnız klavye olayları değişir, gamepad
+`project.godot`'taki gibi kalır. Testler `Tuslar.yol`'u geçici dosyaya çevirir
+(`_tus_atama_testi`).
 
 **Günün bölümü** (`Ayarlar.gunluk_*`): tarihten seçilen bölüm + değiştirici
 (0 ters başlangıç, 1 kristal zorunlu, 2 hayalet yarışı), `[gunluk]` bölümünde

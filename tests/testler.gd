@@ -17,8 +17,8 @@ func _ready() -> void:
 	# yarida kalan bir kosu (v0.7'de bir kez oldu) yardim/solak ayarlarini
 	# ACIK birakip diske yaziyordu. Basta yedekle, cikista geri koy; bellekte
 	# varsayilan ayarlarla basla ki sonuc onceki kosuya bagli olmasin.
-	var kayit_vardi := FileAccess.file_exists(Ayarlar.KAYIT_YOLU)
-	var kayit_yedek := FileAccess.get_file_as_bytes(Ayarlar.KAYIT_YOLU) if kayit_vardi else PackedByteArray()
+	# The automatic backup (kayit.yedek.cfg) is part of the save too.
+	var kayit_eski := _kayit_al()
 	_varsayilan_ayarlar()
 	print("— Bolum verisi —")
 	await _bolum_testi()
@@ -52,6 +52,8 @@ func _ready() -> void:
 	await _kojot_testi()
 	print("— Yeniden deneme suresi —")
 	await _yeniden_deneme_testi()
+	print("— Tus atama —")
+	await _tus_atama_testi()
 	print("— Isabet kutulari —")
 	await _isabet_testi()
 	print("— Oda tabanli kamera —")
@@ -96,6 +98,8 @@ func _ready() -> void:
 	await _ceviri_testi()
 	print("— Dil kaydi ve eski kayit uyumu —")
 	_dil_kayit_testi()
+	print("— Corrupt save guard —")
+	_bozuk_kayit_testi()
 	print("— Menu akisi —")
 	await _menu_akisi_testi()
 	print("— Duraklat akisi —")
@@ -113,18 +117,33 @@ func _ready() -> void:
 		print("TESTLER GECTI")
 	else:
 		printerr("TESTLER KALDI")
-	if kayit_vardi:
-		var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
-		if f != null:
-			f.store_buffer(kayit_yedek)
-			f.close()
-	else:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(Ayarlar.KAYIT_YOLU))
+	_kayit_geri_koy(kayit_eski)
 	# Motorun kapanis sirasi alttan yukari: muzik burada durdurulmazsa cikista
 	# "resource still in use" hatasi basiliyor.
 	Ses.kapat()
 	await get_tree().create_timer(0.25).timeout
 	get_tree().quit(1 if _hata > 0 else 0)
+
+
+## Snapshot of the player's save and its backup: path -> bytes (missing = absent).
+func _kayit_al() -> Dictionary:
+	var eski: Dictionary = {}
+	for yol: String in [Ayarlar.KAYIT_YOLU, Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)]:
+		if FileAccess.file_exists(yol):
+			eski[yol] = FileAccess.get_file_as_bytes(yol)
+	return eski
+
+
+## Puts the snapshot from _kayit_al() back; files that did not exist are removed.
+func _kayit_geri_koy(eski: Dictionary) -> void:
+	for yol: String in [Ayarlar.KAYIT_YOLU, Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)]:
+		if eski.has(yol):
+			var f := FileAccess.open(yol, FileAccess.WRITE)
+			if f != null:
+				f.store_buffer(eski[yol])
+				f.close()
+		else:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(yol))
 
 
 ## Kullanici ayarlari testin girdisi degildir: her kosu ayni varsayilanlarla baslar.
@@ -2036,6 +2055,39 @@ func _dil_kayit_testi() -> void:
 	Ayarlar.sifirla()
 
 
+## A corrupt or truncated kayit.cfg must not wipe progress: yukle() falls back
+## to the automatic backup and keeps the unreadable file as kayit.bozuk.cfg,
+## and the next kaydet() writes the restored progress back.
+func _bozuk_kayit_testi() -> void:
+	var bozuk_yol: String = Ayarlar.bozuk_yolu(Ayarlar.KAYIT_YOLU)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(bozuk_yol))
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 5
+	Ayarlar.en_iyi[2] = 7.25
+	Ayarlar.kristal[2] = true
+	Ayarlar.kaydet()
+	_dogrula(FileAccess.file_exists(Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)), "kaydet() writes kayit.yedek.cfg")
+	var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
+	f.store_string("bozuk [[[ dosya")
+	f.close()
+	Ayarlar.sifirla()
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.acilan_bolum == 5 and is_equal_approx(float(Ayarlar.en_iyi.get(2, 0.0)), 7.25)
+		and Ayarlar.kristal_var(2), "corrupt save: progress read from the backup")
+	_dogrula(FileAccess.get_file_as_string(bozuk_yol) == "bozuk [[[ dosya", "corrupt save kept as kayit.bozuk.cfg")
+	Ayarlar.kaydet()
+	var cfg := ConfigFile.new()
+	_dogrula(cfg.load(Ayarlar.KAYIT_YOLU) == OK and int(cfg.get_value("ilerleme", "acilan", -1)) == 5,
+		"next kaydet() writes the restored progress to kayit.cfg")
+	f = FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
+	f.close()
+	Ayarlar.sifirla()
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.acilan_bolum == 5, "empty (cut short) save: progress read from the backup")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(bozuk_yol))
+	Ayarlar.sifirla()
+
+
 ## Menu: dev OYNA (birincil), tek satir nasil oynanir, ikincil dugmeler; dil
 ## degisince metinler yeniden yazilir; ilk odak OYNA'da.
 func _menu_akisi_testi() -> void:
@@ -2355,3 +2407,133 @@ func _gecis_testi() -> void:
 	await get_tree().process_frame
 	get_tree().paused = false
 	Ayarlar.sifirla()
+
+## Keyboard remapping (scripts/tuslar.gd): own file, keyboard-only changes,
+## one action per key, no action left keyless, Esc reserved, hints follow the
+## new keys in both languages, and the settings screen overlay drives it.
+func _klavye_kodlari(eylem: String) -> Array[int]:
+	var sonuc: Array[int] = []
+	for olay in InputMap.action_get_events(eylem):
+		if olay is InputEventKey:
+			var k := olay as InputEventKey
+			sonuc.append(int(k.physical_keycode) if k.physical_keycode != 0 else int(k.keycode))
+	return sonuc
+
+
+func _gamepad_var(eylem: String) -> bool:
+	for olay in InputMap.action_get_events(eylem):
+		if olay is InputEventJoypadButton or olay is InputEventJoypadMotion:
+			return true
+	return false
+
+
+func _tus_atama_testi() -> void:
+	var eski_yol := Tuslar.yol
+	Tuslar.yol = "user://test_tuslar.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Tuslar.yol))
+	Tuslar.yukle()
+	_dogrula(_klavye_kodlari("cevir") == [KEY_SPACE, KEY_W] and _gamepad_var("cevir"),
+		"tus: varsayilan cevir = Bosluk + W + gamepad (%s)" % str(_klavye_kodlari("cevir")))
+	_dogrula(Tuslar.tus_adi("cevir") == "Boşluk" and not Tuslar.ozel_var(), "tus: varsayilan ad 'Boşluk', ozel atama yok")
+
+	_dogrula(Tuslar.ata("cevir", KEY_J), "tus: cevir J'ye atandi")
+	_dogrula(_klavye_kodlari("cevir") == [KEY_J] and _gamepad_var("cevir"),
+		"tus: ozel tus varsayilan klavye tuslarinin yerini aliyor, gamepad kaliyor (%s)" % str(_klavye_kodlari("cevir")))
+	_dogrula(FileAccess.file_exists(Tuslar.yol) and not FileAccess.get_file_as_string(Ayarlar.KAYIT_YOLU).contains("tuslar"),
+		"tus: atama kendi dosyasina yaziliyor, ilerleme kaydina degil")
+
+	# Same key on another action: it moves; cevir falls back to its defaults.
+	_dogrula(Tuslar.ata("move_left", KEY_J), "tus: J sola yuru'ye tasindi")
+	_dogrula(_klavye_kodlari("move_left") == [KEY_J] and _klavye_kodlari("cevir") == [KEY_SPACE, KEY_W],
+		"tus: bir tus tek eylemde; cevir varsayilana dondu (%s / %s)" % [str(_klavye_kodlari("move_left")), str(_klavye_kodlari("cevir"))])
+
+	# A custom key claims a default key of another action.
+	_dogrula(Tuslar.ata("move_right", KEY_W), "tus: W saga yuru'ye atandi")
+	_dogrula(_klavye_kodlari("cevir") == [KEY_SPACE] and _klavye_kodlari("move_right") == [KEY_W],
+		"tus: varsayilan W cevirden dustu, Bosluk kaldi (%s)" % str(_klavye_kodlari("cevir")))
+	_dogrula(not Tuslar.ata("duraklat", KEY_SPACE) and _klavye_kodlari("cevir") == [KEY_SPACE],
+		"tus: cevirin son tusunu alan atama reddedildi")
+	_dogrula(not Tuslar.ata("cevir", KEY_ESCAPE) and not Tuslar.ata("yok_boyle", KEY_K),
+		"tus: Esc ve bilinmeyen eylem reddedildi")
+
+	# Persistence: a fresh load gives the same bindings.
+	var once := Tuslar.ozel()
+	Tuslar.yukle()
+	_dogrula(Tuslar.ozel() == once and _klavye_kodlari("move_left") == [KEY_J], "tus: yeniden yuklemede atamalar ayni")
+
+	# Hand-edited file: duplicate key, Esc and unknown action are ignored.
+	var cfg := ConfigFile.new()
+	cfg.set_value("tuslar", "move_left", KEY_J)
+	cfg.set_value("tuslar", "move_right", KEY_J)
+	cfg.set_value("tuslar", "duraklat", KEY_ESCAPE)
+	cfg.set_value("tuslar", "bogus", KEY_K)
+	cfg.save(Tuslar.yol)
+	Tuslar.yukle()
+	_dogrula(Tuslar.ozel() == {"move_left": KEY_J} and _klavye_kodlari("duraklat") == [KEY_ESCAPE],
+		"tus: bozuk dosyada yinelenen tus, Esc ve bilinmeyen eylem yok sayildi (%s)" % str(Tuslar.ozel()))
+
+	# Hints follow the bindings (desktop), in both languages; touch text unchanged.
+	Tuslar.sifirla()
+	var varsayilan_ipucu := Ayarlar.kontrol_metni("A / D ile yürü · BOŞLUK yerçekimini çevirir")
+	Tuslar.ata("cevir", KEY_K)
+	Tuslar.ata("move_left", KEY_J)
+	Tuslar.ata("move_right", KEY_L)
+	var tr_ipucu := Ayarlar.kontrol_metni("A / D ile yürü · BOŞLUK yerçekimini çevirir")
+	Ayarlar.dil = "en"
+	Ayarlar.dil_uygula()
+	var en_ipucu := Ayarlar.kontrol_metni("A / D ile yürü · BOŞLUK yerçekimini çevirir")
+	Ayarlar.dil = "tr"
+	Ayarlar.dil_uygula()
+	_dogrula(varsayilan_ipucu == "A / D ile yürü · BOŞLUK yerçekimini çevirir", "tus: atama yokken ipucu aynen")
+	_dogrula(tr_ipucu == "J / L ile yürü · K yerçekimini çevirir", "tus: TR ipucu atanan tuslari soyluyor ('%s')" % tr_ipucu)
+	_dogrula(en_ipucu == "J / L to walk · K flips gravity", "tus: EN ipucu atanan tuslari soyluyor ('%s')" % en_ipucu)
+	Ayarlar.dokunmatik_algilandi = true
+	var dokunma := Ayarlar.kontrol_metni("A / D ile yürü · BOŞLUK yerçekimini çevirir")
+	Ayarlar.dokunmatik_algilandi = false
+	_dogrula(not dokunma.contains("J / L") and dokunma.contains("alan"), "tus: dokunmatikte dokunma metni kaliyor")
+
+	# Settings screen overlay (desktop).
+	Tuslar.sifirla()
+	var ekran: Control = load("res://scenes/ayarlar_ekrani.tscn").instantiate()
+	add_child(ekran)
+	await get_tree().process_frame
+	var ac := ekran.find_child("TusAtama", true, false) as Button
+	var panel := ekran.find_child("TusPaneli", true, false) as Control
+	_dogrula(ac != null and panel != null and not panel.visible, "ayarlar: Tus atama dugmesi var, panel kapali")
+	if ac != null and panel != null:
+		ac.emit_signal("pressed")
+		var cevir_d := ekran.find_child("Tus_cevir", true, false) as Button
+		_dogrula(panel.visible and cevir_d != null and cevir_d.text == "Boşluk", "ayarlar: panel acildi, cevir 'Boşluk' yaziyor")
+		cevir_d.emit_signal("pressed")
+		_dogrula(cevir_d.text == "bir tuşa bas...", "ayarlar: dugme tus bekliyor")
+		ekran.call("tus_yakala", KEY_ESCAPE)
+		var not_e := ekran.find_child("TusNot", true, false) as Label
+		_dogrula(cevir_d.text == "Boşluk" and not_e.text == "Vazgeçildi." and not Tuslar.ozel_var(), "ayarlar: Esc vazgeciyor, atama degismiyor")
+		cevir_d.emit_signal("pressed")
+		ekran.call("tus_yakala", KEY_K)
+		_dogrula(cevir_d.text == "K" and _klavye_kodlari("cevir") == [KEY_K], "ayarlar: yeni tus atandi ve dugmede yaziyor")
+		(ekran.find_child("TusSifirla", true, false) as Button).emit_signal("pressed")
+		_dogrula(cevir_d.text == "Boşluk" and not Tuslar.ozel_var(), "ayarlar: varsayilana don calisiyor")
+	ekran.queue_free()
+	await get_tree().process_frame
+	Ayarlar.dokunmatik_algilandi = true
+	var dokunma_ekran: Control = load("res://scenes/ayarlar_ekrani.tscn").instantiate()
+	add_child(dokunma_ekran)
+	await get_tree().process_frame
+	_dogrula(dokunma_ekran.find_child("TusAtama", true, false) == null, "ayarlar: dokunmatikte tus atama yok")
+	dokunma_ekran.queue_free()
+	await get_tree().process_frame
+	Ayarlar.dokunmatik_algilandi = false
+
+	var eksik := ""
+	for m in ["Tuş atama", "TUŞ ATAMA", "Boşluk", "Varsayılana dön", "Varsayılan tuşlar geri geldi.",
+			"bir tuşa bas...", "Vazgeçildi.", "Bu tuş atanamadı: bir eylem tuşsuz kalırdı.",
+			"Düğmeye bas, sonra yeni tuşa bas · Esc: vazgeç · gamepad değişmez"] + Tuslar.EYLEMLER.values():
+		if not Ceviri.EN.has(String(m)):
+			eksik += " [%s]" % m
+	_dogrula(eksik == "", "tus atama metinleri Ingilizcede var ('%s')" % eksik)
+
+	Tuslar.sifirla()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Tuslar.yol))
+	Tuslar.yol = eski_yol
+	Tuslar.yukle()
