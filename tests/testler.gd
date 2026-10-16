@@ -17,8 +17,8 @@ func _ready() -> void:
 	# yarida kalan bir kosu (v0.7'de bir kez oldu) yardim/solak ayarlarini
 	# ACIK birakip diske yaziyordu. Basta yedekle, cikista geri koy; bellekte
 	# varsayilan ayarlarla basla ki sonuc onceki kosuya bagli olmasin.
-	var kayit_vardi := FileAccess.file_exists(Ayarlar.KAYIT_YOLU)
-	var kayit_yedek := FileAccess.get_file_as_bytes(Ayarlar.KAYIT_YOLU) if kayit_vardi else PackedByteArray()
+	# The automatic backup (kayit.yedek.cfg) is part of the save too.
+	var kayit_eski := _kayit_al()
 	_varsayilan_ayarlar()
 	print("— Bolum verisi —")
 	await _bolum_testi()
@@ -94,6 +94,8 @@ func _ready() -> void:
 	await _ceviri_testi()
 	print("— Dil kaydi ve eski kayit uyumu —")
 	_dil_kayit_testi()
+	print("— Corrupt save guard —")
+	_bozuk_kayit_testi()
 	print("— Menu akisi —")
 	await _menu_akisi_testi()
 	print("— Duraklat akisi —")
@@ -111,18 +113,33 @@ func _ready() -> void:
 		print("TESTLER GECTI")
 	else:
 		printerr("TESTLER KALDI")
-	if kayit_vardi:
-		var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
-		if f != null:
-			f.store_buffer(kayit_yedek)
-			f.close()
-	else:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(Ayarlar.KAYIT_YOLU))
+	_kayit_geri_koy(kayit_eski)
 	# Motorun kapanis sirasi alttan yukari: muzik burada durdurulmazsa cikista
 	# "resource still in use" hatasi basiliyor.
 	Ses.kapat()
 	await get_tree().create_timer(0.25).timeout
 	get_tree().quit(1 if _hata > 0 else 0)
+
+
+## Snapshot of the player's save and its backup: path -> bytes (missing = absent).
+func _kayit_al() -> Dictionary:
+	var eski: Dictionary = {}
+	for yol: String in [Ayarlar.KAYIT_YOLU, Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)]:
+		if FileAccess.file_exists(yol):
+			eski[yol] = FileAccess.get_file_as_bytes(yol)
+	return eski
+
+
+## Puts the snapshot from _kayit_al() back; files that did not exist are removed.
+func _kayit_geri_koy(eski: Dictionary) -> void:
+	for yol: String in [Ayarlar.KAYIT_YOLU, Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)]:
+		if eski.has(yol):
+			var f := FileAccess.open(yol, FileAccess.WRITE)
+			if f != null:
+				f.store_buffer(eski[yol])
+				f.close()
+		else:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(yol))
 
 
 ## Kullanici ayarlari testin girdisi degildir: her kosu ayni varsayilanlarla baslar.
@@ -1928,6 +1945,39 @@ func _dil_kayit_testi() -> void:
 	Ayarlar.yukle()
 	_dogrula(Ayarlar.dil == "", "gecersiz dil degeri yok sayildi")
 	Ayarlar.dil = "tr"
+	Ayarlar.sifirla()
+
+
+## A corrupt or truncated kayit.cfg must not wipe progress: yukle() falls back
+## to the automatic backup and keeps the unreadable file as kayit.bozuk.cfg,
+## and the next kaydet() writes the restored progress back.
+func _bozuk_kayit_testi() -> void:
+	var bozuk_yol: String = Ayarlar.bozuk_yolu(Ayarlar.KAYIT_YOLU)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(bozuk_yol))
+	Ayarlar.sifirla()
+	Ayarlar.acilan_bolum = 5
+	Ayarlar.en_iyi[2] = 7.25
+	Ayarlar.kristal[2] = true
+	Ayarlar.kaydet()
+	_dogrula(FileAccess.file_exists(Ayarlar.yedek_yolu(Ayarlar.KAYIT_YOLU)), "kaydet() writes kayit.yedek.cfg")
+	var f := FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
+	f.store_string("bozuk [[[ dosya")
+	f.close()
+	Ayarlar.sifirla()
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.acilan_bolum == 5 and is_equal_approx(float(Ayarlar.en_iyi.get(2, 0.0)), 7.25)
+		and Ayarlar.kristal_var(2), "corrupt save: progress read from the backup")
+	_dogrula(FileAccess.get_file_as_string(bozuk_yol) == "bozuk [[[ dosya", "corrupt save kept as kayit.bozuk.cfg")
+	Ayarlar.kaydet()
+	var cfg := ConfigFile.new()
+	_dogrula(cfg.load(Ayarlar.KAYIT_YOLU) == OK and int(cfg.get_value("ilerleme", "acilan", -1)) == 5,
+		"next kaydet() writes the restored progress to kayit.cfg")
+	f = FileAccess.open(Ayarlar.KAYIT_YOLU, FileAccess.WRITE)
+	f.close()
+	Ayarlar.sifirla()
+	Ayarlar.yukle()
+	_dogrula(Ayarlar.acilan_bolum == 5, "empty (cut short) save: progress read from the backup")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(bozuk_yol))
 	Ayarlar.sifirla()
 
 
