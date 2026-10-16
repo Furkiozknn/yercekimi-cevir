@@ -785,6 +785,8 @@ func _karti_goster(etiket: String, sure_metni: String, satir: String, rekor: boo
 	$Arayuz/BolumKarti/Etiket.text = Tema.buyuk(etiket)
 	$Arayuz/BolumKarti/Sure.text = sure_metni
 	$Arayuz/BolumKarti/Satir.text = satir
+	if _olumsuz_damga != null:
+		_olumsuz_damga.visible = false   # _ana_bitti shows it again for a deathless clear
 	_bolum_karti.visible = true
 	Gecis.acilis(&"flas", _tema_i, 0.22, 0.5)      # tek vurus: bolum bitti
 	_damga_goster(rekor)
@@ -927,7 +929,7 @@ func _hayalet_kazandi() -> void:
 
 
 func _ana_bitti() -> void:
-	var sonuc: Dictionary = Ayarlar.bolum_bitti(bolum_i, sure, cevirme)
+	var sonuc: Dictionary = Ayarlar.bolum_bitti(bolum_i, sure, cevirme, olum)
 	var m: int = sonuc["madalya"]
 	if m > 0:
 		Ses.cal(&"madalya")
@@ -946,6 +948,43 @@ func _ana_bitti() -> void:
 	if bool(sonuc["az_rekor"]):
 		l2 += "  ·  " + tr("EN AZ ÇEVİRME")
 	_karti_goster(etiket, sure_metni, l1 + "\n" + l2, bool(sonuc["rekor"]))
+	_olumsuz_damga_goster(bool(sonuc["olumsuz"]), bool(sonuc["olumsuz_yeni"]))
+
+
+## Deathless stamp on the card's top-left corner (the record stamp sits
+## top-right): "◆ ÖLÜMSÜZ" for a clear without dying, "◆ İLK ÖLÜMSÜZ" the first
+## time in that level. A stamp instead of another text line, because the card's
+## two text lines are already full.
+var _olumsuz_damga: Panel = null
+var _olumsuz_yazi: Label = null
+
+func _olumsuz_damga_goster(goster: bool, yeni: bool) -> void:
+	if _olumsuz_damga == null:
+		if not goster:
+			return
+		_olumsuz_damga = Panel.new()
+		_olumsuz_damga.name = "OlumsuzDamga"
+		_olumsuz_damga.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_olumsuz_damga.add_theme_stylebox_override("panel", _chip_stil.duplicate())
+		_olumsuz_yazi = Label.new()
+		_olumsuz_yazi.theme_type_variation = &"Vurgu"
+		_olumsuz_yazi.add_theme_font_size_override("font_size", 9)
+		_olumsuz_yazi.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_olumsuz_yazi.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_olumsuz_yazi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_olumsuz_damga.add_child(_olumsuz_yazi)
+		_bolum_karti.add_child(_olumsuz_damga)
+	_olumsuz_damga.visible = goster
+	if not goster:
+		return
+	_olumsuz_yazi.text = "◆ " + Tema.buyuk(tr("İlk ölümsüz") if yeni else tr("Ölümsüz"))
+	var w: float = _olumsuz_yazi.get_minimum_size().x + 16.0
+	_olumsuz_damga.size = Vector2(w, 18.0)
+	_olumsuz_damga.position = Vector2(8.0, -9.0)
+	_olumsuz_yazi.size = _olumsuz_damga.size
+	var v: Color = Tema.akis_rengi(_tema_i, 2)
+	(_olumsuz_damga.get_theme_stylebox("panel") as StyleBoxFlat).bg_color = v
+	_olumsuz_yazi.add_theme_color_override("font_color", Tema.yazi_rengi(v, _tema_i))
 
 
 ## Olum haritasi: bolumun kucultulmus plani ve oldugun her nokta X ile.
@@ -1021,10 +1060,12 @@ func _sonraki() -> void:
 		_kopyala_dugme.visible = false
 		_bitis_metin.text = (tr("Tüm %d bölüm bitti!") + "\n\n" + tr("Toplam süre: %.2f sn") + "\n" + tr("Toplam ölüm: %d") + "\n"
 			+ tr("Kristal: %d / %d") + "\n" + tr("Madalya kazanılan bölüm: %d / %d") + "\n"
-			+ tr("En az çevirmeyle biten bölüm: %d / %d")) % [
+			+ tr("En az çevirmeyle biten bölüm: %d / %d") + "\n"
+			+ tr("Ölümsüz biten bölüm: %d / %d")) % [
 				Ayarlar.bolum_sayisi(), toplam_sure, toplam_olum,
 				Ayarlar.kristal_sayisi(), Ayarlar.bolum_sayisi(),
-				madalyalar, Ayarlar.bolum_sayisi(), az, Ayarlar.bolum_sayisi()]
+				madalyalar, Ayarlar.bolum_sayisi(), az, Ayarlar.bolum_sayisi(),
+				Ayarlar.olumsuz_sayisi(), Ayarlar.bolum_sayisi()]
 		_bitis_ac()
 		Ses.muzik(&"bitis")
 

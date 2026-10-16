@@ -36,7 +36,12 @@ const EN := {
 	"yardım açık": "assist on",
 	"Cihazını yatay çevir": "Rotate your device to landscape",
 	# --- bolum secimi ---
-	"Kristal %d / %d     Madalya %d / %d     En az çevirme %d / %d": "Crystals %d / %d     Medals %d / %d     Fewest flips %d / %d",
+	"Kristal %d/%d  Madalya %d/%d  En az ⟳ %d/%d  ◆ Ölümsüz %d/%d": "Crystals %d/%d  Medals %d/%d  Min ⟳ %d/%d  ◆ No-death %d/%d",
+	# --- deathless clears ---
+	"Ölümsüz": "Deathless",
+	"İlk ölümsüz": "First deathless",
+	"Ölümsüz: bölümü hiç ölmeden bitir": "Deathless: clear the room without dying",
+	"Ölümsüz biten bölüm: %d / %d": "Rooms cleared without dying: %d / %d",
 	"Süre Listesi": "Time list",
 	"Bölüm Izgarası": "Room grid",
 	"Geri": "Back",

@@ -77,6 +77,15 @@ sıfırlanmaz, bölüm değişince sıfırlanır.
 - **"En az çevirme" ikinci hedefi.** Süreden bağımsız: her bölümün kaç çevirmeyle
   çözülebileceği **ölçülmüş** (botun gerçekten bitirdiği en az çevirme sayısı),
   senin en iyi çevirme sayın kaydediliyor. Hızlı bitirmek ve az çevirmek iki ayrı oyun.
+- **Ölümsüz bitiş (üçüncü hedef).** Celeste'in altın çileği ve VVVVVV'nin ölümsüz
+  koşusu gibi: bir bölümü **hiç ölmeden** bitirince kaydedilir (`[olumsuz]`).
+  Kontrol noktasına dönmek de ölüm sayılır; yardım modunda sayılmaz.
+  - Bölüm kartının sol üst köşesine `◆ ÖLÜMSÜZ` damgası basılır (ilk seferde
+    `◆ İLK ÖLÜMSÜZ`).
+  - Bölüm Seç'te her hücrede ve Süre Listesi'nde her satırda bir `◆` durur:
+    kazanılmışsa dolu, değilse soluk (kristal simgesiyle aynı düzen).
+  - Özet satırında `◆ Ölümsüz N/20`, oyun sonu özetinde "Ölümsüz biten bölüm"
+    sayısı görünür.
 - **Hayalet yarış.** O bölümdeki en iyi koşun yarı saydam olarak yanında koşar;
   rengi o koşunun madalyası — altın koşu altın hayalet.
 - **Altın hayalet.** Botun ölçülmüş en iyi koşusu ayrı bir yarış hedefi olarak
