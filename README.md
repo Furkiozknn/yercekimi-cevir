@@ -7,7 +7,7 @@
 <h3 align="center"><a href="https://furkiozknn.github.io/yercekimi-cevir/">Tarayıcıda oyna → furkiozknn.github.io/yercekimi-cevir</a></h3>
 <p align="center"><a href="https://furkiozknn.itch.io/yercekimi-cevir">itch.io sayfası / on itch.io → furkiozknn.itch.io/yercekimi-cevir</a></p>
 
-*No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish and English UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 963 headless checks.*
+*No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish and English UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 1010 headless checks.*
 
 [![CI](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml/badge.svg)](https://github.com/Furkiozknn/yercekimi-cevir/actions/workflows/ci.yml)
 
@@ -265,7 +265,7 @@ Yeni bir yapıyı ya da bir değişikliği elle doğrulamanın en kısa yolu:
    yerler ölüm haritasında X ile; menüye dönünce Bölüm Seç'te 2. bölüm açık.
 5. `Esc` oyunu duraklatıyor, tekrar basınca devam ediyor.
 
-Otomatik karşılığı aşağıda [Test ve CI](#test-ve-ci)'de: 963 doğrulama +
+Otomatik karşılığı aşağıda [Test ve CI](#test-ve-ci)'de: 1010 doğrulama +
 20 bölümü gerçekten oynayan bot.
 
 ### Geliştirici komutları
@@ -342,7 +342,7 @@ itch.io'da yayında: [furkiozknn.itch.io/yercekimi-cevir](https://furkiozknn.itc
 | `scripts/oyuncu.gd` | Çevirme mekaniği (tampon + kojot), yerçekimi oku, ölüm, esneme-sıkışma. |
 | `scripts/oyun.gd` | Bölüm döngüsü, oda kamerası, hayalet, ölüm haritası, iniş göstergesi, yardım modu. |
 | `tools/` | Varlık üreticileri (sprite, ses, tema) + `sesler.md`; `fps.gd`, `his_olc.gd` ölçüm araçları. |
-| `tests/` | Headless otomatik test (963 doğrulama) + ekran görüntüsü aracı. Eşiklerin hâlâ doğru olup olmadığını `tools/bot.gd --  ... denetle` soruyor. |
+| `tests/` | Headless otomatik test (1010 doğrulama) + ekran görüntüsü aracı. Eşiklerin hâlâ doğru olup olmadığını `tools/bot.gd --  ... denetle` soruyor. |
 
 Bölüm haritaları TileMapLayer yerine ASCII + kod üretimi: 20 bölüm tek dosyada
 düzenlenebiliyor ve `arac/uret_bolumler.py` üretim sırasında her bölümün
@@ -393,7 +393,7 @@ godot --headless --path . res://tests/testler.tscn    # cikis kodu 0 = gecti
 
 `main`'e her push'ta ve her pull request'te **aynı komut** GitHub Actions'ta
 koşuyor (Godot 4.7.2, Linux
-headless, Git LFS çekilerek). Son yerel ölçüm: **963 doğrulama, 0 hata**.
+headless, Git LFS çekilerek). Son ölçüm (CI, main): **1010 doğrulama, 0 hata**.
 
 **Çıkış kodu tek başına yetmiyor.** Bir test fonksiyonundaki çalışma zamanı
 hatası (null erişimi, eksik metot) yalnızca o fonksiyonu keser: motor
