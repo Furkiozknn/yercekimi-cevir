@@ -5,6 +5,7 @@
 <p align="center"><img src="docs/oynanis.gif" alt="Yerçekimi Çevir - düz renk dünya: oyuncu yerçekimini çevirip dikenlerin üstünden geçiyor, bir yanlış adımda ölüp yeniden doğuyor, bölüm bandıyla sonraki odaya geçiyor" width="720"></p>
 <p align="center"><sub>Oyunun kendisinden ham kayıt (arayüz gizli, 14 sn, `tools/bot.gd ... kayit`): insan tepki bandındaki bot, 6. ve 7. odalar (bilinçli bir yanlış adımla ölüp yeniden doğuyor).</sub></p>
 <h3 align="center"><a href="https://furkiozknn.github.io/yercekimi-cevir/">Tarayıcıda oyna → furkiozknn.github.io/yercekimi-cevir</a></h3>
+<p align="center"><a href="https://furkiozknn.itch.io/yercekimi-cevir">itch.io sayfası / on itch.io → furkiozknn.itch.io/yercekimi-cevir</a></p>
 
 *No jump button — one key flips gravity and you fall onto the ceiling. 20 hand-built precision platformer rooms (Godot 4, Turkish and English UI), each one or two screens, with no-flip zones and one-way platforms introduced as separate ideas. 963 headless checks.*
 
@@ -325,7 +326,7 @@ Settings → Pages → Source: **GitHub Actions**. İş akışının kendi anaht
 Pages sitesi oluşturamıyor; açılmamışsa yayın adımı "Resource not accessible
 by integration" hatasıyla durur.
 
-itch.io paketi hazır ama yüklenmedi: `yayin/`.
+itch.io'da yayında: [furkiozknn.itch.io/yercekimi-cevir](https://furkiozknn.itch.io/yercekimi-cevir) (paket `yayin/` altında).
 
 ## Kod düzeni
 
