@@ -53,9 +53,9 @@
     "videos": []
   },
   "tests": {
-    "count": 963,
-    "source": "CI log: `963 dogrulama, 0 hata` / `TESTLER GECTI`",
-    "measured": "2026-09-29"
+    "count": 1010,
+    "source": "CI log: `1010 dogrulama, 0 hata` / `TESTLER GECTI`",
+    "measured": "2026-10-19"
   },
   "ci": {
     "workflows": [
